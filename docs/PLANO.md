@@ -200,7 +200,16 @@ Regras pra funcionar com qualquer LLM grátis:
 
 Um commit por fase, e cada fase só termina com `npm run check` verde.
 
-## 11. Pendências
+## 11. Decisões iniciais de jogo
+
+Todas configuráveis:
+
+- Mapa começa com 128×128 quadradinhos.
+- Dois modos de dinheiro: com orçamento (impostos, gastos, pode falir), que é o padrão, e livre (dinheiro infinito).
+- O mapa começa vazio. As pessoas chegam "de fora do mapa" quando existem casas e empregos, e a chegada fica registrada.
+- Nomes brasileiros, vindos de uma lista num arquivo de dados.
+
+## 12. Pendências
 
 - Deixar o repositório público (feito pelo dono nas configurações do GitHub).
 - Validar com pesquisa os números padrão de cada regra antes de implementá-la.
