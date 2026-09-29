@@ -62,9 +62,6 @@ export interface TripStart {
   to?: number;
 }
 
-/** Quantas viagens recentes guardar para a tela (a tela lê a cada quadro). */
-const TRIP_LOG_MAX = 80000;
-
 export class TrafficSystem implements System {
   readonly name = "traffic";
   readonly vehicles = new Vehicles();
@@ -209,7 +206,7 @@ export class TrafficSystem implements System {
     const r = sim.config.traffic.routine;
     const tpd = sim.clock.ticksPerDay;
     const mpt = sim.config.time.minutesPerTick;
-    const schoolTick = Math.floor(r.schoolStartMinute / mpt) % tpd;
+    const spread = Math.max(1, r.schoolStartSpreadMinutes);
     for (let p = 0; p < pop.count; p++) {
       if (pop.status[p] !== PSTATUS.alive) continue;
       if (pop.job[p] !== -1) {
@@ -229,7 +226,10 @@ export class TrafficSystem implements System {
       if (pop.school[p]! >= 0) {
         pop.tripState[p] = 0;
         pop.tripPurpose[p] = TRIP.none;
-        this.departures[schoolTick]!.push({ p, purpose: TRIP.school });
+        // Ida escalonada por pessoa para não estourar o orçamento de busca de rotas.
+        const h = hashString(`${sim.seed}:school:${p}`)[0];
+        const t = (Math.floor(r.schoolStartMinute / mpt) + (h % spread)) % tpd;
+        this.departures[t]!.push({ p, purpose: TRIP.school });
       }
     }
   }
@@ -311,6 +311,18 @@ export class TrafficSystem implements System {
     if (awayAccess < 0) return;
     const from = toDest ? homeAccess : awayAccess;
     const to = toDest ? awayAccess : homeAccess;
+    if (purpose === TRIP.school && toDest) {
+      // A criança vai a pé: a matrícula não consome o carro da família (config/education.yaml,
+      // maxDistanceMeters: 2000; PNAD Educação: a maioria dos alunos vai a pé).
+      const meters = sim.world.manhattanMeters(from, to);
+      const walkMax = sim.config.education.maxDistanceMeters;
+      const kmh =
+        meters <= walkMax ? sim.config.traffic.walking.speedKmh : sim.config.roads.avenue.speedKmh / 2;
+      this.logTrip({ kind: "walk", id: p, model: p % 4, from, to });
+      city.sim.perf.count("tripsStarted");
+      this.scheduleArrival(p, (meters / 1000 / kmh) * 60, purpose, toDest);
+      return;
+    }
     const h = pop.household[p]!;
     const car = hh.car[h]!;
     const veh = this.vehicles;
@@ -354,9 +366,10 @@ export class TrafficSystem implements System {
   }
 
   private logTrip(t: TripStart) {
+    const max = this.city.config.traffic.tripLogMax;
     this.tripLog.push(t);
     this.tripSeq++;
-    if (this.tripLog.length > TRIP_LOG_MAX) this.tripLog.splice(0, this.tripLog.length - TRIP_LOG_MAX / 2);
+    if (this.tripLog.length > max) this.tripLog.splice(0, this.tripLog.length - max / 2);
   }
 
   private scheduleArrival(p: number, minutes: number, purpose: number, toDest: boolean) {

@@ -27,3 +27,8 @@ traffic:
     # Turno escolar da manhã: 7h às 12h. PENDENTE: distribuição de turnos.
     schoolStartMinute: 420
     schoolDurationMinutes: 300
+    # Janela de escalonamento da ida à escola por pessoa (minutos). PENDENTE: distribuição de turnos.
+    schoolStartSpreadMinutes: 10
+  # Por quantas viagens a tela precisa guardar para desenhar (a tela lê o log a cada quadro;
+  # o log é aparado quando estoura).
+  tripLogMax: 80000
