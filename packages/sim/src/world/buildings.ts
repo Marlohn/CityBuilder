@@ -26,6 +26,9 @@ export class Buildings {
   students = new Int32Array(64);
   patients = new Int32Array(64);
   parked = new Int32Array(64);
+  /** 1 = tem água / tem luz (sistema de água e luz; só vale se ele estiver ligado). */
+  hasWater = new Uint8Array(64);
+  hasPower = new Uint8Array(64);
   /** Aumenta quando um prédio é criado, fica pronto, é abandonado ou demolido. */
   structureVersion = 0;
 
@@ -108,6 +111,8 @@ export class Buildings {
     this.jobsFilled = growTo(this.jobsFilled, n);
     this.students = growTo(this.students, n);
     this.patients = growTo(this.patients, n);
+    this.hasWater = growTo(this.hasWater, n);
+    this.hasPower = growTo(this.hasPower, n);
     this.parked = growTo(this.parked, n);
   }
 }

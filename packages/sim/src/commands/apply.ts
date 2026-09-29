@@ -220,6 +220,8 @@ function placeService(ctx: CommandContext, service: string, x: number, y: number
   }
   const [access, facing] = network.findAccess(x, y, t.w, t.h);
   if (access < 0) return { ok: false, reason: `${t.label} precisa encostar numa via` };
+  if (t.nearWater > 0 && !nearWater(world, x, y, t.w, t.h, t.nearWater))
+    return { ok: false, reason: `${t.label} precisa ficar a até ${t.nearWater} quadradinhos de rio ou lago` };
   if (!ctx.treasury.trySpend(t.cost, "obras_servicos")) {
     return { ok: false, reason: `dinheiro insuficiente (custa R$ ${fmt(t.cost)})` };
   }
@@ -259,6 +261,8 @@ function moveService(ctx: CommandContext, id: number, x: number, y: number): Par
   }
   const [access, facing] = network.findAccess(x, y, t.w, t.h);
   if (access < 0) return { ok: false, reason: `${t.label} precisa encostar numa via` };
+  if (t.nearWater > 0 && !nearWater(world, x, y, t.w, t.h, t.nearWater))
+    return { ok: false, reason: `${t.label} precisa ficar a até ${t.nearWater} quadradinhos de rio ou lago` };
   const cost = Math.round(t.cost * ctx.config.economy.serviceMoveCostShare);
   if (!ctx.treasury.trySpend(cost, "obras_servicos")) {
     return { ok: false, reason: `dinheiro insuficiente (mudar custa R$ ${fmt(cost)})` };
@@ -283,6 +287,14 @@ function moveService(ctx: CommandContext, id: number, x: number, y: number): Par
   world.mapVersion++;
   ctx.onBuildingMoved(id);
   return { ok: true, cost };
+}
+
+/** Tem água (rio ou lago) a até `d` quadradinhos do retângulo? */
+function nearWater(world: World, x: number, y: number, w: number, h: number, d: number): boolean {
+  for (let ty = y - d; ty < y + h + d; ty++)
+    for (let tx = x - d; tx < x + w + d; tx++)
+      if (world.inBounds(tx, ty) && world.water[world.idx(tx, ty)]) return true;
+  return false;
 }
 
 export function fmt(n: number): string {

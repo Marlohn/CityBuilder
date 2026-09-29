@@ -119,6 +119,41 @@ export class ModelLibrary {
         box(0.05, 0.4, 0.05, x, 0.03, z, concrete);
       box(0.95, 0.12, 0.02, 0, 0, 0.47, fence);
       box(0.95, 0.12, 0.02, 0, 0, -0.47, fence);
+    } else if (name === "proc/well") {
+      // Poço artesiano: casa de bomba pequena com caixa d'água azul.
+      const wall = mat(0.9, 0.9, 0.86);
+      const blue = mat(0.25, 0.5, 0.85);
+      const pipe = mat(0.5, 0.5, 0.55);
+      box(0.45, 0.2, 0.4, -0.1, 0, 0, wall);
+      box(0.06, 0.45, 0.06, 0.25, 0, 0.2, pipe);
+      box(0.3, 0.18, 0.3, 0.25, 0.45, 0.2, blue);
+    } else if (name === "proc/eta") {
+      // Estação de tratamento: tanques redondos (feitos de caixas) e prédio de controle.
+      const concrete = mat(0.75, 0.75, 0.72);
+      const water = mat(0.3, 0.55, 0.8);
+      const roof = mat(0.35, 0.5, 0.65);
+      for (const [x, z] of [
+        [-0.25, -0.25],
+        [0.2, -0.25],
+        [-0.25, 0.2],
+      ] as const) {
+        box(0.34, 0.12, 0.34, x, 0, z, concrete);
+        box(0.28, 0.01, 0.28, x, 0.12, z, water);
+      }
+      box(0.3, 0.22, 0.3, 0.22, 0, 0.22, concrete);
+      box(0.32, 0.03, 0.32, 0.22, 0.22, 0.22, roof);
+    } else if (name === "proc/substation") {
+      // Subestação: transformadores cinza, pórticos e cerca.
+      const metal = mat(0.55, 0.57, 0.6);
+      const dark = mat(0.3, 0.32, 0.35);
+      const fence = mat(0.7, 0.7, 0.7, 0.6);
+      box(0.9, 0.02, 0.9, 0, 0, 0, dark);
+      box(0.22, 0.2, 0.18, -0.2, 0.02, -0.15, metal);
+      box(0.22, 0.2, 0.18, 0.2, 0.02, -0.15, metal);
+      for (const x of [-0.35, 0, 0.35]) box(0.04, 0.45, 0.04, x, 0.02, 0.2, metal);
+      box(0.74, 0.03, 0.04, 0, 0.45, 0.2, metal);
+      box(0.92, 0.1, 0.01, 0, 0, 0.46, fence);
+      box(0.92, 0.1, 0.01, 0, 0, -0.46, fence);
     } else if (name === "proc/median") {
       // Canteiro central da avenida (~2 m de largura num quadradinho de 16 m), com meio-fio claro e
       // faixa amarela dos dois lados. Comprimento ao longo do eixo Z.

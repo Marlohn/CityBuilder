@@ -185,6 +185,27 @@ export const GameConfigSchema = z.object({
     budgets: z.object({ nodesExpandedPerTick: intPos, personsUpdatedPerTick: intPos }),
     timingWindow: intPos,
   }),
+  utilities: z
+    .object({
+      enabled: z.boolean(),
+      /** Pessoas por casa/apartamento (para calcular quanto um prédio consome). */
+      personsPerHome: pos,
+      /** Cada emprego (comércio, indústria, serviço) conta como esta fração de uma pessoa. */
+      personsPerJob: nonneg,
+      /** Rede da região que chega pela estrada de acesso (pessoas equivalentes). */
+      regionalWater: nonneg,
+      regionalPower: nonneg,
+      /** A cada quantos ticks recalcula quem tem água e luz. */
+      everyTicks: intPos,
+    })
+    .default({
+      enabled: false,
+      personsPerHome: 2.79,
+      personsPerJob: 0.5,
+      regionalWater: 1e9,
+      regionalPower: 1e9,
+      everyTicks: 60,
+    }),
   director: z
     .object({
       enabled: z.boolean(),
@@ -215,7 +236,11 @@ const BuildingType = z
     id: z.string(),
     label: z.string(),
     zone: z.enum(["residential_low", "residential_high", "commercial", "industrial"]).optional(),
-    service: z.enum(["school", "health"]).optional(),
+    service: z.enum(["school", "health", "water", "power"]).optional(),
+    /** Água e luz: quantas pessoas (equivalentes) o prédio abastece. */
+    serves: z.number().int().min(0).default(0),
+    /** Precisa ficar a até N quadradinhos de rio ou lago (captação de água). 0 = em qualquer lugar. */
+    nearWater: z.number().int().min(0).default(0),
     w: intPos,
     h: intPos,
     homes: z.number().int().min(0).default(0),

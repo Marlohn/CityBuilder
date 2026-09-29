@@ -61,6 +61,8 @@ export function statsView(game: Game, behind = false): StatsView {
       job: c.byRole[ROLE.unemployed]!,
       transit: city.year.transitRefusals,
       parking: city.year.parkingMisses,
+      water: c.withoutWater,
+      power: c.withoutPower,
     },
     vehiclesMoving: game.traffic.vehicles.moving.size,
     peopleWalking: 0,

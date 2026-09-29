@@ -92,3 +92,58 @@ buildings:
     upkeepPerYear: 1200000
     constructionMonths: 12
     models: [proc/clinic]
+  # Água e luz. Consumo médio de água: 154 litros por pessoa por dia (SNIS/ANA, citado pela CNM:
+  # https://cnm.org.br/comunicacao/noticias/brasileiro-consome-em-media-154-litros-de-agua-por-dia-aponta-onu).
+  # Poço tubular profundo: 40% das sedes urbanas são abastecidas só por água subterrânea (Atlas Águas 2021, ANA).
+  - id: poco
+    floors: 1
+    label: Poço artesiano
+    service: water
+    w: 1
+    h: 1
+    # PENDENTE: vazão típica de poço tubular urbano. Usado 20 L/s: 20 x 86.400 / 154 = ~11.200 pessoas.
+    serves: 11200
+    jobs: 2
+    # PENDENTE: custo de perfuração e equipamento.
+    cost: 1500000
+    # PENDENTE: custo de operação (energia do bombeamento, cloração).
+    upkeepPerYear: 300000
+    constructionMonths: 6
+    models: [proc/well]
+  # Estação de tratamento de água: capta no rio ou lago (manancial superficial).
+  - id: eta
+    floors: 1
+    label: Estação de tratamento de água
+    service: water
+    w: 3
+    h: 3
+    # PENDENTE: porte típico. Usado 100 L/s: 100 x 86.400 / 154 = ~56.000 pessoas.
+    serves: 56000
+    jobs: 15
+    # Captação: a estação precisa ficar a até 3 quadradinhos (48 m) do rio ou lago.
+    nearWater: 3
+    # PENDENTE: custo de obra de ETA de 100 L/s.
+    cost: 25000000
+    # PENDENTE: custo de operação.
+    upkeepPerYear: 3000000
+    constructionMonths: 24
+    models: [proc/eta]
+  # Subestação de distribuição de energia. No Brasil a rede é da distribuidora (concessionária); no
+  # jogo o prefeito escolhe onde ela fica e paga a obra. Consumo residencial médio: 179 kWh por mês por
+  # domicílio (EPE, 2022).
+  - id: subestacao
+    floors: 1
+    label: Subestação de energia
+    service: power
+    w: 2
+    h: 2
+    # PENDENTE: porte típico (usado 10 MVA). 179 kWh/mês = 0,25 kW médio por domicílio; com pico de 2x
+    # dá ~0,5 kW. 10 MVA x 0,9 / 0,5 kW = 18.000 domicílios = ~50.000 pessoas.
+    serves: 50000
+    jobs: 4
+    # PENDENTE: custo de subestação de 10 MVA (Banco de Preços de Referência da ANEEL).
+    cost: 12000000
+    # PENDENTE: custo de operação.
+    upkeepPerYear: 1000000
+    constructionMonths: 18
+    models: [proc/substation]

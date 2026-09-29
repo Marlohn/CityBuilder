@@ -54,6 +54,9 @@ export interface UnmetDesireCounts {
   job: number;
   transit: number;
   parking: number;
+  /** Pessoas morando em prédio sem água / sem luz. */
+  water: number;
+  power: number;
 }
 
 export interface RealismItem {

@@ -15,6 +15,7 @@ import { ImmigrationSystem } from "./systems/immigration";
 import { LifecycleSystem } from "./systems/lifecycle";
 import { MatchingSystem } from "./systems/matching";
 import { RemovalSystem } from "./systems/removal";
+import { UtilitiesSystem } from "./systems/utilities";
 import { TrafficSystem } from "./traffic/trafficSystem";
 
 export interface Game {
@@ -23,6 +24,7 @@ export interface Game {
   demo: Demography;
   growth: GrowthSystem;
   traffic: TrafficSystem;
+  utilities: UtilitiesSystem;
   /** Placar de realismo do último ano fechado. */
   realism: RealismItem[];
 }
@@ -44,7 +46,10 @@ export function createGame(opts: SimOptions): Game {
   const growth = new GrowthSystem(city);
   const traffic = new TrafficSystem(city);
   city.traffic = traffic;
-  const game: Game = { sim, city, demo, growth, traffic, realism: [] };
+  const utilities = new UtilitiesSystem(city);
+  city.utilities = utilities;
+  city.markets.setServed(utilities.served);
+  const game: Game = { sim, city, demo, growth, traffic, utilities, realism: [] };
   placeStartingRoad(sim);
   const onYearEnd = () => {
     sim.treasury.closeYear();
@@ -56,6 +61,8 @@ export function createGame(opts: SimOptions): Game {
   sim.addSystem(new ReadySystem(city));
   sim.addSystem(new RemovalSystem(city));
   sim.addSystem(new EconomySystem(city, onYearEnd));
+  // Água e luz antes do crescimento e da imigração (eles consultam quem tem água e luz).
+  sim.addSystem(utilities);
   sim.addSystem(growth);
   sim.addSystem(new ImmigrationSystem(city));
   sim.addSystem(new LifecycleSystem(city, demo));

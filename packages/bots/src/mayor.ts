@@ -18,9 +18,16 @@ export interface MayorOptions {
   district: number;
   /** Fração da área residencial zoneada para prédios (o resto é casa). */
   highDensityShare: number;
+  /** Constrói poço/subestação quando sobra menos que isto (pessoas) de água ou luz na cidade. */
+  utilityReserve: number;
 }
 
-export const DEFAULT_MAYOR: MayorOptions = { everyDays: 0.25, district: 30, highDensityShare: 0.35 };
+export const DEFAULT_MAYOR: MayorOptions = {
+  everyDays: 0.25,
+  district: 30,
+  highDensityShare: 0.35,
+  utilityReserve: 3000,
+};
 
 interface District {
   x0: number;
@@ -71,6 +78,20 @@ export class AutoMayor {
     // Serviços primeiro (como um prefeito de verdade): escola quando ~150 crianças estão sem vaga,
     // UBS quando ~500 pessoas estão sem UBS. Sem dinheiro para o serviço, guarda dinheiro (não abre bairro).
     let saving = false;
+    // Água e luz antes de tudo: sem sobra, a construtora para (poço é o jeito mais barato; 40% das
+    // cidades brasileiras vivem só de água subterrânea, Atlas Águas/ANA).
+    const hub = this.hubAccess();
+    if (hub >= 0) {
+      for (const [kind, service] of [
+        ["water", "poco"],
+        ["power", "subestacao"],
+      ] as const) {
+        if (this.game.utilities.spareAt(hub, kind) >= this.opts.utilityReserve) continue;
+        if (this.underConstruction(service)) continue;
+        const [px, py] = this.cityCenter();
+        saving = !this.placeNear(service, px, py) || saving;
+      }
+    }
     if (census.childrenWithoutSchool > 150)
       saving = !this.placeServiceNearDemand("escola", census.samples.school ?? []) || saving;
     if (census.withoutClinic > 500)
@@ -264,8 +285,6 @@ export class AutoMayor {
     if (samples.length === 0) return true;
     const sim = this.game.sim;
     const w = sim.world;
-    const t = sim.buildings.catalog.find((b) => b.id === service);
-    if (!t) return true;
     const pick = samples[this.rng.int(samples.length)]!;
     const px = w.xOf(pick);
     const py = w.yOf(pick);
@@ -275,9 +294,19 @@ export class AutoMayor {
       if (b.state[id]! > BSTATE.active || b.typeOf(id).id !== service) continue;
       if (Math.abs(b.x[id]! - px) + Math.abs(b.y[id]! - py) < 60) return true;
     }
+    return this.placeNear(service, px, py);
+  }
+
+  /**
+   * Coloca o serviço no lugar vazio mais perto do ponto, encostado numa via (busca em espiral).
+   * Devolve false só quando falta dinheiro.
+   */
+  private placeNear(service: string, px: number, py: number): boolean {
+    const sim = this.game.sim;
+    const t = sim.buildings.catalog.find((b) => b.id === service);
+    if (!t) return true;
     if (!sim.treasury.canAfford(t.cost ?? 0)) return false;
-    // Procura um lugar vazio encostado numa via, em espiral a partir do ponto.
-    for (let r = 1; r < 25; r++) {
+    for (let r = 1; r < 40; r++) {
       for (let dy = -r; dy <= r; dy++) {
         for (let dx = -r; dx <= r; dx++) {
           if (Math.abs(dx) !== r && Math.abs(dy) !== r) continue;
@@ -291,6 +320,38 @@ export class AutoMayor {
       }
     }
     return true;
+  }
+
+  /** Algum prédio deste tipo ainda em obra (espera ficar pronto antes de pedir outro). */
+  private underConstruction(service: string): boolean {
+    const b = this.game.sim.buildings;
+    for (let id = 0; id < b.count; id++)
+      if (b.state[id] === BSTATE.constructing && b.typeOf(id).id === service) return true;
+    return false;
+  }
+
+  /** Via da avenida principal no começo da cidade (a malha onde está quase tudo). */
+  private hubAccess(): number {
+    const w = this.game.sim.world;
+    const x = this.game.sim.config.world.startingRoad.length - 1;
+    const y = Math.floor(w.height / 2);
+    if (!w.inBounds(x, y)) return -1;
+    const i = w.idx(x, y);
+    return w.roads[i] ? i : -1;
+  }
+
+  /** Meio da parte construída (para os serviços da cidade inteira ficarem perto de todo mundo). */
+  private cityCenter(): [number, number] {
+    const w = this.game.sim.world;
+    const midY = Math.floor(w.height / 2);
+    if (this.districts.length === 0) return [this.game.sim.config.world.startingRoad.length + 4, midY - 3];
+    let sx = 0;
+    let sy = 0;
+    for (const d of this.districts) {
+      sx += d.x0 + this.opts.district / 2;
+      sy += d.y0 + this.opts.district / 2;
+    }
+    return [Math.round(sx / this.districts.length), Math.round(sy / this.districts.length)];
   }
 
   private fits(x: number, y: number, w: number, h: number): boolean {

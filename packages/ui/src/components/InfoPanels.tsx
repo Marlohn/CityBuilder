@@ -89,6 +89,11 @@ export function HelpPanel() {
           melhor o espaço.
         </li>
         <li>
+          <b>Água e luz:</b> a estrada de acesso traz um pouco de água e luz da região (dá para uma cidade
+          pequena). Depois construa poço artesiano ou estação de tratamento (perto do rio ou lago) e
+          subestação. As redes seguem as ruas: prédio sem água ou luz não recebe moradores.
+        </li>
+        <li>
           <b>Serviços:</b> escola e UBS precisam encostar numa via. Crianças precisam de escola a até 2 km.
         </li>
         <li>

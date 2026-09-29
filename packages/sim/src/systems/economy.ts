@@ -31,15 +31,18 @@ export class EconomySystem implements System {
     const b = sim.buildings;
     let schools = 0;
     let clinics = 0;
+    let utilities = 0;
     for (let id = 0; id < b.count; id++) {
       if (!b.isActive(id)) continue;
       const type = b.typeOf(id);
       if (type.service === "school")
         schools += b.students[id]! * type.upkeepPerStudentPerYear + type.upkeepPerYear;
       else if (type.service === "health") clinics += type.upkeepPerYear;
+      else if (type.service === "water" || type.service === "power") utilities += type.upkeepPerYear;
     }
     t.charge(schools / hoursPerYear, "educacao");
     t.charge(clinics / hoursPerYear, "saude");
+    t.charge(utilities / hoursPerYear, "agua_e_luz");
     t.charge(this.roadMaintenancePerYear() / hoursPerYear, "manutencao_vias");
   }
 

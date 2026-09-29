@@ -29,16 +29,18 @@ exports[`cidades de referência > cenário bairro-basico, 12 dias 1`] = `
     "housing": 11,
     "job": 63,
     "parking": 0,
+    "power": 0,
     "school": 0,
     "transit": 0,
     "university": 0,
+    "water": 0,
   },
 }
 `;
 
 exports[`cidades de referência > prefeito automático, 12 dias 1`] = `
 {
-  "buildings": 374,
+  "buildings": 375,
   "cars": 143,
   "children": 299,
   "employed": 476,
@@ -52,10 +54,10 @@ exports[`cidades de referência > prefeito automático, 12 dias 1`] = `
     "divorces": 5,
     "marriages": 6,
     "migrantsTurnedAway": {},
-    "parkingMisses": 5,
+    "parkingMisses": 4,
     "transitRefusals": 0,
   },
-  "money": 3249868,
+  "money": 1749868,
   "population": 970,
   "retired": 50,
   "tick": 17700,
@@ -65,9 +67,11 @@ exports[`cidades de referência > prefeito automático, 12 dias 1`] = `
     "housing": 12,
     "job": 36,
     "parking": 0,
+    "power": 0,
     "school": 238,
     "transit": 0,
     "university": 0,
+    "water": 0,
   },
 }
 `;

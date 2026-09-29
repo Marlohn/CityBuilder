@@ -1,0 +1,17 @@
+# Água e luz. Veja docs/PLANO.md e a issue #15.
+# Quem tem água e luz: as redes seguem as ruas (canos e postes ficam na via). Um prédio tem água se está
+# na mesma malha de ruas de um poço/ETA com capacidade sobrando (mesma coisa para a luz e a subestação).
+# Sem água ou luz ninguém se muda para o prédio, as empresas não contratam e a construtora não constrói ali.
+utilities:
+  enabled: true
+  # Moradores por domicílio: 2,79 (Censo 2022, IBGE).
+  personsPerHome: 2.79
+  # Consumo de um emprego em "pessoas equivalentes". PENDENTE: fonte (consumo não residencial por emprego).
+  personsPerJob: 0.5
+  # Rede da região que chega pela estrada de acesso (adutora e linha da distribuidora), com capacidade
+  # limitada: dá para uma cidade pequena; depois a cidade precisa de poço, ETA e subestação.
+  # PENDENTE: valor de jogo.
+  regionalWater: 4000
+  regionalPower: 4000
+  # Recalcula a cada 60 ticks (1 hora do jogo).
+  everyTicks: 60

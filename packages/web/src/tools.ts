@@ -6,6 +6,8 @@ import type { TileEvent } from "@city/render";
 import type { BuildingType, GameConfig } from "@city/sim";
 import type { ToolDef } from "@city/ui";
 
+const SERVICE_ICON: Record<string, string> = { school: "🏫", health: "🏥", water: "💧", power: "⚡" };
+
 export function toolDefs(config: GameConfig, catalog: BuildingType[]): ToolDef[] {
   const tools: ToolDef[] = [
     {
@@ -59,9 +61,15 @@ export function toolDefs(config: GameConfig, catalog: BuildingType[]): ToolDef[]
     tools.push({
       id: `service:${b.id}`,
       label: b.label,
-      icon: b.service === "school" ? "🏫" : "🏥",
+      icon: SERVICE_ICON[b.service ?? ""] ?? "🏢",
       group: "Serviços",
-      hint: `${b.w}x${b.h} quadradinhos, precisa encostar numa via. Obra de ${b.constructionMonths} meses.`,
+      hint:
+        `${b.w}x${b.h} quadradinhos, precisa encostar numa via` +
+        (b.nearWater ? ` e ficar a até ${b.nearWater} quadradinhos de rio ou lago` : "") +
+        `. Obra de ${b.constructionMonths} meses.` +
+        (b.serves
+          ? ` Abastece ~${Math.round(b.serves).toLocaleString("pt-BR")} pessoas na mesma malha de ruas.`
+          : ""),
       cost: b.cost,
     });
   }

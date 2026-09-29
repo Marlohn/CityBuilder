@@ -31,8 +31,11 @@ export class VacancyMarket {
   ) {}
 
   /** Recalcula se o prédio tem vaga. Chame depois de mudar a ocupação ou o estado. */
+  /** Prédio pode receber gente (tem água e luz). Trocado pelo sistema de água e luz. */
+  served: (b: number) => boolean = () => true;
+
   update(b: number) {
-    const has = this.buildings.isActive(b) && this.used(b) < this.capacity(b);
+    const has = this.buildings.isActive(b) && this.served(b) && this.used(b) < this.capacity(b);
     if (has && !this.open.has(b)) {
       this.open.add(b);
       this.version++;
@@ -112,6 +115,11 @@ export class Markets {
       (id) => b.patientsCapacity(id),
       (id) => b.patients[id]!,
     );
+  }
+
+  /** Liga a regra "só recebe gente se tiver água e luz" em todos os mercados. */
+  setServed(fn: (b: number) => boolean) {
+    for (const m of [this.housing, this.jobs, this.schools, this.clinics]) m.served = fn;
   }
 
   updateAll(b: number) {

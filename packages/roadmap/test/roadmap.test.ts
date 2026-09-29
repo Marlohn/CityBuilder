@@ -220,8 +220,10 @@ describe("sinais", () => {
     const s2 = signalsFromRun(run(), cfg, reference, services);
     expect(s1).toEqual(s2);
     expect(s1.filter((s) => s.urgent)).toEqual([]);
-    // Cidade real de qualquer tamanho tem água e esgoto: o jogo ainda não tem.
-    expect(s1.map((s) => s.id)).toContain("comparacao:saneamento");
+    // Cidade real de qualquer tamanho tem coleta de esgoto: o jogo ainda não tem.
+    expect(s1.map((s) => s.id)).toContain("comparacao:esgoto");
+    // Água e luz agora existem no jogo: não aparecem como falta.
+    expect(s1.map((s) => s.id)).not.toContain("comparacao:agua");
     const m = metricsOf(a);
     expect(m.population).toBeGreaterThan(0);
     expect(m.invariantViolations).toBe(0);

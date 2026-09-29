@@ -62,6 +62,16 @@ Ou seja: sem indústria (ou emprego na região), a cidade não cresce muito.
 - Quem não acha casa, escola ou UBS fica registrado como **desejo não atendido**. Esse número aparece no painel Cidade e alimenta o roadmap do jogo.
 - Carros têm dono (a família), dependem da renda e ficam estacionados em casa ou no destino.
 
+## Água e luz
+
+- A estrada de acesso traz água e luz da região, mas só o suficiente para uma cidade pequena (~4 mil pessoas).
+- Depois disso a cidade precisa das suas:
+  - 💧 **Poço artesiano**: água subterrânea, em qualquer lugar (40% das cidades brasileiras vivem só de poço, segundo a ANA). Abastece ~11 mil pessoas.
+  - 💧 **Estação de tratamento de água (ETA)**: capta no rio ou lago (tem que ficar a até 3 quadradinhos da água). Abastece ~56 mil pessoas.
+  - ⚡ **Subestação de energia**: abastece ~50 mil pessoas.
+- As redes seguem as ruas: um prédio tem água se está na mesma malha de ruas de uma fonte com capacidade sobrando.
+- Sem água ou luz, ninguém se muda para o prédio, as empresas não contratam e a construtora não constrói ali. Quem já mora num prédio que ficou sem água aparece em "Morando sem água".
+
 ## Serviços
 
 - **Escola:** crianças de 6 a 17 anos precisam de uma escola a até 2 km de casa.

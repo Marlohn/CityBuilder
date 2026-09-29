@@ -22,8 +22,9 @@ test("demolir uma casa em obra clicando no corpo dela", async ({ page }) => {
   const b = await page.evaluate(() =>
     window.__city.buildings().find((x: { state: number }) => x.state === 0),
   );
-  // Ponto alto na frente da caixa da obra: antes, este clique caía no chão atrás do prédio.
-  const p = await screenOf(page, b.x + 0.5, 0.45, b.y + b.h);
+  // Ponto na frente do prédio, acima do chão: antes, este clique caía no chão atrás do prédio.
+  // Altura 0,2 acerta tanto a obra (0,6) quanto a casa pronta (0,31), se ela terminar durante o teste.
+  const p = await screenOf(page, b.x + 0.5, 0.2, b.y + b.h);
   const tile = await page.evaluate(
     ([px, py]) => {
       const canvas = document.getElementById("city") as HTMLCanvasElement;
@@ -42,6 +43,7 @@ test("demolir uma casa em obra clicando no corpo dela", async ({ page }) => {
   await page.waitForFunction(
     (id) => !window.__city.buildings().some((x: { id: number }) => x.id === id),
     b.id,
-    { timeout: 10_000 },
+    // Folga para máquina carregada (vários navegadores de teste ao mesmo tempo deixam o jogo lento).
+    { timeout: 60_000 },
   );
 });

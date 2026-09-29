@@ -22,6 +22,9 @@ export interface Census {
   youth18to24: number;
   /** Famílias esperando casa própria (casal morando com os pais, etc.). */
   householdsWaitingHome: number;
+  /** Pessoas morando em prédio sem água / sem luz. */
+  withoutWater: number;
+  withoutPower: number;
   householdsWithCar: number;
   pop14plus: number;
   pop60plus: number;
@@ -50,13 +53,15 @@ export function takeCensus(city: City): Census {
     wantUniversity: 0,
     youth18to24: 0,
     householdsWaitingHome: 0,
+    withoutWater: 0,
+    withoutPower: 0,
     householdsWithCar: 0,
     pop14plus: 0,
     pop60plus: 0,
     adults20plus: 0,
     commuteUnder30: 0,
     commuteKnown: 0,
-    samples: { school: [], health: [], university: [], housing: [], job: [] },
+    samples: { school: [], health: [], university: [], housing: [], job: [], water: [], power: [] },
   };
   const edu = city.config.education;
   const sample = (kind: string, p: number) => {
@@ -67,6 +72,8 @@ export function takeCensus(city: City): Census {
     }
   };
   const clinicsExist = city.markets.clinics.open.size > 0 || hasAnyClinic(city);
+  const utilitiesOn = city.sim.config.utilities.enabled;
+  const bs = city.sim.buildings;
   for (let p = 0; p < pop.count; p++) {
     if (pop.status[p] !== PSTATUS.alive) continue;
     c.population++;
@@ -95,6 +102,19 @@ export function takeCensus(city: City): Census {
     if (pop.clinic[p]! < 0) {
       c.withoutClinic++;
       if (clinicsExist || c.samples.health!.length < 50) sample("health", p);
+    }
+    if (utilitiesOn) {
+      const home = city.homeBuilding(p);
+      if (home >= 0) {
+        if (!bs.hasWater[home]) {
+          c.withoutWater++;
+          sample("water", p);
+        }
+        if (!bs.hasPower[home]) {
+          c.withoutPower++;
+          sample("power", p);
+        }
+      }
     }
     if (role === ROLE.unemployed) sample("job", p);
     if (role === ROLE.worker && pop.commuteMinutes[p]! > 0) {

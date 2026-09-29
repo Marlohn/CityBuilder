@@ -4,15 +4,33 @@
 # `reach`: quem é afetado (population, children0to3, youth18to24, households).
 # `impact`: 3 = vida ou morte, 2 = alto, 1 = médio, 0.5 = baixo, 0.25 = estética.
 items:
-  - id: saneamento
-    label: Água tratada e esgoto
+  - id: agua
+    label: Água encanada (rede geral)
+    category: construcao
+    minPopulation: 1
+    inGame: water
+    reach: population
+    impact: 3
+    source: "Censo 2022 (IBGE): 85,5% dos domicílios ligados à rede geral de água (93,3% na área urbana)"
+    url: https://educa.ibge.gov.br/jovens/conheca-o-brasil/populacao/22064-caracteristicas-dos-domicilios-censo-2022.html
+  - id: energia
+    label: Energia elétrica
+    category: construcao
+    minPopulation: 1
+    inGame: power
+    reach: population
+    impact: 3
+    source: "Censo 2022 (IBGE): energia elétrica em 99,8% dos domicílios (99,4% pela rede geral)"
+    url: https://educa.ibge.gov.br/jovens/conheca-o-brasil/populacao/22064-caracteristicas-dos-domicilios-censo-2022.html
+  - id: esgoto
+    label: Coleta e tratamento de esgoto
     category: construcao
     minPopulation: 1
     inGame: ""
     reach: population
     impact: 3
-    source: "Lei 14.026/2020 (marco do saneamento): meta de 99% com água potável e 90% com coleta e tratamento de esgoto até 2033"
-    url: https://www.gov.br/cidades/pt-br/assuntos/saneamento/marco-legal-do-saneamento
+    source: "Censo 2022 (IBGE): rede de esgoto alcança 62,5% da população; marco do saneamento (Lei 14.026/2020) pede 90% até 2033"
+    url: https://agenciadenoticias.ibge.gov.br/agencia-noticias/2012-agencia-de-noticias/noticias/39237-censo-2022-rede-de-esgoto-alcanca-62-5-da-populacao-mas-desigualdades-regionais-e-por-cor-e-raca-persistem
   - id: hospital
     label: Hospital (leitos de internação)
     category: construcao
