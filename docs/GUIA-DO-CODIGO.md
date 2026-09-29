@@ -216,7 +216,7 @@ Mudou isto → atualize aquilo **no mesmo PR**:
 
 | Mudou | Atualize |
 |---|---|
-| Regra de jogo nova ou valor com fonte | comentário no `config/*.yaml` e, se for grande, `docs/PLANO.md` |
+| Regra de jogo nova ou valor com fonte (ex.: rotina em `config/traffic.yaml`) | comentário no `config/*.yaml` e, se for grande, `docs/PLANO.md` |
 | Pasta ou pacote novo | seção 1 deste guia e o `AGENTS.md` do pacote |
 | Comando de terminal novo | tabela de comandos do `AGENTS.md` e o README |
 | Jeito novo de fazer algo comum | uma receita na seção 3 |

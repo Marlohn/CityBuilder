@@ -195,14 +195,18 @@ export class TrafficSystem implements System {
         const h = hashString(`${sim.seed}:workdur:${p}`)[0];
         const u = (h >>> 0) / 4294967296;
         let weekly = r.workHoursWeekly.mean + (u - 0.5) * 2 * r.workHoursWeekly.spread;
-        if (weekly > 44) weekly = 44;
+        if (weekly > r.maxHoursWeekly) weekly = r.maxHoursWeekly;
         if (weekly < 0) weekly = 0;
-        let minutes = Math.round((weekly * 60) / 5);
-        // O teto de 44 h semanais (CLT art. 7º) tambem conta o trajeto de ida e volta, que o
-        // relogio do expediente mede: por isso o expediente em si fica abaixo de 528 min.
-        const cap = Math.max(60, 528 - 2 * Math.max(5, pop.commuteMinutes[p]!));
+        let minutes = Math.round((weekly * 60) / r.workdaysPerWeek);
+        // Weekly cap also covers the round-trip commute measured by the shift clock,
+        // so the shift itself stays below the daily share of maxHoursWeekly.
+        // 5 is a commute floor in minutes (trip, not shift).
+        const cap = Math.max(
+          r.minMinutes,
+          (r.maxHoursWeekly * 60) / r.workdaysPerWeek - 2 * Math.max(5, pop.commuteMinutes[p]!),
+        );
         if (minutes > cap) minutes = cap;
-        if (minutes < 60) minutes = 60;
+        if (minutes < r.minMinutes) minutes = r.minMinutes;
         pop.workMinutes[p] = minutes;
       }
       if (pop.workStartMinute[p] === 0) {
@@ -223,6 +227,7 @@ export class TrafficSystem implements System {
   /**
    * Pesos acumulados por hora do dia (curva tripsByHour do config), montados uma vez (lazy).
    * Cada entrada guarda a hora e o acumulado até ela (ordem crescente).
+   * O cache nunca é invalidado de propósito, porque a config é imutável depois de carregada e a curva tripsByHour não muda durante a partida.
    */
   private hourWeights: { hour: number; cum: number }[] | null = null;
 
@@ -550,10 +555,9 @@ export class TrafficSystem implements System {
       pop.tripState[p] = 2;
       // Volta no fim do expediente (duração própria da pessoa).
       const clock = city.sim.clock;
+      const r = city.config.traffic.routine;
       const dur = clock.minutesToTicks(
-        pop.workMinutes[p]! > 0
-          ? pop.workMinutes[p]!
-          : (city.config.traffic.routine.workHoursWeekly.mean * 60) / 5,
+        pop.workMinutes[p]! > 0 ? pop.workMinutes[p]! : (r.workHoursWeekly.mean * 60) / r.workdaysPerWeek,
       );
       this.returns[(clock.tickOfDay + dur) % clock.ticksPerDay]!.push(p);
     } else pop.tripState[p] = 0;
