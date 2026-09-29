@@ -10,6 +10,7 @@ import { Households } from "./people/households";
 import { NamePicker } from "./people/names";
 import { Population } from "./people/population";
 import type { Simulation } from "./sim";
+import type { Vehicles } from "./traffic/vehicles";
 
 /** Contadores do ano atual (zerados a cada dia do jogo, que = 1 ano). */
 export interface YearCounters {
@@ -62,8 +63,8 @@ export class City {
   readonly marriageHazard: (age: number) => number;
   private searchValues: number[];
   private searchCum: number[];
-  /** Sistema de trânsito (preenchido pelo jogo; usado pelas verificações). */
-  traffic: import("./traffic/trafficSystem").TrafficSystem | null = null;
+  /** Veículos da cidade (preenchido pelo trânsito; usado pelas verificações). */
+  traffic: { vehicles: Vehicles } | null = null;
   /** Quantas pessoas trabalham fora da cidade agora. */
   outsideWorkers = 0;
   /** Filas de quem está procurando algo (processadas aos poucos pelo sistema de "matching"). */
