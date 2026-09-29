@@ -33,6 +33,8 @@ export interface System {
   onRoadsRemoved?(): void;
   /** Um prédio terminou a obra e começou a funcionar. */
   onBuildingReady?(id: number): void;
+  /** Um serviço mudou de lugar. */
+  onBuildingMoved?(id: number): void;
 }
 
 export class Simulation {
@@ -134,6 +136,9 @@ export class Simulation {
       },
       onRoadsRemoved: () => {
         for (const s of this.systems) s.onRoadsRemoved?.();
+      },
+      onBuildingMoved: (id) => {
+        for (const s of this.systems) s.onBuildingMoved?.(id);
       },
       modifiers: this.modifiers,
       variantFor: (x, y) => hashString(`${this.seed}:${x}:${y}`)[0] & 0xffff,

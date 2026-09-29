@@ -39,6 +39,7 @@ Os controles são os mesmos do Cities: Skylines II.
 | ⬜ Tirar zona | Remove a zona (onde ainda não tem prédio). |
 | 🏫 Escola | Até 780 alunos em dois turnos. Precisa encostar numa via. |
 | 🏥 UBS | Posto de saúde para até 3.500 pessoas. Precisa encostar numa via. |
+| ↔️ Mover | Clique numa escola ou UBS e depois no lugar novo. A mudança custa 30% da obra (como no Cities: Skylines II, não é de graça). Alunos e pacientes continuam; quem ficar longe demais procura outra. |
 | 🧨 Demolir | Arraste para demolir vias e prédios. Quem morava ou trabalhava ali precisa procurar outro lugar. |
 
 Dica: só dá para construir em lote com frente para a rua. Quarteirões de 4 a 6 quadradinhos de fundo aproveitam bem o espaço.

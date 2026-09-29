@@ -18,3 +18,6 @@ economy:
     minimumWage: 1621
   # PENDENTE: fração da renda gasta com o custo de vida.
   costOfLivingShare: 0.85
+  # Mudar um serviço (escola, UBS) de lugar custa esta fração da obra. Como no Cities: Skylines II, a
+  # mudança não é de graça. PENDENTE: fonte de custo real de relocação de prédio público.
+  serviceMoveCostShare: 0.3

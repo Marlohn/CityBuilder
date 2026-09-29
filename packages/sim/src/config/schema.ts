@@ -134,6 +134,7 @@ export const GameConfigSchema = z.object({
       minimumWage: pos,
     }),
     costOfLivingShare: prob,
+    serviceMoveCostShare: prob.default(0.3),
   }),
   traffic: z.object({
     cars: z.object({

@@ -66,6 +66,15 @@ export function toolDefs(config: GameConfig, catalog: BuildingType[]): ToolDef[]
     });
   }
   tools.push({
+    id: "move",
+    label: "Mover",
+    icon: "↔️",
+    group: "Serviços",
+    hint: `Clique numa escola ou UBS e depois no lugar novo. A mudança custa ${Math.round(
+      config.economy.serviceMoveCostShare * 100,
+    )}% da obra; quem ficar longe demais procura outra.`,
+  });
+  tools.push({
     id: "bulldoze",
     label: "Demolir",
     icon: "🧨",
@@ -84,6 +93,8 @@ export interface Preview {
 export class ToolController {
   private start: TileEvent | null = null;
   private hover: TileEvent | null = null;
+  /** Ferramenta Mover: serviço escolhido (esperando o clique no lugar novo). */
+  private moving: BuildingView | null = null;
 
   constructor(
     private getTool: () => string,
@@ -95,16 +106,32 @@ export class ToolController {
 
   cancel() {
     this.start = null;
+    this.moving = null;
   }
 
   down(e: TileEvent) {
     const tool = this.getTool();
+    if (tool !== "move") this.moving = null;
     if (tool === "inspect") {
       this.select(this.buildingAt(e.x, e.y));
       return;
     }
     if (tool.startsWith("service:")) {
       this.send({ type: "placeService", service: tool.slice(8), x: e.x, y: e.y });
+      return;
+    }
+    if (tool === "move") {
+      if (!this.moving) {
+        const b = this.buildingAt(e.x, e.y);
+        const t = b ? this.catalog.find((c) => c.id === b.type) : undefined;
+        if (b && t?.service) {
+          this.moving = b;
+          this.select(b);
+        }
+        return;
+      }
+      this.send({ type: "moveService", building: this.moving.id, x: e.x, y: e.y });
+      this.moving = null;
       return;
     }
     this.start = e;
@@ -133,6 +160,11 @@ export class ToolController {
     const tool = this.getTool();
     const h = this.hover;
     if (!h || tool === "inspect") return { rect: null, valid: true };
+    if (tool === "move") {
+      const m = this.moving;
+      if (!m) return { rect: { x0: h.x, y0: h.y, x1: h.x, y1: h.y }, valid: true };
+      return { rect: { x0: h.x, y0: h.y, x1: h.x + m.w - 1, y1: h.y + m.h - 1 }, valid: true };
+    }
     if (tool.startsWith("service:")) {
       const t = this.catalog.find((b) => b.id === tool.slice(8));
       if (!t) return { rect: null, valid: false };

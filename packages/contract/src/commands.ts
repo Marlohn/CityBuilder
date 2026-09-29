@@ -54,6 +54,8 @@ export const CommandSchema = z.discriminatedUnion("type", [
   }),
   z.object({ type: z.literal("bulldoze"), x0: coord, y0: coord, x1: coord, y1: coord }),
   z.object({ type: z.literal("placeService"), service: z.string().min(1), x: coord, y: coord }),
+  /** Muda um prédio de serviço (escola, UBS) de lugar, sem demolir. `x, y` = novo canto de cima/esquerda. */
+  z.object({ type: z.literal("moveService"), building: z.number().int().min(0), x: coord, y: coord }),
   z.object({
     type: z.literal("directorAdjust"),
     param: z.enum(DIRECTOR_PARAMS),
