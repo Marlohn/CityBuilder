@@ -18,7 +18,7 @@ Um city builder isométrico que roda no navegador, inspirado no Cities: Skylines
    - Nada surge ou some do nada. Um carro tem dono (pessoa ou empresa), origem, destino e lugar pra estacionar.
    - Uma pessoa só entra na cidade nascendo ou se mudando pra ela, e só sai morrendo ou se mudando.
 2. **Nada fixo.** Todo número de regra de jogo fica em arquivo de config, com valor padrão, explicação e validação.
-3. **Toda regra tem prova.** Os valores padrão vêm de dados reais (de preferência IBGE), com a fonte anotada ao lado.
+3. **Tudo passa por pesquisa online.** Toda regra, construção, feature ou número do jogo só entra depois de uma pesquisa que mostre que faz sentido na realidade. Os valores padrão vêm de dados reais (de preferência IBGE), e a fonte fica anotada ao lado. Sem fonte, não entra.
 4. **Teste primeiro (TDD).** O teste é escrito antes e falha. Depois o código faz ele passar.
 5. **Performance é regra, não detalhe.** Nenhuma mudança entra deixando o jogo mais lento sem que isso apareça e seja aprovado.
 6. **Sem exagero.** Se uma ideia não tem uso claro agora, vai pro roadmap, não pro código.
@@ -105,6 +105,7 @@ agents/       instruções de cada agente
   - **Mortalidade:** tábua completa de mortalidade do IBGE (2023), por idade e sexo. Expectativa de vida ao nascer de 76,4 anos (homens 73,1; mulheres 79,7) e mortalidade infantil de 12,5 por mil. A tábua já cobre desde bebês até idosos, coisa que uma fórmula simples não cobre. Por cima dela, modificadores configuráveis (ex: hospital perto diminui o risco).
   - **Filhos:** taxa de fecundidade de 1,57 filho por mulher (IBGE, 2023). Como fica abaixo de 2,1, a cidade encolhe sem imigração. Isso é realista: as cidades de verdade também crescem com gente que chega.
 - O cérebro fica atrás de uma interface (`CitizenBrain`). Dá pra trocar por um melhor sem mexer no resto.
+- **Desejos não atendidos:** quando uma pessoa quer fazer algo e não consegue (estudar sem escola, mudar sem casa vaga, trabalhar sem vaga), isso fica registrado. É uma das principais fontes do roadmap (seção 12.2).
 
 Exemplo de config:
 
@@ -253,9 +254,70 @@ Regras pra funcionar com qualquer LLM grátis:
 ### 12.1 Loop de desenvolvimento
 
 - O quadro oficial é o GitHub: Issues pra tarefas e Pull Requests pro código.
-- Etiquetas organizam o fluxo: `ideia` → `roadmap` → `pronto-pra-teste` → `pronto-pra-dev` → `em-revisão`, com `prioridade:alta/média/baixa`.
-- Ideias do dono: você abre uma Issue com a etiqueta `ideia`, escrita do jeito que quiser. O Designer lê, reescreve no formato padrão, estima o valor e o esforço, e encaixa no roadmap.
-- O `ROADMAP.md` é gerado automaticamente a partir das Issues.
+- Etiquetas organizam o fluxo: `ideia` → `roadmap` → `pronto-pra-teste` → `pronto-pra-dev` → `em-revisão`.
+- A ordem do roadmap vem do motor de roadmap (seção 12.2).
+
+### 12.2 Motor de roadmap (feature crítica)
+
+O roadmap é o que mantém o loop 24h andando na direção certa. Se ele for fraco, os agentes ficam girando em coisa inútil. Por isso ele é uma feature do projeto, com código e testes, e não só um arquivo que alguém edita.
+
+A ideia central: **o jogo mede, o agente pesquisa e decide, e uma fórmula ordena.** O LLM não "acha" o que é importante. Ele trabalha em cima de dados.
+
+#### De onde vêm as ideias (6 fontes)
+
+| Fonte | Exemplo | Tipo |
+|---|---|---|
+| **1. Desejos não atendidos das pessoas** | O cérebro registra quando alguém quis fazer algo e não conseguiu: "4.200 pessoas quiseram fazer faculdade e não havia faculdade", "900 famílias quiseram mudar e não havia casa". | Construções e features novas |
+| **2. Comparação com cidades reais** | Uma tabela pesquisada de "o que uma cidade real desse tamanho costuma ter" (fontes como a pesquisa MUNIC do IBGE, que levanta a estrutura de todos os municípios do Brasil). "Cidade de 30 mil habitantes sem nenhum posto de saúde" ou "sem transporte público". | Construções e serviços novos |
+| **3. Placar de realismo** | "Expectativa de vida na cidade = 45 anos, a faixa real é 70 a 82". | Correções de regra |
+| **4. Partidas do prefeito automático** | O bot joga várias partidas e registra onde trava: "em 80% das partidas a prefeitura falia no ano 20". | Balanceamento |
+| **5. Saúde técnica** | Regras que quebraram, bugs com replay, piora de performance, teste instável. | Correções urgentes |
+| **6. Ideias do dono** | Você abre uma Issue com a etiqueta `ideia`, escrita do jeito que quiser. | Qualquer coisa |
+
+As fontes 1 a 5 são geradas automaticamente pelo comando `npm run roadmap:signals`, que roda cidades de teste e junta tudo num arquivo. Sinais repetidos são agrupados, pra não virar 50 Issues iguais.
+
+#### Como uma ideia vira item do roadmap
+
+O Designer transforma cada sinal ou ideia num item com campos obrigatórios:
+
+1. **Problema:** o que acontece hoje, com os números do jogo.
+2. **Pesquisa:** como isso funciona na vida real, com link da fonte. Sem fonte, o item não avança.
+3. **Proposta:** o que construir ou mudar.
+4. **Métrica de sucesso:** qual número do relatório tem que mudar, e pra quanto. Ex: "pessoas sem faculdade que queriam estudar: de 4.200 pra menos de 500".
+5. **Dependências:** o que precisa existir antes (ex: faculdade precisa do sistema de escolaridade).
+6. **Estimativa:** feita pelo Arquiteto, em número de tarefas pequenas.
+
+Com ideias do dono, o Designer reescreve o texto nesse formato, pesquisa, liga a ideia aos dados do jogo e, se ela for grande, quebra em partes. Se a ideia não fizer sentido com a realidade, ele responde na Issue explicando o porquê, com fonte, em vez de simplesmente descartar.
+
+#### Como ordenar (fórmula, não opinião)
+
+Usamos a fórmula RICE, criada pela Intercom e muito usada em produto: **(Alcance × Impacto × Confiança) ÷ Esforço**. A diferença é que aqui boa parte vem medida pelo jogo:
+
+- **Alcance:** quantas pessoas da cidade são afetadas. **Medido pela simulação**, não chutado.
+- **Impacto:** tabela fixa por tipo (ex: vida ou morte = 3, qualidade de vida = 1, estética = 0,25).
+- **Confiança:** depende da prova. Dado do jogo + fonte real = 100%. Só fonte = 80%. Só opinião = 50%.
+- **Esforço:** número de tarefas estimado pelo Arquiteto.
+
+Regras por cima da fórmula:
+- Bug, regra quebrada e piora de performance passam na frente de tudo.
+- Ideias do dono ganham um peso extra configurável.
+- Mistura garantida em cada ciclo, com proporções configuráveis (ex: 50% features e construções, 30% correções e realismo, 20% performance e saúde técnica). Assim o jogo cresce sem acumular problema.
+- Item bloqueado por dependência espera, e a dependência sobe na fila.
+
+A conta é feita por um script, não pelo LLM. O LLM só preenche os campos, então até um modelo fraco gera uma ordem consistente.
+
+#### Fechando o ciclo
+
+- Quando um item é entregue, o motor roda de novo e confere a métrica de sucesso.
+- Se o número mudou como esperado, o item fecha. Se não mudou, volta pro roadmap com a etiqueta `não-resolveu` e os dados.
+- O `ROADMAP.md` é gerado automaticamente, agrupado em "Agora", "Próximo" e "Depois", e cada item mostra a pontuação e o motivo.
+
+#### Proteções contra "viagem na maionese"
+
+- Sem fonte de pesquisa, o item não entra.
+- Sem métrica de sucesso, o item não entra.
+- Uma "visão do jogo" (`docs/VISAO.md`) diz o que o jogo é e o que não é. Item fora da visão é recusado.
+- Mudanças grandes (contrato, formato de save) continuam precisando da sua aprovação.
 
 ## 13. Fases
 
@@ -267,7 +329,11 @@ Regras pra funcionar com qualquer LLM grátis:
 | 3 | Ciclo de vida completo com dados do IBGE, escola e saúde, placar de realismo |
 | 4 | Trânsito: carros com dono, rotas em paralelo, cache e estacionamento |
 | 5 | Prefeito automático, cidades de estresse (50 mil e 100 mil), save e replay |
-| 6 | IA opcional (diretora com LLM) |
+| 6 | Motor de roadmap completo: sinais automáticos, fórmula, `ROADMAP.md` gerado, checagem de métrica |
+| 7 | IA opcional (diretora com LLM) |
+| 8 | Página do projeto no GitHub: descrição, como rodar, manual do jogo, como os agentes trabalham. Fica por último porque aí já existe tudo pra documentar. |
+
+Observação: os sinais do roadmap começam a ser coletados antes da fase 6. Os "desejos não atendidos" nascem na fase 3 junto com o cérebro, e o placar de realismo também. A fase 6 junta tudo e automatiza.
 
 - Cada fase é feita em vários commits pequenos e só termina com `npm run check` verde.
 - No fim de cada fase: um resumo pra você, um print da tela e os números de performance.
@@ -290,8 +356,8 @@ Regras pra funcionar com qualquer LLM grátis:
 
 ## 15. Pendências do dono
 
-- Deixar o repositório público (GitHub → Settings → General → Change visibility).
-- Depois de público: ativar a proteção da branch `main` e o GitHub Pages.
+- ~~Deixar o repositório público~~ (feito).
+- Ativar a proteção da branch `main` e o GitHub Pages (instruções vão estar no README na fase 8).
 
 ## 16. Fontes
 
@@ -311,3 +377,5 @@ Regras pra funcionar com qualquer LLM grátis:
 - GitHub Pages sem headers COOP/COEP: https://github.com/orgs/community/discussions/13309
 - Servidores de CI do GitHub (4 núcleos, grátis em repo público): https://github.blog/news-insights/product-news/github-hosted-runners-double-the-power-for-open-source/
 - Papéis em times de agentes (MetaGPT): https://arxiv.org/html/2308.00352v6
+- Fórmula RICE (Intercom): https://www.intercom.com/blog/rice-simple-prioritization-for-product-managers/
+- IBGE, pesquisa MUNIC (estrutura dos municípios): https://www.ibge.gov.br/estatisticas/sociais/educacao/10586-pesquisa-de-informacoes-basicas-municipais.html
