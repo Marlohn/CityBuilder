@@ -2,6 +2,8 @@
  * Mercados: onde tem casa vaga, vaga de emprego, vaga na escola e na UBS.
  * Cada mercado guarda só os prédios com vaga, então procurar é rápido mesmo em cidades grandes.
  */
+
+import type { BuildingType } from "../config/schema";
 import { IndexedSet } from "../core/indexedSet";
 import type { Rng } from "../core/rng";
 import type { Buildings } from "../world/buildings";
@@ -14,6 +16,39 @@ type Used = (b: number) => number;
 export interface Candidate {
   building: number;
   meters: number;
+}
+
+/**
+ * Lógica comum de "prédio mais próximo": filtra pela malha de vias de saída,
+ * mede a distância Manhattan e desempata pelo menor id. Se couber tudo,
+ * varre todos; senão sorteia `samples` candidatos com o `Rng` recebido.
+ */
+function pickNearest(
+  rng: Rng,
+  network: RoadNetwork,
+  world: World,
+  fromTile: number,
+  samples: number,
+  maxMeters: number,
+  size: number,
+  at: (i: number) => number,
+  accessOf: (b: number) => number,
+): Candidate | null {
+  if (size === 0) return null;
+  network.refresh();
+  const comp = fromTile >= 0 ? network.component[fromTile]! : -1;
+  let best: Candidate | null = null;
+  const tries = Math.min(samples, size);
+  for (let k = 0; k < tries; k++) {
+    const b = size <= samples ? at(k) : at(rng.int(size));
+    const access = accessOf(b);
+    if (comp >= 0 && network.component[access] !== comp) continue;
+    const meters = fromTile >= 0 ? world.manhattanMeters(fromTile, access) : 0;
+    if (meters > maxMeters) continue;
+    if (!best || meters < best.meters || (meters === best.meters && b < best.building))
+      best = { building: b, meters };
+  }
+  return best;
 }
 
 /** Um mercado genérico de vagas por prédio. */
@@ -61,21 +96,17 @@ export class VacancyMarket {
     samples: number,
     maxMeters = Number.POSITIVE_INFINITY,
   ): Candidate | null {
-    if (this.open.size === 0) return null;
-    this.network.refresh();
-    const comp = fromTile >= 0 ? this.network.component[fromTile]! : -1;
-    let best: Candidate | null = null;
-    const tries = Math.min(samples, this.open.size);
-    for (let k = 0; k < tries; k++) {
-      const b = this.open.size <= samples ? this.open.at(k) : this.open.random(rng);
-      const access = this.buildings.access[b]!;
-      if (comp >= 0 && this.network.component[access] !== comp) continue;
-      const meters = fromTile >= 0 ? this.world.manhattanMeters(fromTile, access) : 0;
-      if (meters > maxMeters) continue;
-      if (!best || meters < best.meters || (meters === best.meters && b < best.building))
-        best = { building: b, meters };
-    }
-    return best;
+    return pickNearest(
+      rng,
+      this.network,
+      this.world,
+      fromTile,
+      samples,
+      maxMeters,
+      this.open.size,
+      (i) => this.open.at(i),
+      (b) => this.buildings.access[b]!,
+    );
   }
 }
 
@@ -85,7 +116,11 @@ export class Markets {
   readonly schools: VacancyMarket;
   readonly clinics: VacancyMarket;
 
-  constructor(buildings: Buildings, network: RoadNetwork, world: World) {
+  constructor(
+    private buildings: Buildings,
+    private network: RoadNetwork,
+    private world: World,
+  ) {
     const b = buildings;
     this.housing = new VacancyMarket(
       b,
@@ -127,5 +162,36 @@ export class Markets {
     this.jobs.update(b);
     this.schools.update(b);
     this.clinics.update(b);
+  }
+
+  /**
+   * Devolve o prédio em uso mais próximo do tipo pedido (filtro do catálogo).
+   * Só vale prédio na mesma malha de vias de `fromTile` e dentro de `maxMeters`.
+   */
+  findActiveNear(
+    rng: Rng,
+    fromTile: number,
+    filtro: (tipo: BuildingType) => boolean,
+    samples: number,
+    maxMeters = Number.POSITIVE_INFINITY,
+  ): Candidate | null {
+    const b = this.buildings;
+    const candidates: number[] = [];
+    for (let id = 0; id < b.count; id++) {
+      if (!b.isActive(id)) continue;
+      if (!filtro(b.typeOf(id))) continue;
+      candidates.push(id);
+    }
+    return pickNearest(
+      rng,
+      this.network,
+      this.world,
+      fromTile,
+      samples,
+      maxMeters,
+      candidates.length,
+      (i) => candidates[i]!,
+      (id) => b.access[id]!,
+    );
   }
 }
