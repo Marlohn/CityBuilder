@@ -4,7 +4,8 @@
 
 ## Issue
 
-Fecha #
+<!-- Use "Closes #N" (em inglês): só assim o GitHub fecha a issue sozinho no merge. Uma linha por issue. -->
+Closes #
 
 ## Pesquisa (obrigatório para regra de jogo, prédio ou número novo)
 

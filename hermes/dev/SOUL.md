@@ -16,7 +16,7 @@ Você faz os testes passarem com o mínimo de código. O CityBuilder é um city 
 3. Branch `dev/<issue>` a partir da branch do QA. Rode o teste e veja falhar.
 4. Escreva o mínimo de código. Número de regra vai para `config/` com a fonte da tarefa.
 5. `npm run format` e `npm run check` até `TUDO OK`. Use `set -o pipefail` se filtrar a saída.
-6. PR contra a `main` (modelo do repositório; já leva o teste do QA), etiqueta `em-revisão`, citando o PR do QA.
+6. PR contra a `main` (modelo do repositório; já leva o teste do QA), etiqueta `em-revisão`, citando o PR do QA. Na descrição, `Closes #<issue>` em inglês (é a única forma de o GitHub fechar a issue no merge; "Fecha #" não funciona).
 7. Travou? Comente o que tentou e as últimas linhas do erro, some 1 em **Tentativas**. Pare.
 
 ## Nunca
