@@ -190,17 +190,107 @@ export class TrafficSystem implements System {
     const mpt = sim.config.time.minutesPerTick;
     for (let p = 0; p < pop.count; p++) {
       if (pop.status[p] !== PSTATUS.alive || pop.job[p] === -1) continue;
+      if (pop.workMinutes[p] === 0) {
+        // Jornada estável por pessoa (sorteada a partir do id e da semente, uma vez só).
+        const h = hashString(`${sim.seed}:workdur:${p}`)[0];
+        const u = (h >>> 0) / 4294967296;
+        let weekly = r.workHoursWeekly.mean + (u - 0.5) * 2 * r.workHoursWeekly.spread;
+        if (weekly > r.maxHoursWeekly) weekly = r.maxHoursWeekly;
+        if (weekly < 0) weekly = 0;
+        let minutes = Math.round((weekly * 60) / r.workdaysPerWeek);
+        // Weekly cap also covers the round-trip commute measured by the shift clock,
+        // so the shift itself stays below the daily share of maxHoursWeekly.
+        // 5 is a commute floor in minutes (trip, not shift).
+        const cap = Math.max(
+          r.minMinutes,
+          (r.maxHoursWeekly * 60) / r.workdaysPerWeek - 2 * Math.max(5, pop.commuteMinutes[p]!),
+        );
+        if (minutes > cap) minutes = cap;
+        if (minutes < r.minMinutes) minutes = r.minMinutes;
+        pop.workMinutes[p] = minutes;
+      }
       if (pop.workStartMinute[p] === 0) {
-        // Horário de entrada estável por pessoa (sorteado a partir do id e da semente).
-        const h = hashString(`${sim.seed}:work:${p}`)[0];
-        pop.workStartMinute[p] =
-          r.workStartMinute[0] + (h % (r.workStartMinute[1] - r.workStartMinute[0] + 1));
+        // Entrada estável por pessoa, com a hora pesando pela curva tripsByHour.
+        pop.workStartMinute[p] = this.pickWorkStartMinute(
+          r.workStartMinute[0],
+          r.workStartMinute[1],
+          `${sim.seed}:workstart:${p}`,
+        );
       }
       const leaveMin = pop.workStartMinute[p]! - Math.max(5, pop.commuteMinutes[p]!) - 5;
       const t = Math.floor(Math.max(0, leaveMin) / mpt) % tpd;
       pop.tripState[p] = 0;
       this.departures[t]!.push(p);
     }
+  }
+
+  /**
+   * Pesos acumulados por hora do dia (curva tripsByHour do config), montados uma vez (lazy).
+   * Cada entrada guarda a hora e o acumulado até ela (ordem crescente).
+   * O cache nunca é invalidado de propósito, porque a config é imutável depois de carregada e a curva tripsByHour não muda durante a partida.
+   */
+  private hourWeights: { hour: number; cum: number }[] | null = null;
+
+  private hourTable(): { hour: number; cum: number }[] {
+    if (this.hourWeights) return this.hourWeights;
+    const raw = this.city.config.traffic.routine.tripsByHour;
+    const hours = Object.keys(raw)
+      .map(Number)
+      .filter((h) => Number.isFinite(h))
+      .sort((a, b) => a - b);
+    const table: { hour: number; cum: number }[] = [];
+    let cum = 0;
+    for (const hour of hours) {
+      const w = raw[String(hour)] ?? 0;
+      if (w <= 0) continue;
+      cum += w;
+      table.push({ hour, cum });
+    }
+    this.hourWeights = table;
+    return table;
+  }
+
+  /**
+   * Sorteia o minuto de entrada dentro da janela [min, max]: primeiro a hora, com peso
+   * da curva tripsByHour (só horas com peso > 0), depois o minuto dentro da hora.
+   * Estável por pessoa (semente + id): só usa o hash, sem sorteio global.
+   */
+  private pickWorkStartMinute(min: number, max: number, seed: string): number {
+    const table = this.hourTable();
+    const loHour = Math.floor(min / 60);
+    const hiHour = Math.floor(max / 60);
+    const h = hashString(seed);
+    let total = 0;
+    let prev = 0;
+    const inWindow: { hour: number; w: number }[] = [];
+    for (const e of table) {
+      const w = e.cum - prev;
+      prev = e.cum;
+      if (e.hour < loHour || e.hour > hiHour || w <= 0) continue;
+      inWindow.push({ hour: e.hour, w });
+      total += w;
+    }
+    let hour: number;
+    if (inWindow.length === 0 || total <= 0) {
+      // Sem peso na janela: minuto uniforme na janela (como era antes da curva).
+      return min + ((h[0]! >>> 0) % (max - min + 1));
+    }
+    const x = ((h[0]! >>> 0) / 4294967296) * total;
+    hour = inWindow[inWindow.length - 1]!.hour;
+    let acc = 0;
+    for (const e of inWindow) {
+      acc += e.w;
+      if (x < acc) {
+        hour = e.hour;
+        break;
+      }
+    }
+    // Minuto dentro da hora, limitado à janela.
+    const loMin = Math.max(0, min - hour * 60);
+    const hiMin = Math.min(59, max - hour * 60);
+    const span = hiMin - loMin + 1;
+    if (span <= 0) return Math.max(min, Math.min(max, hour * 60));
+    return hour * 60 + loMin + ((h[1]! >>> 0) % span);
   }
 
   private buyCar(h: number) {
@@ -463,9 +553,12 @@ export class TrafficSystem implements System {
     }
     if (toWork) {
       pop.tripState[p] = 2;
-      // Volta no fim do expediente.
+      // Volta no fim do expediente (duração própria da pessoa).
       const clock = city.sim.clock;
-      const dur = clock.minutesToTicks(city.config.traffic.routine.workDurationMinutes);
+      const r = city.config.traffic.routine;
+      const dur = clock.minutesToTicks(
+        pop.workMinutes[p]! > 0 ? pop.workMinutes[p]! : (r.workHoursWeekly.mean * 60) / r.workdaysPerWeek,
+      );
       this.returns[(clock.tickOfDay + dur) % clock.ticksPerDay]!.push(p);
     } else pop.tripState[p] = 0;
   }

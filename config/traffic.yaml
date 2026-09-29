@@ -20,10 +20,28 @@ traffic:
     alpha: 0.15
     beta: 4
   routine:
-    # Horário de entrada no trabalho: sorteado entre estes limites (minutos do dia). PENDENTE.
-    workStartMinute: [420, 540]
-    # Jornada de 44 h semanais (CLT) ≈ 8h48 por dia útil + 1h de almoço.
-    workDurationMinutes: 588
+    # Janela de entrada no trabalho (minutos do dia, das 6h às 10h). A hora exata de cada
+    # pessoa pesa pela curva tripsByHour abaixo. PENDENTE: distribuição dentro da janela.
+    workStartMinute: [360, 600]
+    # Jornada semanal (horas): média 38,4 h da população ocupada (PNAD Contínua via FGV IBRE 2024);
+    # teto 44 h (Lei 5.764/1971, CLT art. 7º). PENDENTE: desvio da jornada semanal não tem fonte; valor de jogo.
+    workHoursWeekly: { mean: 38.4, spread: 8 }
+    # Teto da jornada semanal (horas). Lei 5.764/1971, CLT art. 7º (limite legal).
+    maxHoursWeekly: 44
+    # Dias úteis por semana, para converter a jornada semanal em jornada diária.
+    # PENDENTE: fonte; 5 dias é a primeira aproximação do mundo do trabalho brasileiro.
+    workdaysPerWeek: 5
+    # Piso do expediente (minutos). PENDENTE: fonte; abaixo disso a pessoa não sai de casa.
+    minMinutes: 60
+    # Proporção de viagens por motivo. Pesquisa Origem-Destino 2017 da RMSP (Metrô, seção 3.3.9):
+    # trabalho 18,5 mi (44%), educação 14,7 mi (35%), outros 8,8 mi (~21%).
+    # PENDENTE: a divisão de "outros" entre compras, saúde e lazer não tem fonte pública na OD.
+    shareByPurpose: { work: 0.44, education: 0.35, other: 0.21 }
+    # Pesos por hora do dia das viagens. Pesquisa Origem-Destino 2017 da RMSP (Metrô, seção 3.3.11
+    # "Flutuação horária"): três picos (manhã, meio-dia e fim da tarde). PENDENTE: os pesos são a
+    # curva de três picos da OD 2017 lida de forma qualitativa, não a tabela numérica original
+    # (https://www.mobilize.org.br/midias/pesquisas/pesquisa-origem-destino-2017-da-rmsp.pdf).
+    tripsByHour: { "5": 1, "6": 14, "7": 32, "8": 24, "9": 4, "10": 2, "11": 6, "12": 15, "13": 7, "14": 5, "15": 6, "16": 10, "17": 20, "18": 14, "19": 6, "20": 3 }
     # Turno escolar da manhã: 7h às 12h. PENDENTE: distribuição de turnos.
     schoolStartMinute: 420
     schoolDurationMinutes: 300
