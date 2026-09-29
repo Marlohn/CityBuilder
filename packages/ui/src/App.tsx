@@ -29,7 +29,25 @@ export function App({ store, client, tools, typeLabels }: AppProps) {
     <div className="app">
       <TopBar ui={ui} store={store} client={client} />
       <Toolbar ui={ui} store={store} tools={tools} />
-      <div className="side">
+      {!ui.panelOpen ? (
+        <button
+          type="button"
+          className="side-tab"
+          title="Abrir o painel (tecla I)"
+          onClick={() => store.set({ panelOpen: true })}
+        >
+          ◀ Painel
+        </button>
+      ) : null}
+      <div className={`side ${ui.panelOpen ? "" : "closed"}`}>
+        <button
+          type="button"
+          className="side-close"
+          title="Recolher o painel (tecla I)"
+          onClick={() => store.set({ panelOpen: false })}
+        >
+          ▶
+        </button>
         {ui.selectedPerson !== null ? (
           <PersonPanel client={client} store={store} id={ui.selectedPerson} refreshKey={refreshKey} />
         ) : ui.selectedBuilding ? (

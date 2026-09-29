@@ -33,7 +33,7 @@ export class RoadLayer {
   constructor(private lib: ModelLibrary) {}
 
   static models(): string[] {
-    return [...Object.values(PIECE_MODEL), "roads/light-square"];
+    return [...Object.values(PIECE_MODEL), "roads/light-square", "proc/median"];
   }
 
   update(map: MapView) {
@@ -52,6 +52,11 @@ export class RoadLayer {
         if (x > 0 && roads[i - 1]) mask |= 8;
         const { piece, quarterTurns } = roadPieceFor(mask);
         this.batches.get(PIECE_MODEL[piece]).push(x + 0.5, 0.005, y + 0.5, quarterTurns * HALF_PI, 1, 1, 1);
+        // Avenida: canteiro central com meio-fio nas retas (4 faixas separadas, DNIT IPR-740).
+        if (kind === 2 && piece === "straight") {
+          const alongX = (mask & 10) === 10;
+          this.batches.get("proc/median").push(x + 0.5, 0.006, y + 0.5, alongX ? HALF_PI : 0, 1, 1, 1);
+        }
         // Avenidas ganham postes de luz a cada dois quadradinhos (retas).
         if (kind === 2 && piece === "straight" && (x + y) % 2 === 0) {
           const alongX = (mask & 10) === 10;

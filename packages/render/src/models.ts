@@ -119,6 +119,16 @@ export class ModelLibrary {
         box(0.05, 0.4, 0.05, x, 0.03, z, concrete);
       box(0.95, 0.12, 0.02, 0, 0, 0.47, fence);
       box(0.95, 0.12, 0.02, 0, 0, -0.47, fence);
+    } else if (name === "proc/median") {
+      // Canteiro central da avenida (~2 m de largura num quadradinho de 16 m), com meio-fio claro e
+      // faixa amarela dos dois lados. Comprimento ao longo do eixo Z.
+      const grass = mat(0.36, 0.6, 0.3);
+      const curb = mat(0.82, 0.82, 0.78);
+      const yellow = mat(0.95, 0.78, 0.15);
+      box(0.13, 0.025, 1, 0, 0, 0, curb);
+      box(0.1, 0.03, 1, 0, 0, 0, grass);
+      box(0.012, 0.004, 1, 0.09, 0, 0, yellow);
+      box(0.012, 0.004, 1, -0.09, 0, 0, yellow);
     } else if (name.startsWith("proc/person-")) {
       // Pessoa: corpo, cabeça e pernas (1 unidade = altura). Cor da roupa varia.
       const shirts: Record<string, [number, number, number]> = {

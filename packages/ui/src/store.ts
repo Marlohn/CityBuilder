@@ -16,6 +16,8 @@ export interface UiState {
   selectedBuilding: BuildingView | null;
   selectedPerson: number | null;
   panel: "city" | "people" | "realism" | "perf" | "help";
+  /** Painel lateral aberto ou recolhido (a escolha fica guardada no navegador). */
+  panelOpen: boolean;
   toasts: Toast[];
   ready: boolean;
   error: string | null;
@@ -29,6 +31,7 @@ export class Store {
     selectedBuilding: null,
     selectedPerson: null,
     panel: "city",
+    panelOpen: readPanelOpen(),
     toasts: [],
     ready: false,
     error: null,
@@ -44,6 +47,11 @@ export class Store {
   };
 
   set(patch: Partial<UiState>) {
+    // Selecionar um prédio ou uma pessoa abre o painel (é onde aparece a informação).
+    if ((patch.selectedBuilding || patch.selectedPerson != null) && patch.panelOpen === undefined)
+      patch = { ...patch, panelOpen: true };
+    if (patch.panelOpen !== undefined && patch.panelOpen !== this.state.panelOpen)
+      writePanelOpen(patch.panelOpen);
     this.state = { ...this.state, ...patch };
     for (const fn of this.listeners) fn();
   }
@@ -60,6 +68,24 @@ export class Store {
     for (const t of fresh) {
       setTimeout(() => this.set({ toasts: this.state.toasts.filter((x) => x.id !== t.id) }), 4000);
     }
+  }
+}
+
+const PANEL_KEY = "citybuilder.panelOpen";
+
+function readPanelOpen(): boolean {
+  try {
+    return globalThis.localStorage?.getItem(PANEL_KEY) !== "0";
+  } catch {
+    return true;
+  }
+}
+
+function writePanelOpen(open: boolean) {
+  try {
+    globalThis.localStorage?.setItem(PANEL_KEY, open ? "1" : "0");
+  } catch {
+    // Navegador sem armazenamento (modo privado): só não lembra a escolha.
   }
 }
 
