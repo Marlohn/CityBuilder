@@ -116,9 +116,31 @@ Todo sorteio usa uma "semente". Cada jogo novo é diferente, mas a mesma semente
 - Toda viagem tem motivo (trabalho, escola, compras, lazer) e rota.
 - Nada é criado só pra enfeitar a tela.
 
-### 5.6 Escala
+### 5.6 Escala e performance (prioridade desde o dia 1)
 
-Meta inicial: 10 a 50 mil pessoas, cada uma simulada individualmente. Um teste de performance mede isso no CI. Se aguentar, sobe.
+**O problema que queremos evitar:** no Cities: Skylines, cidades grandes ficam lentas ou travam, mesmo em PC bom. Pelos relatos de jogadores do CS2, o principal culpado é o CPU. Cada viagem precisa de um cálculo de rota, e quanto mais gente e mais ruas, mais pesado fica. Quando o CPU não dá conta, o jogo desacelera a simulação.
+
+**Metas:**
+- Começo: 50 mil pessoas rodando liso na velocidade normal. Depois, subir pra 100 mil ou mais.
+- A tela nunca trava por causa da simulação. No pior caso, a simulação fica mais lenta e o jogo avisa, mas você continua conseguindo construir.
+
+**Como vamos garantir isso:**
+
+1. **Orçamento de tempo com teste.** Cada sistema (vida, economia, trânsito) tem um limite de milissegundos por tick. Um teste roda uma cidade grande fixa e falha se alguém deixar o jogo mais lento. Nenhuma mudança entra piorando a performance sem ninguém ver.
+2. **Simulação fora da tela.** O motor roda em Web Workers (threads separadas). O cálculo de rotas é dividido entre vários núcleos do processador, em vez de um só.
+3. **Rotas inteligentes.**
+   - Rotas repetidas ficam guardadas (cache): quem vai todo dia de casa pro trabalho não recalcula a rota toda vez.
+   - O mapa de ruas é dividido em regiões, e primeiro se acha o caminho entre regiões, depois dentro delas. Isso é bem mais barato.
+   - Só recalcula o que mudou: construir uma rua só invalida as rotas daquela área.
+   - Os pedidos de rota entram numa fila com limite por tick, então nunca juntam todos no mesmo instante.
+4. **Nem todo mundo precisa pensar ao mesmo tempo.** Decisões de vida (casar, mudar, trocar de emprego) rodam uma vez por dia do jogo, e cada tick cuida de só uma parte da população. Aniversário é uma vez por ano. Só o que precisa (carros em movimento) roda todo tick.
+5. **Nada some, mas nem tudo é desenhado em detalhe.** Todo carro e toda pessoa existem sempre no registro. Mas o carro que tá longe da câmera tem a posição calculada de um jeito barato ("chega em X minutos por essa rua"), sem simular cada metro. Perto da câmera, o movimento é detalhado.
+6. **Dados compactos.** As pessoas ficam em arrays numéricos, não em milhares de objetos soltos. Isso é mais rápido e evita as pausas do coletor de lixo do JavaScript.
+7. **Tela leve.** Prédios iguais são desenhados em lote (instancing), objetos parados não são recalculados e as coisas distantes usam modelos mais simples.
+8. **Medir sempre.** Os logs mostram quanto tempo cada sistema gasta por tick. Quando ficar lento, dá pra ver na hora quem é o culpado.
+9. **Plano B:** se uma parte continuar pesada mesmo otimizada (provavelmente rotas), ela é reescrita em Rust/WebAssembly. Os mesmos testes provam que o resultado não mudou.
+
+Todos os limites (orçamento por sistema, tamanho da fila de rotas, frequência das decisões) ficam na config.
 
 ### 5.7 IA com LLM (opcional)
 
@@ -190,7 +212,7 @@ Regras pra funcionar com qualquer LLM grátis:
 
 | Fase | Entrega |
 |---|---|
-| 0 | Esqueleto: repositório, ferramentas, CI, configs, docs dos agentes |
+| 0 | Esqueleto: repositório, ferramentas, CI, configs, docs dos agentes e teste de performance |
 | 1 | Grid, ruas, zonas (residencial, comercial, industrial) e tela isométrica |
 | 2 | Prédios crescendo, economia básica e registro da população |
 | 3 | Ciclo de vida completo das pessoas |
