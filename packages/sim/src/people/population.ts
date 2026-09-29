@@ -78,6 +78,8 @@ export class Population {
   commuteMinutes = new Uint16Array(0);
   /** Hora de entrada no trabalho (minuto do dia). */
   workStartMinute = new Uint16Array(0);
+  /** Duração do expediente de hoje (minutos). */
+  workMinutes = new Uint16Array(0);
   /** 0 = em casa, 1 = indo ao destino, 2 = no destino, 3 = voltando (`tripPurpose` diz o destino). */
   tripState = new Uint8Array(0);
   /** Destino da viagem atual (TRIP.* do trânsito; 0 = em casa). Quem escreve é o trânsito. */
@@ -161,6 +163,7 @@ export class Population {
     this.searchUntilTick = growTo(this.searchUntilTick, len);
     this.commuteMinutes = growTo(this.commuteMinutes, len);
     this.workStartMinute = growTo(this.workStartMinute, len);
+    this.workMinutes = growTo(this.workMinutes, len);
     this.tripState = growTo(this.tripState, len);
     this.tripPurpose = growTo(this.tripPurpose, len);
     this.firstMarriageAge = growTo(this.firstMarriageAge, len);
