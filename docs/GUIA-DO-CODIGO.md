@@ -168,6 +168,15 @@ Adicione em `metricsOf` (`packages/roadmap/src/signals.ts`). O nome vira o id us
 2. Valor inicial 1 em `sim.modifiers` e o sistema que usa multiplica por ele.
 3. Texto explicando o ajuste em `PARAM_TEXT` (`packages/director/src/director.ts`).
 
+### 3.11 Carro que some da tela e bug
+
+Na tela, um carro dentro do mapa está SEMPRE desenhado: ou na viagem visual (TrafficVisuals) ou como estacionado. Carro andando e invisível é bug.
+
+- A viagem visual fica em `packages/sim/src/view/trafficVisuals.ts`: rota de 1 quadradinho é repetida em vez de descartada, viagem cortada pelo limite de tela vira viagem parada no último quadradinho, e a tela reconcilia carro andando que perdeu a viagem porque o log de viagens do motor é aparado.
+- O desenho fica em `packages/web/src/worker.ts`, que só desenha os carros estacionados que a tela não está desenhando.
+
+O limite de tela (`DEFAULT_TRAFFIC_VISUALS.maxActive`, em `trafficVisuals.ts`) é número técnico de memória/desenho, não é regra de jogo e não vai para a config.
+
 ---
 
 ## 4. Testes
