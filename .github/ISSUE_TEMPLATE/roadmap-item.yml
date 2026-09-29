@@ -6,7 +6,7 @@ body:
     id: categoria
     attributes:
       label: Categoria
-      options: [feature, construcao, correcao, realismo, performance, saude-tecnica]
+      options: [feature, construcao, correcao, realismo, balanceamento, performance, saude-tecnica]
     validations: { required: true }
   - type: textarea
     id: problema
