@@ -81,6 +81,14 @@ export class BuildingLayer {
     return [...visuals.flatMap((v) => v.models), "proc/construction"];
   }
 
+  /** Altura desenhada do prédio (em quadradinhos), usada no clique. Mesma conta do desenho. */
+  heightOf(b: BuildingView): number {
+    const vis = this.visuals.get(b.type);
+    const floors = vis?.floors ?? 1;
+    if (b.state === 0) return Math.max(0.6, floors * 0.5) * Math.min(b.w, b.h);
+    return Math.max(0.3, (floors * FLOOR_METERS + 2) / this.tileMeters);
+  }
+
   update(list: BuildingView[]) {
     this.batches.resetAll();
     for (const m of BuildingLayer.models([...this.visuals.values()])) this.batches.get(m);

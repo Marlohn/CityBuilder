@@ -98,8 +98,9 @@ export function HelpPanel() {
       </ul>
       <h3>Câmera</h3>
       <ul>
-        <li>W A S D ou setas: mover · botão direito arrastando: mover</li>
-        <li>Roda do mouse: zoom · Q / E: girar 90°</li>
+        <li>W A S D ou setas: mover · botão direito arrastando: agarrar e arrastar o mapa</li>
+        <li>Q / E (segurando) ou botão do meio arrastando: girar · Home / End: inclinar</li>
+        <li>Roda do mouse ou Z / X: zoom</li>
       </ul>
       <h3>Tempo</h3>
       <p>Cada dia do jogo representa um ano de vida. Na velocidade 1x, um dia dura 2 minutos.</p>

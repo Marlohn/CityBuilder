@@ -29,7 +29,7 @@ body:
     id: metrica
     attributes:
       label: Métrica de sucesso
-      description: "Formato: <id da métrica> <operador> <valor>. Ex.: unmet.university < 500"
+      description: "Formato: <id da métrica> <operador> <valor> (ex.: unmet.university < 500). Para tela/ferramenta: teste <arquivo> (ex.: teste tests/e2e/camera.spec.ts)."
     validations: { required: true }
   - type: input
     id: alcance

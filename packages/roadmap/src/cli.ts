@@ -120,7 +120,7 @@ async function main() {
   if (cmd === "build" || cmd === "check") {
     const signals = readSignals();
     const issues = await loadIssues(opts);
-    const roadmap = computeRoadmap(issues, signals, cfg);
+    const roadmap = computeRoadmap(issues, signals, cfg, (p) => existsSync(join(ROOT, p)));
     if (cmd === "check") {
       let failed = 0;
       for (const d of roadmap.deliveries) {

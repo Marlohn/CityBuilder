@@ -1,6 +1,8 @@
 /**
  * A tela 3D. Só lê o estado (contrato) e desenha; nunca muda a cidade.
- * Câmera 3D em ângulo isométrico, girando de 90 em 90 graus.
+ * Câmera ortográfica que começa no ângulo isométrico; controles como no Cities: Skylines II:
+ * WASD move, Q/E giram, Z/X e roda dão zoom, Home/End inclinam, botão direito arrastando agarra o
+ * mapa e botão do meio arrastando gira e inclina.
  */
 import {
   ArcRotateCamera,
@@ -10,6 +12,7 @@ import {
   DirectionalLight,
   Engine,
   HemisphericLight,
+  Matrix,
   type Mesh,
   MeshBuilder,
   Scene,
@@ -18,6 +21,7 @@ import {
   Vector3,
 } from "@babylonjs/core";
 import type { BuildingView, MapView, VehiclesView } from "@city/contract";
+import { type PickBox, pickTile, rayGround, screenAxesOnGround } from "./camera";
 import { GroundLayer } from "./ground";
 import { BuildingLayer, type BuildingVisual, RoadLayer, TreeLayer, VehicleLayer } from "./layers";
 import { ModelLibrary } from "./models";
@@ -37,6 +41,14 @@ export interface TileEvent {
 
 /** Elevação isométrica clássica: 35,264° acima do horizonte. */
 const ISO_BETA = Math.PI / 2 - Math.atan(1 / Math.SQRT2);
+/** Limites de inclinação (beta: 0 = olhando de cima, π/2 = rente ao chão). */
+const BETA_MIN = 0.25;
+const BETA_MAX = 1.3;
+/** Velocidades dos controles de teclado (por segundo). */
+const ROTATE_PER_SEC = 1.6;
+const TILT_PER_SEC = 0.9;
+const ZOOM_PER_SEC = 1.8;
+const PAN_SCREENS_PER_SEC = 0.9;
 
 export class CityRenderer {
   readonly engine: Engine;
@@ -56,9 +68,10 @@ export class CityRenderer {
   private map: MapView | null = null;
   private occupied = new Uint8Array(0);
   private zoom = 30;
-  private quarter = 0;
-  private keys = new Set<string>();
+  /** Tecla apertada → momento (ms) até onde o movimento dela já foi aplicado. */
+  private keys = new Map<string, number>();
   private lastBuildings: BuildingView[] = [];
+  private pickCache: PickBox[] | null = null;
   onTileDown: ((e: TileEvent) => void) | null = null;
   onTileMove: ((e: TileEvent) => void) | null = null;
   onTileUp: ((e: TileEvent) => void) | null = null;
@@ -144,6 +157,7 @@ export class CityRenderer {
 
   setBuildings(list: BuildingView[]) {
     this.lastBuildings = list;
+    this.pickCache = null;
     this.buildingLayer.update(list);
     if (this.map) {
       this.recomputeOccupied();
@@ -192,9 +206,14 @@ export class CityRenderer {
     this.previewMat.emissiveColor = valid ? new Color3(0.2, 0.8, 0.3) : new Color3(0.9, 0.2, 0.2);
   }
 
-  rotate(dir: 1 | -1) {
-    this.quarter = (this.quarter + dir + 4) % 4;
-    this.camera.alpha = -Math.PI / 4 + (this.quarter * Math.PI) / 2;
+  /** Gira a câmera (radianos). */
+  rotateBy(radians: number) {
+    this.camera.alpha += radians;
+  }
+
+  /** Inclina a câmera (radianos), dentro dos limites. */
+  tiltBy(radians: number) {
+    this.camera.beta = Math.max(BETA_MIN, Math.min(BETA_MAX, this.camera.beta + radians));
   }
 
   zoomBy(factor: number) {
@@ -202,15 +221,53 @@ export class CityRenderer {
     this.applyZoom();
   }
 
-  /** Converte posição na tela para o quadradinho do mapa (ou null fora do mapa). */
+  /**
+   * Converte posição na tela para o quadradinho do mapa (ou null fora do mapa).
+   * O raio testa primeiro os prédios (com a altura desenhada) e só depois o chão: clicar no corpo de
+   * um prédio seleciona o prédio, não o chão atrás dele.
+   */
   screenToTile(sx: number, sy: number): { x: number; y: number } | null {
     const ray = this.scene.createPickingRay(sx, sy, null, this.camera);
-    if (Math.abs(ray.direction.y) < 1e-6) return null;
-    const t = -ray.origin.y / ray.direction.y;
-    const x = Math.floor(ray.origin.x + ray.direction.x * t);
-    const y = Math.floor(ray.origin.z + ray.direction.z * t);
-    if (!this.map || x < 0 || y < 0 || x >= this.map.width || y >= this.map.height) return null;
-    return { x, y };
+    const hit = pickTile(ray.origin, ray.direction, this.pickBoxes());
+    if (!hit || !this.map) return null;
+    if (hit.x < 0 || hit.y < 0 || hit.x >= this.map.width || hit.y >= this.map.height) return null;
+    return { x: hit.x, y: hit.y };
+  }
+
+  /** Ponto do chão embaixo de uma posição da tela (sem olhar prédios). */
+  screenToGround(sx: number, sy: number): { x: number; z: number } | null {
+    const ray = this.scene.createPickingRay(sx, sy, null, this.camera);
+    return rayGround(ray.origin, ray.direction);
+  }
+
+  /** Posição na tela (pixels do canvas) de um ponto do mundo. Usado nos testes de tela. */
+  worldToScreen(x: number, y: number, z: number): { x: number; y: number } {
+    const p = Vector3.Project(
+      new Vector3(x, y, z),
+      Matrix.Identity(),
+      // Matrizes da câmera de agora (não a do último quadro desenhado).
+      this.camera.getViewMatrix(true).multiply(this.camera.getProjectionMatrix(true)),
+      this.camera.viewport.toGlobal(this.engine.getRenderWidth(), this.engine.getRenderHeight()),
+    );
+    return { x: p.x, y: p.y };
+  }
+
+  /** Estado da câmera (para testes e para salvar a vista). */
+  cameraState() {
+    const t = this.camera.target;
+    return { alpha: this.camera.alpha, beta: this.camera.beta, zoom: this.zoom, x: t.x, z: t.z };
+  }
+
+  private pickBoxes(): PickBox[] {
+    if (this.pickCache) return this.pickCache;
+    this.pickCache = this.lastBuildings.map((b) => ({
+      x: b.x,
+      y: b.y,
+      w: b.w,
+      h: b.h,
+      height: this.buildingLayer.heightOf(b),
+    }));
+    return this.pickCache;
   }
 
   /** Retângulo aproximado (em quadradinhos) que aparece na tela. */
@@ -251,72 +308,103 @@ export class CityRenderer {
     }
   }
 
-  private pan(dx: number, dy: number) {
-    const a = this.camera.alpha;
-    // Direções "direita" e "para frente" da câmera projetadas no chão.
-    const rightX = -Math.sin(a);
-    const rightZ = Math.cos(a);
-    const fwdX = -Math.cos(a);
-    const fwdZ = -Math.sin(a);
-    const speed = this.zoom / 300;
-    this.camera.target.x += (rightX * dx + fwdX * dy) * speed;
-    this.camera.target.z += (rightZ * dx + fwdZ * dy) * speed;
+  /** Move o alvo da câmera no chão (em quadradinhos) e mantém dentro do mapa. */
+  private moveTarget(dx: number, dz: number) {
+    const t = this.camera.target;
+    t.x += dx;
+    t.z += dz;
     if (this.map) {
-      this.camera.target.x = Math.max(0, Math.min(this.map.width, this.camera.target.x));
-      this.camera.target.z = Math.max(0, Math.min(this.map.height, this.camera.target.z));
+      t.x = Math.max(0, Math.min(this.map.width, t.x));
+      t.z = Math.max(0, Math.min(this.map.height, t.z));
     }
-    this.sun.position = this.camera.target.add(new Vector3(40, 80, -40));
+    this.sun.position = t.add(new Vector3(40, 80, -40));
   }
 
-  private updateCameraFromKeys() {
-    const step = 12;
-    let dx = 0;
-    let dy = 0;
-    if (this.keys.has("a") || this.keys.has("arrowleft")) dx -= step;
-    if (this.keys.has("d") || this.keys.has("arrowright")) dx += step;
-    if (this.keys.has("w") || this.keys.has("arrowup")) dy -= step;
-    if (this.keys.has("s") || this.keys.has("arrowdown")) dy += step;
-    if (dx || dy) this.pan(dx, dy);
+  /**
+   * Teclado: WASD/setas movem na direção da tela, Q/E giram, Z/X zoom, Home/End inclinam.
+   * O movimento conta o tempo real que cada tecla ficou apertada (não o número de quadros), então
+   * funciona igual em computador lento e um toque rápido entre dois quadros não se perde.
+   */
+  private updateCameraFromKeys(now = performance.now()) {
+    for (const [key, since] of this.keys) {
+      const dt = Math.min(0.5, (now - since) / 1000);
+      this.keys.set(key, now);
+      if (dt > 0) this.applyKey(key, dt);
+    }
+  }
+
+  private applyKey(key: string, dt: number) {
+    const move = (sx: number, sy: number) => {
+      const { up, right } = screenAxesOnGround(this.camera.alpha);
+      const step = this.zoom * 2 * PAN_SCREENS_PER_SEC * dt;
+      this.moveTarget((right.x * sx + up.x * sy) * step, (right.z * sx + up.z * sy) * step);
+    };
+    if (key === "a" || key === "arrowleft") move(-1, 0);
+    else if (key === "d" || key === "arrowright") move(1, 0);
+    else if (key === "w" || key === "arrowup") move(0, 1);
+    else if (key === "s" || key === "arrowdown") move(0, -1);
+    else if (key === "q") this.rotateBy(ROTATE_PER_SEC * dt);
+    else if (key === "e") this.rotateBy(-ROTATE_PER_SEC * dt);
+    else if (key === "home") this.tiltBy(-TILT_PER_SEC * dt);
+    else if (key === "end") this.tiltBy(TILT_PER_SEC * dt);
+    else if (key === "z") this.zoomBy(1 / (1 + ZOOM_PER_SEC * dt));
+    else if (key === "x") this.zoomBy(1 + ZOOM_PER_SEC * dt);
   }
 
   private bindInput() {
     const c = this.canvas;
-    let dragging = false;
+    // Botão direito arrastando = agarra o mapa; botão do meio arrastando = gira e inclina.
+    let drag: "pan" | "orbit" | null = null;
     let lastX = 0;
     let lastY = 0;
-    const tileEvent = (e: PointerEvent): TileEvent | null => {
+    const toCanvas = (e: PointerEvent | WheelEvent) => {
       const r = c.getBoundingClientRect();
-      const t = this.screenToTile(
-        (e.clientX - r.left) * (c.width / r.width),
-        (e.clientY - r.top) * (c.height / r.height),
-      );
+      return {
+        x: (e.clientX - r.left) * (c.width / r.width),
+        y: (e.clientY - r.top) * (c.height / r.height),
+      };
+    };
+    const tileEvent = (e: PointerEvent): TileEvent | null => {
+      const p = toCanvas(e);
+      const t = this.screenToTile(p.x, p.y);
       return t ? { ...t, button: e.button, shift: e.shiftKey } : null;
     };
     c.addEventListener("contextmenu", (e) => e.preventDefault());
     c.addEventListener("pointerdown", (e) => {
       if (e.button === 2 || e.button === 1) {
-        dragging = true;
-        lastX = e.clientX;
-        lastY = e.clientY;
+        drag = e.button === 2 ? "pan" : "orbit";
+        const p = toCanvas(e);
+        lastX = p.x;
+        lastY = p.y;
         c.setPointerCapture(e.pointerId);
+        if (e.button === 1) e.preventDefault();
         return;
       }
       const t = tileEvent(e);
       if (t) this.onTileDown?.(t);
     });
     c.addEventListener("pointermove", (e) => {
-      if (dragging) {
-        this.pan(-(e.clientX - lastX), -(e.clientY - lastY));
-        lastX = e.clientX;
-        lastY = e.clientY;
+      if (drag) {
+        const p = toCanvas(e);
+        if (drag === "pan") {
+          // O ponto do chão que estava embaixo do mouse continua embaixo do mouse.
+          const a = this.screenToGround(lastX, lastY);
+          const b = this.screenToGround(p.x, p.y);
+          if (a && b) this.moveTarget(a.x - b.x, a.z - b.z);
+        } else {
+          this.rotateBy(-(p.x - lastX) * 0.005);
+          this.tiltBy(-(p.y - lastY) * 0.004);
+        }
+        lastX = p.x;
+        lastY = p.y;
         return;
       }
       const t = tileEvent(e);
       if (t) this.onTileMove?.(t);
     });
     c.addEventListener("pointerup", (e) => {
-      if (dragging) {
-        dragging = false;
+      if (drag) {
+        drag = null;
         return;
       }
       const t = tileEvent(e);
@@ -333,11 +421,20 @@ export class CityRenderer {
     window.addEventListener("keydown", (e) => {
       if ((e.target as HTMLElement)?.tagName === "INPUT") return;
       const k = e.key.toLowerCase();
-      if (k === "q") this.rotate(-1);
-      else if (k === "e") this.rotate(1);
-      else this.keys.add(k);
+      // Hora em que a tecla foi apertada (não a hora em que o evento foi tratado).
+      if (!this.keys.has(k)) this.keys.set(k, e.timeStamp || performance.now());
     });
-    window.addEventListener("keyup", (e) => this.keys.delete(e.key.toLowerCase()));
+    window.addEventListener("keyup", (e) => {
+      const k = e.key.toLowerCase();
+      const since = this.keys.get(k);
+      if (since === undefined) return;
+      // Aplica o pedaço que faltou desde o último quadro.
+      const dt = Math.min(0.5, ((e.timeStamp || performance.now()) - since) / 1000);
+      this.keys.delete(k);
+      if (dt > 0) this.applyKey(k, dt);
+    });
+    // Janela perdeu o foco: solta as teclas (senão a câmera continua andando sozinha).
+    window.addEventListener("blur", () => this.keys.clear());
     this.engine.onResizeObservable.add(() => this.applyZoom());
   }
 }

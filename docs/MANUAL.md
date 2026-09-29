@@ -16,10 +16,14 @@ O mapa começa vazio, só com uma **avenida saindo da borda oeste**. Ela liga a 
 
 | Ação | Como |
 |---|---|
-| Mover | W A S D, setas, ou arrastar com o botão direito |
-| Zoom | roda do mouse |
-| Girar 90° | Q e E |
+| Mover | W A S D ou setas |
+| Arrastar o mapa | botão direito arrastando (o chão acompanha o mouse) |
+| Girar | Q e E (segurando), ou botão do meio arrastando para os lados |
+| Inclinar | Home e End, ou botão do meio arrastando para cima e para baixo |
+| Zoom | roda do mouse, ou Z e X |
 | Cancelar ferramenta | Esc |
+
+Os controles são os mesmos do Cities: Skylines II.
 
 ## Ferramentas
 

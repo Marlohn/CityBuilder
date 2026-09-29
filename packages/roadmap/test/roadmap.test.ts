@@ -65,6 +65,12 @@ describe("métrica de sucesso", () => {
     expect(checkMetric("realism.tfr entre 1,3 e 1,9", { "realism.tfr": 2 }).ok).toBe(false);
   });
 
+  it("métrica de teste (itens de tela): vale quando o arquivo de teste existe", () => {
+    expect(isValidMetric("teste tests/e2e/camera.spec.ts", { population: 1 })).toBeNull();
+    expect(checkMetric("teste tests/e2e/camera.spec.ts", {}, () => true).ok).toBe(true);
+    expect(checkMetric("teste tests/e2e/camera.spec.ts", {}, () => false).ok).toBe(false);
+  });
+
   it("métrica desconhecida não passa e é apontada", () => {
     expect(checkMetric("naoexiste < 1", {}).ok).toBe(false);
     expect(isValidMetric("naoexiste < 1", { population: 1 })).toMatch(/não existe/);

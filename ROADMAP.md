@@ -8,11 +8,25 @@ Sinais medidos em 2026-09-29 em 5 cidades de teste (bot:avaliacao-1 816, bot:ava
 
 ## Agora (até 10 itens; mistura: 50% features/construções, 30% correções/realismo, 20% técnico)
 
-_Nada aqui._
+| # | Item | Categoria | Nota | Por quê |
+|---|---|---|---|---|
+| [#10](https://github.com/Marlohn/CityBuilder/issues/10) | 🚨 Clicar num prédio acerta o chão atrás dele (não dá para demolir casa em obra) | correcao | 5.235 | alcance 3.490 · impacto 1 · confiança 100% · esforço 1 · ideia do dono +50% |
+| [#9](https://github.com/Marlohn/CityBuilder/issues/9) | 🚨 Câmera como no Cities: Skylines 2 (mouse invertido, Q/E pulando) | correcao | 2.618 | alcance 3.490 · impacto 1 · confiança 100% · esforço 2 · ideia do dono +50% |
+| [#11](https://github.com/Marlohn/CityBuilder/issues/11) | 🚨 Carros e pessoas quase não aparecem nas ruas | correcao | 1.745 | alcance 3.490 · impacto 1 · confiança 100% · esforço 3 · ideia do dono +50% |
+| [#12](https://github.com/Marlohn/CityBuilder/issues/12) | Painel lateral recolhível | feature | 1.309 | alcance 3.490 · impacto 0,5 · confiança 50% · esforço 1 · ideia do dono +50% |
+| [#14](https://github.com/Marlohn/CityBuilder/issues/14) | Avenida quase igual à rua na tela | feature | 1.309 | alcance 3.490 · impacto 0,25 · confiança 100% · esforço 1 · ideia do dono +50% |
+| [#4](https://github.com/Marlohn/CityBuilder/issues/4) | Viagens de escola, compras, saúde e lazer (não só casa-trabalho) | feature | 1.047 | alcance 3.490 · impacto 1 · confiança 100% · esforço 5 · ideia do dono +50% |
+| [#13](https://github.com/Marlohn/CityBuilder/issues/13) | Mover escola e UBS de lugar | feature | 1.047 | alcance 3.490 · impacto 0,5 · confiança 80% · esforço 2 · ideia do dono +50% |
+| [#16](https://github.com/Marlohn/CityBuilder/issues/16) | Rio e lagos no mapa | feature | 1.047 | alcance 3.490 · impacto 0,5 · confiança 80% · esforço 2 · ideia do dono +50% |
+| [#6](https://github.com/Marlohn/CityBuilder/issues/6) | Migração de saves antigos | saude-tecnica | 654 | alcance 3.490 · impacto 0,5 · confiança 50% · esforço 2 · ideia do dono +50% |
+| [#3](https://github.com/Marlohn/CityBuilder/issues/3) | Economia de cidade pequena: receita por habitante e manutenção de vias | balanceamento | 600 | alcance 800 · impacto 2 · confiança 100% · esforço 4 · ideia do dono +50% |
 
 ## Próximo
 
-_Nada aqui._
+| # | Item | Categoria | Nota | Por quê |
+|---|---|---|---|---|
+| [#5](https://github.com/Marlohn/CityBuilder/issues/5) | Cérebro das pessoas trocável (interface CitizenBrain) | saude-tecnica | 524 | alcance 3.490 · impacto 1 · confiança 50% · esforço 5 · ideia do dono +50% |
+| [#7](https://github.com/Marlohn/CityBuilder/issues/7) | Rotas por regiões e cache que só limpa a área mudada | performance | 524 | alcance 3.490 · impacto 0,5 · confiança 80% · esforço 4 · ideia do dono +50% |
 
 ## Depois
 
@@ -28,7 +42,7 @@ _Nada entregue esperando conferência._
 
 ## Incompletos (falta campo obrigatório)
 
-_Nenhum._
+- [#15](https://github.com/Marlohn/CityBuilder/issues/15) Água e luz: serviços básicos que faltam: falta métrica válida (métrica "unmet.water" não existe no relatório)
 
 ## Ideias esperando o Designer
 
@@ -37,14 +51,6 @@ _Nenhuma. Abra uma issue com o formulário "Ideia"._
 ## Sinais sem item (candidatos para o Designer)
 
 Medidos pelo jogo e ainda não viraram issue. A nota é provisória (esforço padrão). Para criar o item, use o formulário "Item do roadmap" e cite o id no campo "Sinal de origem".
-
-### Falta no jogo: Água tratada e esgoto
-
-- **Sinal:** `comparacao:saneamento` · categoria construcao · nota provisória 3.490
-- **Medido:** Toda cidade real tem isso; a cidade de teste tem 816 e o jogo não oferece.
-- **Alcance:** 3.490 pessoas · impacto 3 · prova: dado do jogo + fonte
-- **Fonte:** Lei 14.026/2020 (marco do saneamento): meta de 99% com água potável e 90% com coleta e tratamento de esgoto até 2033 (https://www.gov.br/cidades/pt-br/assuntos/saneamento/marco-legal-do-saneamento)
-- **Sugestão:** Criar água tratada e esgoto (pesquisar como funciona e o custo real antes).
 
 ### Falta no jogo: Hospital (leitos de internação)
 
@@ -88,15 +94,6 @@ Medidos pelo jogo e ainda não viraram issue. A nota é provisória (esforço pa
 - **Fonte:** PNAB 2017: 1 equipe de Saúde da Família para 2.000 a 3.500 pessoas (https://bvsms.saude.gov.br/bvs/saudelegis/gm/2017/prt2436_22_09_2017.html)
 - **Sugestão:** Ensinar o prefeito automático a atender e mostrar a cobertura no mapa (camada de cobertura).
 - **Métrica sugerida:** `unmet.health < 354`
-
-### A cidade para de crescer
-
-- **Sinal:** `bot:cidade-parou` · categoria balanceamento · nota provisória 319
-- **Medido:** População no meio da partida 1.024, no fim 816, com demanda de 813 casas. Saldo R$ -5.351.429; último ano: receita R$ 4.418.654, despesa R$ 5.126.695 (educacao R$ 157.808, saude R$ 350.000, manutencao_vias R$ 987.933 no ano atual). (apareceu em 3 de 5 cidades de teste; números de uma delas)
-- **Alcance:** 479 pessoas · impacto 2 · prova: dado do jogo + fonte
-- **Fonte:** Municípios com até 5 mil habitantes: receita externa média ~R$ 10.886 por habitante, a maior parte do FPM (Gazeta do Povo; Jornal da USP: municípios pequenos recebem mais por habitante) (https://jornal.usp.br/radio-usp/municipios-pequenos-recebem-mais-recursos-per-capita-que-metropoles-com-maiores-desafios-urbanos/)
-- **Sugestão:** Descobrir o que trava (dinheiro, demanda, lotes) e comparar receita e despesa com dados reais de municípios do mesmo tamanho (Siconfi/FINBRA).
-- **Métrica sugerida:** `population > 1229`
 
 ### Valores sem fonte em config/director.yaml (1)
 
