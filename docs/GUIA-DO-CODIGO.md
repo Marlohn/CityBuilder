@@ -85,6 +85,7 @@ A ordem importa. Mudar a ordem muda a cidade (e quebra os testes de referência)
 - Toda pessoa nasce na cidade ou chega de fora do mapa pela estrada (e isso fica registrado).
 - Todo carro tem dono (uma família), fica estacionado em algum lugar e toda viagem tem motivo.
 - `debug/invariants.ts` confere essas regras. Os testes rodam várias sementes e exigem zero violações.
+- **Trânsito na tela** (`view/trafficVisuals.ts`): como 1 minuto do jogo dura 0,08 s na velocidade 1x, cada viagem real (carro com a rota dele, ou pessoa a pé) é desenhada percorrendo o caminho numa velocidade que dá para ver. É só visual: a simulação não lê nada dali, então a cidade continua reproduzível.
 
 ### Logs e eventos
 

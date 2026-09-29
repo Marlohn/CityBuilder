@@ -81,6 +81,10 @@ export function CityPanel({ s }: { s: StatsView }) {
               {int(s.cars)} / {int(s.vehiclesMoving)}
             </td>
           </tr>
+          <tr>
+            <td>Pessoas andando a pé</td>
+            <td>{int(s.peopleWalking)}</td>
+          </tr>
         </tbody>
       </table>
       <h3>Desejos não atendidos (este ano)</h3>

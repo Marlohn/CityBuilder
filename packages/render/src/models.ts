@@ -119,6 +119,20 @@ export class ModelLibrary {
         box(0.05, 0.4, 0.05, x, 0.03, z, concrete);
       box(0.95, 0.12, 0.02, 0, 0, 0.47, fence);
       box(0.95, 0.12, 0.02, 0, 0, -0.47, fence);
+    } else if (name.startsWith("proc/person-")) {
+      // Pessoa: corpo, cabeça e pernas (1 unidade = altura). Cor da roupa varia.
+      const shirts: Record<string, [number, number, number]> = {
+        a: [0.85, 0.25, 0.2],
+        b: [0.2, 0.45, 0.85],
+        c: [0.95, 0.8, 0.2],
+        d: [0.3, 0.7, 0.35],
+      };
+      const [r, g, b] = shirts[name.slice(-1)] ?? [0.8, 0.8, 0.8];
+      const skin = mat(0.85, 0.65, 0.5);
+      const pants = mat(0.2, 0.22, 0.3);
+      box(0.22, 0.45, 0.14, 0, 0, 0, pants);
+      box(0.3, 0.35, 0.18, 0, 0.45, 0, mat(r, g, b));
+      box(0.18, 0.18, 0.18, 0, 0.82, 0, skin);
     } else {
       box(1, 1, 1, 0, 0, 0, mat(1, 0, 1));
     }

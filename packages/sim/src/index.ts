@@ -19,4 +19,5 @@ export { buildingsView, buildingView, mapView } from "./view/mapViews";
 export { peopleList, personName, personView } from "./view/people";
 export { reportText } from "./view/report";
 export { currentCensus, statsView } from "./view/stats";
+export { DEFAULT_TRAFFIC_VISUALS, PEDESTRIAN_TYPE, TrafficVisuals } from "./view/trafficVisuals";
 export { BSTATE } from "./world/buildings";

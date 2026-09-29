@@ -63,6 +63,7 @@ export function statsView(game: Game, behind = false): StatsView {
       parking: city.year.parkingMisses,
     },
     vehiclesMoving: game.traffic.vehicles.moving.size,
+    peopleWalking: 0,
     cars: c.householdsWithCar,
     realism: game.realism,
     perf: {

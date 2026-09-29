@@ -16,6 +16,7 @@ import {
   parseReplay,
   replayInto,
   statsView,
+  TrafficVisuals,
 } from "@city/sim";
 import { answerQuery } from "./queries";
 
@@ -32,6 +33,9 @@ let sentStructureVersion = -1;
 let behind = false;
 let view: ViewRect = { x0: 0, y0: 0, x1: 0, y1: 0 };
 let overrides: unknown;
+/** Trânsito desenhado (só visual): cada viagem real aparece andando numa velocidade que dá para ver. */
+let visuals: TrafficVisuals | null = null;
+let lastVisual = performance.now();
 
 function post(msg: FromWorker, transfer: Transferable[] = []) {
   self.postMessage(msg, transfer);
@@ -39,6 +43,7 @@ function post(msg: FromWorker, transfer: Transferable[] = []) {
 
 function startGame(g: Game) {
   game = g;
+  visuals = new TrafficVisuals(g);
   const t = g.sim.config.time;
   ticksPerSecond1x = 1440 / t.minutesPerTick / t.realSecondsPerDayAt1x;
   sentMapVersion = -1;
@@ -144,11 +149,19 @@ function sendFrame() {
   const buildings =
     sim.buildings.structureVersion !== sentStructureVersion ? buildingsView(sim.buildings) : undefined;
   if (buildings) sentStructureVersion = sim.buildings.structureVersion;
+  const now = performance.now();
+  visuals?.advance((now - lastVisual) / 1000, speed);
+  lastVisual = now;
   const vehicles = vehiclesIn(view);
+  const stats = statsView(game, behind);
+  if (visuals) {
+    stats.vehiclesMoving = visuals.carsMoving;
+    stats.peopleWalking = visuals.peopleWalking;
+  }
   post(
     {
       type: "frame",
-      stats: statsView(game, behind),
+      stats,
       ...(map ? { map } : {}),
       ...(buildings ? { buildings } : {}),
       vehicles,
@@ -159,9 +172,12 @@ function sendFrame() {
 }
 
 function vehiclesIn(rect: ViewRect) {
-  if (!game || rect.x1 <= rect.x0) return { data: new Float32Array(0), count: 0 };
-  // Fração do tick (para o carro andar suave entre um tick e outro).
-  const sub = Math.min(0.99, Math.max(0, backlog));
-  const data = game.traffic.positions(rect, sub);
+  if (!game || !visuals || rect.x1 <= rect.x0) return { data: new Float32Array(0), count: 0 };
+  // Estacionados (menos os que estão sendo desenhados andando) + viagens visuais.
+  const parked = game.traffic.positions(rect, 0, visuals.isCarOnScreen, false);
+  const moving = visuals.positions(rect);
+  const data = new Float32Array(parked.length + moving.length);
+  data.set(parked, 0);
+  data.set(moving, parked.length);
   return { data, count: data.length / 4 };
 }

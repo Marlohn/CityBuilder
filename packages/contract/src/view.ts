@@ -90,6 +90,8 @@ export interface StatsView {
   demand: { residential: number; commercial: number; industrial: number };
   unmet: UnmetDesireCounts;
   vehiclesMoving: number;
+  /** Pessoas andando a pé agora (na tela). */
+  peopleWalking: number;
   cars: number;
   realism: RealismItem[];
   perf: PerfView;
@@ -141,7 +143,10 @@ export interface PersonListItem {
   status: string;
 }
 
-/** Carros visíveis: [x, y, ângulo, tipo] por veículo, em coordenadas de quadradinho. */
+/**
+ * Carros e pessoas visíveis: [x, y, ângulo, tipo] por objeto, em coordenadas de quadradinho.
+ * Tipo 0..99 = modelo de carro; 100 ou mais = pessoa a pé.
+ */
 export interface VehiclesView {
   data: Float32Array;
   count: number;

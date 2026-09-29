@@ -124,7 +124,7 @@ export class CityRenderer {
       ...RoadLayer.models(),
       ...BuildingLayer.models(this.opts.buildingVisuals),
       ...TreeLayer.models(),
-      ...VehicleLayer.MODELS,
+      ...VehicleLayer.models(),
     ]);
     for (const m of this.lib.all()) {
       if (m.name.startsWith("roads/road")) continue;
