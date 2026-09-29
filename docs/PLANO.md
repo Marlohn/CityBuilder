@@ -1,158 +1,197 @@
 # Plano do CityBuilder
 
 > Documento vivo. Tudo aqui pode mudar, mas toda mudança precisa de um motivo escrito.
+> Versão 2: revisão completa antes da implementação. O que mudou e por quê está na seção 14.
 
 ## 1. Objetivo
 
-Um city builder isométrico que roda no navegador, inspirado no Cities: Skylines, com três características principais:
+Um city builder isométrico que roda no navegador, inspirado no Cities: Skylines, com quatro pilares:
 
 1. **Camadas separadas:** o motor da cidade funciona sem tela. A tela pode ser trocada por outra engine sem mexer no motor.
 2. **Vida real simulada:** cada pessoa tem uma vida própria, do nascimento à morte, com escolhas aleatórias que fazem sentido.
-3. **Evolução contínua por agentes de IA:** agentes com LLMs grátis (via Hermes Agent) melhoram o jogo em loop, 24h, sem quebrar o que já funciona.
+3. **Performance desde o dia 1:** a cidade não pode travar quando cresce, que é o maior problema dos Cities: Skylines.
+4. **Evolução contínua por agentes de IA:** agentes com LLMs grátis (via Hermes Agent) melhoram o jogo em loop, 24h, sem quebrar o que já funciona.
 
 ## 2. Regras de ouro
 
 1. **Tudo tem que fazer sentido na vida real.** Antes de criar qualquer coisa, perguntar: de onde veio? De quem é? Pra onde vai? Onde fica depois?
    - Nada surge ou some do nada. Um carro tem dono (pessoa ou empresa), origem, destino e lugar pra estacionar.
    - Uma pessoa só entra na cidade nascendo ou se mudando pra ela, e só sai morrendo ou se mudando.
-2. **Nada fixo.** Todo número de regra de jogo fica em arquivo de config, com valor padrão e validação.
-3. **Toda decisão de regra tem prova.** Ao criar uma regra (ex: chance de morrer), pesquisar uma fonte real e registrar no arquivo de decisões (`docs/decisoes/`).
+2. **Nada fixo.** Todo número de regra de jogo fica em arquivo de config, com valor padrão, explicação e validação.
+3. **Toda regra tem prova.** Os valores padrão vêm de dados reais (de preferência IBGE), com a fonte anotada ao lado.
 4. **Teste primeiro (TDD).** O teste é escrito antes e falha. Depois o código faz ele passar.
-5. **Sem exagero.** Se uma ideia não tem uso claro agora, fica no roadmap e não no código.
-6. **Log pensando em quem vai corrigir.** Cada evento importante gera um log que explica o quê, quem, onde, quando e por quê.
+5. **Performance é regra, não detalhe.** Nenhuma mudança entra deixando o jogo mais lento sem que isso apareça e seja aprovado.
+6. **Sem exagero.** Se uma ideia não tem uso claro agora, vai pro roadmap, não pro código.
+7. **Pensar em quem vai corrigir.** Todo erro tem que vir com a informação necessária pra reproduzir e entender o problema, sem gastar tempo nem tokens adivinhando.
 
 ## 3. Tecnologia
 
 | Parte | Escolha | Por quê |
 |---|---|---|
-| Linguagem | TypeScript (modo estrito) em tudo | Linguagem mais usada no GitHub em 2025. O sistema de tipos pega a maioria dos erros que LLMs cometem. Um idioma só facilita pros agentes. |
-| Motor da simulação | TypeScript puro, rodando em Web Worker (navegador) ou Node (servidor) | O mesmo código roda nos dois lugares. Dados das pessoas em arrays numéricos, que são rápidos. |
-| Tela | Babylon.js | Não quebra código antigo entre versões (bom pros LLMs), já vem com sombras, efeitos e clique em objetos, e aguenta muitas luzes (cidade à noite). |
+| Linguagem | TypeScript (modo estrito) em tudo | Linguagem mais usada no GitHub desde 2025. O sistema de tipos pega a maioria dos erros que LLMs cometem. Uma linguagem só facilita pros agentes. |
+| Motor da simulação | TypeScript puro, sem nenhuma dependência de navegador | Roda em Web Worker (navegador), em Node (testes e servidor) e no terminal. |
+| Tela 3D | Babylon.js | Não quebra código antigo entre versões (bom pros LLMs, que aprenderam versões antigas). Já vem com sombras, efeitos, clique em objetos e desenho em lote. Aguenta muitas luzes (cidade à noite). |
+| Menus e painéis | HTML por cima do 3D, com React | É o que os LLMs mais conhecem. Fica separado do 3D. |
 | Modelos 3D | Kenney City Kit (CC0, domínio público) | Grátis, low-poly, com ruas, casas e comércio. Trocáveis depois. |
-| Testes | Vitest (unitário), fast-check (cidades aleatórias), Playwright (print da tela) | Rápidos e muito conhecidos pelos LLMs. |
-| Config | Arquivos YAML validados por schema (zod) | YAML aceita comentários. A validação avisa na hora se um valor estiver errado. |
-| Plano B de performance | Rust → WebAssembly, só para partes que forem medidas como lentas | Os mesmos testes provam que o resultado não mudou. |
+| Build | Vite + npm workspaces | Padrão de mercado e simples. |
+| Qualidade | Biome (lint e formatação), dependency-cruiser (camadas) | Uma ferramenta só pra estilo, e outra que impede misturar camadas. |
+| Testes | Vitest, fast-check (cidades aleatórias), Playwright (tela) | Rápidos e conhecidos pelos LLMs. |
+| Config | YAML validado com zod | YAML aceita comentários. A validação avisa na hora se um valor estiver errado. |
+| Publicação | GitHub Pages | Grátis pra repositório público. O jogo fica jogável por um link. |
+| Plano B de performance | Rust → WebAssembly, só pra partes medidas como lentas | Os mesmos testes provam que o resultado não mudou. |
 
 Idioma: **código em inglês, documentação em português.**
 
-## 4. Arquitetura em camadas
+**Por que não Rust desde o começo?** O gargalo das cidades grandes é principalmente de algoritmo (quantas rotas calcular e como calcular), não de linguagem. Um algoritmo melhor em TypeScript ganha de um algoritmo ruim em Rust. E Rust é bem mais difícil pros LLMs grátis. Se uma parte específica precisar, ela vira Rust depois.
+
+## 4. Arquitetura
 
 ```
-[ Tela (Babylon.js hoje, qualquer engine amanhã) ]
+[ Tela: Babylon.js + painéis HTML (qualquer engine amanhã) ]
         ↑ estado da cidade          ↓ comandos
-[ Contrato: lista de comandos + formato do estado (com versão) ]
+[ Contrato: comandos + formato do estado (com versão) ]
         ↑
 [ Motor da cidade: simulação pura, sem tela ]
         ↑
 [ Cérebro das pessoas: regras hoje, IA melhor amanhã ]
 ```
 
-Pastas previstas:
+- A tela **nunca** muda a cidade direto. Ela só manda comandos ("construir rua de A até B") e lê o estado.
+- Toda mudança na cidade acontece por comando. Isso permite gravar e repetir uma partida inteira (seção 5.9).
+
+Pastas:
 
 ```
 packages/
-  sim/        motor da cidade (não pode importar nada de render)
+  sim/        motor da cidade (proibido importar render ou ui)
   contract/   comandos, formato do estado, versões
-  render/     tela em Babylon.js
-  cli/        rodar a simulação pelo terminal e gerar relatórios
+  render/     tela 3D em Babylon.js
+  ui/         painéis e menus em React
+  cli/        simulação pelo terminal, relatórios e replays
   bots/       prefeito automático (gera cidades pros testes)
-config/       todos os números do jogo
+config/       todos os números do jogo (com fonte anotada)
+data/         nomes, tipos de prédio, tábuas do IBGE
 scenarios/    cidades de teste
-docs/         plano, decisões, papéis dos agentes
+docs/         plano e decisões
 agents/       instruções de cada agente
 ```
 
-Uma ferramenta automática (dependency-cruiser) impede que o motor importe a tela. Se alguém misturar as camadas, o CI falha.
-
-### Visual
-
-Câmera 3D de verdade, em ângulo isométrico, com o mapa em grid (cada coisa ocupa quadradinhos). Dá pra girar de 90° em 90° e dar zoom. É o estilo "maquete em grid" dos city builders clássicos, só que em 3D com luz e sombra.
-
-![Rascunho do visual isométrico](img/preview-isometrico.png)
-
-*Rascunho feito com formas simples no Babylon.js, só pra mostrar o ângulo e o grid. O jogo vai usar modelos 3D de verdade.*
-
 ## 5. A simulação
 
-### 5.1 Tempo
+### 5.1 Mapa
 
-- O jogo anda em "ticks". Cada tick tem uma duração configurável.
-- Há dois relógios configuráveis: o do dia a dia (hora, dia) e o da vida (idade). Padrão inicial: 1 ano de vida = 1 dia do jogo, pra dar pra ver gerações passando.
+- Grid de quadradinhos. **Cada quadradinho tem 16 m × 16 m**, mais ou menos o tamanho de um lote de casa.
+- **Mapa padrão: 256 × 256 quadradinhos** (cerca de 4 km × 4 km). Tudo configurável.
+- Por que esse tamanho: a meta é 100 mil pessoas. A cidade de São Paulo tem cerca de 7.500 habitantes por km² (IBGE, Censo 2022). Com essa densidade, 16 km² comportam uns 120 mil habitantes. No mapa de 128 × 128 (4 km²), 50 mil pessoas dariam o dobro da densidade de São Paulo, o que não é realista.
 
-### 5.2 Registro da população
+### 5.2 Tempo
 
-Existe uma lista oficial de todo mundo que mora na cidade (o "cartório"):
-- id, nome, data de nascimento, família, casa, trabalho ou escola, personalidade, saúde, dinheiro.
-- Todo evento de vida fica registrado: nasceu, mudou, casou, separou, trocou de emprego, morreu.
-- Dá pra consultar pelo terminal: `npm run sim -- person 1234` mostra a história completa da pessoa.
+- **Cada dia do jogo representa um ano de vida.** O calendário mostra anos, e o relógio mostra as horas do dia. É o mesmo esquema do mod "Real Time" do Cities: Skylines. No jogo original, as pessoas vivem só uns 6 anos do calendário, o que não faz sentido.
+- Assim a rotina (acordar, trabalhar, voltar pra casa) e a vida (crescer, casar, envelhecer) andam juntas sem contradição.
+- Padrão inicial: 1 dia do jogo = 2 minutos reais na velocidade 1x. Uma vida de ~76 anos dura umas 2 horas e meia de jogo. Velocidades 1x, 2x e 4x, além de pausa.
 
-### 5.3 Ciclo de vida (o "cérebro")
+### 5.3 Registro da população (o "cartório")
+
+- Lista oficial de todo mundo que mora na cidade: id, nome, sexo, nascimento, família, casa, trabalho ou escola, personalidade, saúde, dinheiro.
+- Todo evento de vida fica registrado: chegou, nasceu, estudou, trabalhou, casou, separou, se mudou, morreu.
+- Consulta pelo jogo (lista pesquisável) e pelo terminal: `npm run sim -- person 1234` mostra a história completa.
+- Nomes vêm da API de nomes do IBGE (Censo 2010), salvos num arquivo de dados.
+
+### 5.4 Ciclo de vida (o "cérebro")
 
 - Cada pessoa nasce com uma personalidade sorteada: vontade de casar, vontade de ter filhos, ambição, gosto por estudar, apego à cidade.
-- As decisões juntam personalidade, situação (dinheiro, emprego, casa, saúde) e sorte. Ninguém segue roteiro: tem gente que nunca casa, que não tem filhos, que muda de cidade.
-- As fases e chances vêm de dados reais pesquisados e ficam na config.
-- Mortalidade pela lei de Gompertz (o risco dobra a cada ~8 anos de idade adulta), com modificadores (hospital perto, poluição etc.). Exemplo:
-
-```yaml
-death:
-  referenceAge: 30      # idade usada como base
-  baseRisk: 0.001       # risco por ano nessa idade
-  doublingYears: 8      # a cada 8 anos, o risco dobra
-  modifiers:
-    nearHospital: 0.7   # hospital perto: 30% menos risco
-    highPollution: 1.4  # poluição alta: 40% mais risco
-```
-
+- Cada decisão junta personalidade, situação (dinheiro, emprego, casa, saúde) e sorte. Ninguém segue roteiro: tem gente que nunca casa, que não tem filhos, que muda de cidade.
+- Valores padrão com base em dados reais do Brasil:
+  - **Mortalidade:** tábua completa de mortalidade do IBGE (2023), por idade e sexo. Expectativa de vida ao nascer de 76,4 anos (homens 73,1; mulheres 79,7) e mortalidade infantil de 12,5 por mil. A tábua já cobre desde bebês até idosos, coisa que uma fórmula simples não cobre. Por cima dela, modificadores configuráveis (ex: hospital perto diminui o risco).
+  - **Filhos:** taxa de fecundidade de 1,57 filho por mulher (IBGE, 2023). Como fica abaixo de 2,1, a cidade encolhe sem imigração. Isso é realista: as cidades de verdade também crescem com gente que chega.
 - O cérebro fica atrás de uma interface (`CitizenBrain`). Dá pra trocar por um melhor sem mexer no resto.
 
-### 5.4 Aleatório, mas reproduzível
+Exemplo de config:
 
-Todo sorteio usa uma "semente". Cada jogo novo é diferente, mas a mesma semente repete tudo exatamente igual. Isso permite reproduzir qualquer bug de graça, sem gastar tokens tentando adivinhar o que aconteceu.
+```yaml
+mortality:
+  table: data/ibge/tabua-mortalidade-2023.csv  # risco por idade e sexo
+  modifiers:
+    nearHospital: 0.8    # hospital perto: 20% menos risco (exemplo; valor final precisa de fonte)
+```
 
-### 5.5 Trânsito e objetos que fazem sentido
+### 5.5 Economia e crescimento
 
-- Carro é um bem de alguém: a pessoa compra (se tiver dinheiro), guarda em casa, usa pra ir a algum lugar, estaciona no destino.
+- O mapa começa vazio. As pessoas chegam "de fora do mapa" quando existem casas vagas e empregos, e a chegada fica registrada.
+- As zonas (residencial, comercial, industrial) crescem conforme a demanda, como no Cities: Skylines.
+- Dois modos de dinheiro: com orçamento (padrão; impostos, gastos, pode ficar no vermelho) e livre (dinheiro infinito).
+
+### 5.6 Serviços
+
+- **Na primeira versão:** escola e saúde, porque o ciclo de vida depende delas (estudar, adoecer, morrer).
+- **Depois (roadmap):** água, energia, lixo, polícia, bombeiro, transporte público.
+
+### 5.7 Trânsito e objetos que fazem sentido
+
+- Carro é um bem de alguém: a pessoa compra (se tiver dinheiro), guarda em casa, usa pra ir a algum lugar e estaciona no destino.
 - Caminhão de entrega pertence a uma empresa e leva mercadoria de A pra B.
-- Toda viagem tem motivo (trabalho, escola, compras, lazer) e rota.
+- Toda viagem tem motivo (trabalho, escola, compras, lazer), origem, destino e rota.
 - Nada é criado só pra enfeitar a tela.
 
-### 5.6 Escala e performance (prioridade desde o dia 1)
+### 5.8 Aleatório, mas reproduzível
 
-**O problema que queremos evitar:** no Cities: Skylines, cidades grandes ficam lentas ou travam, mesmo em PC bom. Pelos relatos de jogadores do CS2, o principal culpado é o CPU. Cada viagem precisa de um cálculo de rota, e quanto mais gente e mais ruas, mais pesado fica. Quando o CPU não dá conta, o jogo desacelera a simulação.
+- Todo sorteio usa uma "semente". Cada jogo novo é diferente, mas a mesma semente repete tudo igual.
+- A matemática do motor não usa funções que dão resultados diferentes em cada navegador (como `Math.pow` e `Math.exp`). No lugar delas, entram tabelas prontas. Um teste confere se o Node e o Chromium chegam exatamente no mesmo resultado.
 
-**Metas:**
-- Começo: 50 mil pessoas rodando liso na velocidade normal. Depois, subir pra 100 mil ou mais.
-- A tela nunca trava por causa da simulação. No pior caso, a simulação fica mais lenta e o jogo avisa, mas você continua conseguindo construir.
+### 5.9 Save e replay
 
-**Como vamos garantir isso:**
+- Save = foto da cidade (formato binário, com versão) + lista dos comandos dados depois dela.
+- Como tudo é reproduzível, **um bug vira um arquivo pequeno** (semente + comandos) que repete o problema exatamente. Isso economiza muito tempo e token dos agentes.
+- Botão "reportar problema" no jogo exporta esse arquivo.
+- Saves antigos continuam abrindo depois de atualizações (migração por versão).
 
-1. **Orçamento de tempo com teste.** Cada sistema (vida, economia, trânsito) tem um limite de milissegundos por tick. Um teste roda uma cidade grande fixa e falha se alguém deixar o jogo mais lento. Nenhuma mudança entra piorando a performance sem ninguém ver.
-2. **Simulação fora da tela.** O motor roda em Web Workers (threads separadas). O cálculo de rotas é dividido entre vários núcleos do processador, em vez de um só.
+## 6. Performance
+
+### 6.1 O problema que queremos evitar
+
+Pelos relatos de jogadores do Cities: Skylines 2, cidades grandes travam por causa do processador, não da placa de vídeo. Cada viagem precisa de um cálculo de rota. Quanto mais gente e mais ruas, mais pesado fica, e o jogo desacelera a simulação.
+
+### 6.2 Metas
+
+- 50 mil pessoas rodando liso na velocidade 1x. Depois, 100 mil ou mais.
+- A tela nunca trava por causa da simulação. No pior caso, a simulação fica mais lenta e o jogo avisa, mas você continua construindo.
+
+### 6.3 Como garantir
+
+1. **Simulação fora da tela.** O motor roda num Web Worker. Rotas são calculadas por vários workers em paralelo. Cada um tem uma cópia do mapa de ruas, que muda pouco, então não precisamos de recursos que exigem configuração especial do servidor (o GitHub Pages não permite).
+2. **Paralelo, mas reproduzível.** Os resultados das rotas são aplicados sempre na mesma ordem, não na ordem em que ficam prontos. Nos testes, tudo roda numa thread só e dá exatamente o mesmo resultado.
 3. **Rotas inteligentes.**
-   - Rotas repetidas ficam guardadas (cache): quem vai todo dia de casa pro trabalho não recalcula a rota toda vez.
-   - O mapa de ruas é dividido em regiões, e primeiro se acha o caminho entre regiões, depois dentro delas. Isso é bem mais barato.
-   - Só recalcula o que mudou: construir uma rua só invalida as rotas daquela área.
-   - Os pedidos de rota entram numa fila com limite por tick, então nunca juntam todos no mesmo instante.
-4. **Nem todo mundo precisa pensar ao mesmo tempo.** Decisões de vida (casar, mudar, trocar de emprego) rodam uma vez por dia do jogo, e cada tick cuida de só uma parte da população. Aniversário é uma vez por ano. Só o que precisa (carros em movimento) roda todo tick.
-5. **Nada some, mas nem tudo é desenhado em detalhe.** Todo carro e toda pessoa existem sempre no registro. Mas o carro que tá longe da câmera tem a posição calculada de um jeito barato ("chega em X minutos por essa rua"), sem simular cada metro. Perto da câmera, o movimento é detalhado.
-6. **Dados compactos.** As pessoas ficam em arrays numéricos, não em milhares de objetos soltos. Isso é mais rápido e evita as pausas do coletor de lixo do JavaScript.
-7. **Tela leve.** Prédios iguais são desenhados em lote (instancing), objetos parados não são recalculados e as coisas distantes usam modelos mais simples.
-8. **Medir sempre.** Os logs mostram quanto tempo cada sistema gasta por tick. Quando ficar lento, dá pra ver na hora quem é o culpado.
-9. **Plano B:** se uma parte continuar pesada mesmo otimizada (provavelmente rotas), ela é reescrita em Rust/WebAssembly. Os mesmos testes provam que o resultado não mudou.
+   - Rotas repetidas ficam guardadas (casa → trabalho não é recalculada todo dia).
+   - O mapa de ruas é dividido em regiões: primeiro acha o caminho entre regiões, depois dentro delas.
+   - Construir uma rua só invalida as rotas daquela área.
+   - Os pedidos de rota entram numa fila com limite por tick.
+4. **Nem todo mundo pensa ao mesmo tempo.** Decisões de vida rodam uma vez por dia do jogo (= uma vez por ano de vida), divididas ao longo dos ticks. Só o que precisa (carros em movimento) roda todo tick.
+5. **Detalhe só onde se vê.** Todo carro e toda pessoa existem sempre. Mas o carro longe da câmera tem a posição calculada de um jeito barato ("chega em X minutos"). Perto da câmera, o movimento é detalhado.
+6. **Dados compactos.** Pessoas e carros ficam em arrays numéricos, não em milhares de objetos soltos. Isso evita as pausas do coletor de lixo do JavaScript.
+7. **Tela leve.** Prédios iguais são desenhados em lote, objetos parados não são recalculados, e o que está longe usa modelos mais simples.
+8. **Histórico leve.** Os eventos de vida ficam num formato compacto. Log em texto detalhado só quando pedido (debug).
 
-Todos os limites (orçamento por sistema, tamanho da fila de rotas, frequência das decisões) ficam na config.
+### 6.4 Como medir sem teste instável
 
-### 5.7 IA com LLM (opcional)
+- Tempo de relógio varia de máquina pra máquina, então um teste baseado só nele falharia à toa e faria os agentes perderem tempo.
+- Por isso o teste que barra mudanças conta **trabalho** em vez de tempo: quantas rotas foram calculadas, quantos nós foram visitados, quantas pessoas foram processadas. Isso dá sempre o mesmo número e não depende da máquina.
+- O tempo real (ticks por segundo) também é medido e aparece no relatório, com um limite mais folgado.
+- Cidades de estresse (50 mil e 100 mil pessoas) são geradas pelo prefeito automático.
+- Os servidores de teste do GitHub pra repositório público têm 4 núcleos e 16 GB de RAM, e são grátis. Eles servem de "máquina de referência".
+
+Todos os limites ficam na config.
+
+## 7. IA com LLM (opcional)
 
 - Desligada por padrão. O jogo funciona 100% sem ela.
-- Quando ligada, roda de vez em quando (ex: uma vez por mês do jogo), como uma "diretora" que olha a cidade e ajusta coisas grandes.
+- Quando ligada, roda de vez em quando (ex: uma vez por ano do jogo), como uma "diretora" que olha a cidade e ajusta coisas grandes.
 - Nos testes, usa respostas gravadas, pra dar sempre o mesmo resultado.
-- **Treinar um LLM próprio:** não é o primeiro passo. O caminho que faz sentido é:
-  1. Hoje: regras + dados reais (grátis, testável).
-  2. Depois: dar ao LLM um "índice" (busca) com o estado da cidade e os documentos, pra ele consultar antes de decidir. Não precisa treinar nada.
-  3. Só se valer a pena: usar os logs do jogo pra ajustar (fine-tuning) um modelo pequeno. Isso custa tempo e máquina, então só entra se os passos 1 e 2 não bastarem.
+- Treinar um LLM próprio não é o primeiro passo:
+  1. Hoje: regras + dados reais (grátis e testável).
+  2. Depois: dar ao LLM um "índice" (busca) com o estado da cidade e os documentos, pra ele consultar antes de decidir.
+  3. Só se valer a pena: usar os logs do jogo pra ajustar um modelo pequeno.
 
-## 6. Testes
+## 8. Testes
 
 Tudo testável sem abrir o navegador, sempre que possível.
 
@@ -160,78 +199,115 @@ Tudo testável sem abrir o navegador, sempre que possível.
 |---|---|
 | Unitário | Uma regra isolada. Ex: "casa sem rua não cresce". |
 | Cenário | Uma cidade descrita em arquivo roda N ticks e confere o resultado. |
-| Cidades aleatórias | Mil cidades com sementes diferentes, checando regras que nunca podem quebrar (população negativa, dinheiro sumindo, carro sem dono, pessoa sem registro). |
-| Cenário de referência | O resultado de algumas cidades fica guardado. Se mudar, alguém precisa aprovar de propósito. |
-| Print da tela | O Playwright abre o jogo, carrega um cenário e compara com o print aprovado. |
-| Performance | Mede ticks por segundo com a população alvo. |
+| Cidades aleatórias | Muitas cidades com sementes diferentes, checando regras que nunca podem quebrar: população negativa, dinheiro sumindo, carro sem dono, pessoa sem registro, alguém surgindo do nada. |
+| Referência | O resultado de algumas cidades fica guardado. Se mudar, alguém aprova de propósito. |
+| Reprodutibilidade | Node e Chromium chegam no mesmo resultado com a mesma semente. |
+| Performance | Contadores de trabalho (fixos) e ticks por segundo (informativo). |
+| Tela | O Playwright abre o jogo, carrega um cenário e compara com o print aprovado. |
 
-Um comando só: `npm run check` roda tudo e responde em texto curto o que passou e o que quebrou.
+- Um comando só: `npm run check` roda tudo e responde em texto curto o que passou e o que quebrou.
+- Toda falha mostra a semente e o comando exato pra reproduzir.
 
-O **prefeito automático** (bot) constrói cidades sozinho a partir de uma semente. Serve pra gerar cenários de teste sem esforço.
+## 9. Placar de realismo (ideia nova)
 
-## 7. Logs
+- Um relatório automático compara os números da cidade com a vida real: expectativa de vida, mortalidade infantil, filhos por mulher, desemprego, tempo de deslocamento.
+- As faixas aceitáveis vêm de fontes reais (IBGE) e ficam na config.
+- Número fora da faixa vira um alerta. Exemplo: "expectativa de vida na cidade = 45 anos, a faixa real é 70 a 82". O alerta vira uma Issue pro Designer.
+- É assim que "o jogo gera o roadmap" de um jeito que faz sentido: o jogo aponta o problema com dados, e o agente decide a prioridade.
 
-- Logs estruturados (JSON por linha) com: tick, sistema, entidade, evento, motivo, valores.
-- Níveis: erro, aviso, info, debug. O nível é configurável por sistema.
-- Cada falha de teste imprime a semente e o comando exato pra reproduzir.
-- Relatório da cidade em texto (`npm run sim -- report`): população, empregos, nascimentos, mortes, trânsito, dinheiro. É isso que os agentes leem.
+## 10. Logs
 
-## 8. Não quebrar ao evoluir
+- Logs estruturados (JSON por linha): tick, sistema, entidade, evento, motivo, valores.
+- Nível configurável por sistema (erro, aviso, info, debug).
+- Tempo gasto por sistema em cada tick, pra achar na hora quem está pesando.
+- Relatório da cidade em texto (`npm run sim -- report`): população, empregos, nascimentos, mortes, trânsito, dinheiro, placar de realismo. É isso que os agentes leem.
+
+## 11. Não quebrar ao evoluir
 
 - Camadas protegidas por ferramenta automática.
-- Contrato e save com número de versão, com migração de versões antigas.
-- Cada sistema (vida, economia, trânsito) é um módulo isolado com seus próprios testes.
+- Contrato e save com número de versão e migração.
+- Cada sistema (vida, economia, trânsito) é um módulo isolado com seus testes.
 - Conteúdo (tipos de prédio, profissões etc.) é dado, não código.
 - Branch `main` protegida: só entra com CI verde.
 
-## 9. Agentes
+## 12. Agentes
 
 | Agente | Papel |
 |---|---|
-| **Designer do jogo** | Decide **o que** melhorar. Lê os relatórios da simulação e as ideias do dono do projeto, e mantém o roadmap priorizado. |
-| **Arquiteto** | Decide **como**. Quebra os itens do roadmap em tarefas pequenas e revisa o código no final. |
-| **QA** | Escreve o teste que falha **antes** do dev. Depois tenta quebrar o que foi feito. |
-| **Dev** | Faz os testes passarem. Não pode alterar os testes do QA. |
+| **Designer do jogo** | Decide **o que** melhorar. Lê relatórios, alertas do placar de realismo e ideias do dono, e mantém o roadmap priorizado. |
+| **Arquiteto** | Decide **como**. Quebra os itens em tarefas pequenas e revisa o código no final. |
+| **QA** | Escreve o teste de aceitação que falha **antes** do dev. Depois tenta quebrar o que foi feito. |
+| **Dev** | Faz os testes passarem. Não pode alterar os testes de aceitação do QA (um check automático bloqueia). |
 
-Juízes que não são LLM: o **CI** (se falhar, não entra) e o **dono do projeto** (aprova mudanças grandes, como o contrato).
+Juízes que não são LLM:
+- **O CI:** se falhar, não entra.
+- **O dono do projeto:** aprova mudanças grandes (contrato, formato de save, schema da config). O arquivo CODEOWNERS do GitHub obriga isso.
 
 Regras pra funcionar com qualquer LLM grátis:
 - Tarefa pequena: no máximo uns 3 arquivos.
 - Todo pedido segue um modelo fixo com "tá pronto quando...".
 - Se uma tarefa falhar 3 vezes, volta pro arquiteto quebrar em pedaços menores.
+- Bug sempre vem com o arquivo de replay (semente + comandos).
 - Cada agente tem suas instruções em `agents/<papel>.md`, que vira o perfil dele no Hermes.
 
-### 9.1 Loop de desenvolvimento e roadmap
+### 12.1 Loop de desenvolvimento
 
 - O quadro oficial é o GitHub: Issues pra tarefas e Pull Requests pro código.
-- Quem prioriza é o **Designer** (um agente), não o jogo em si. O jogo fornece os dados: relatórios e problemas detectados automaticamente (ex: "30% desempregados").
-- Ideias do dono: você abre uma Issue com a etiqueta `ideia`, escrita do jeito que quiser. O Designer lê, reescreve no formato padrão, estima o valor e o esforço, e coloca no roadmap na posição certa.
-- Etiquetas de prioridade e estado (ex: `prioridade:alta`, `pronto-pra-dev`) organizam o fluxo. O `ROADMAP.md` é gerado a partir das Issues.
+- Etiquetas organizam o fluxo: `ideia` → `roadmap` → `pronto-pra-teste` → `pronto-pra-dev` → `em-revisão`, com `prioridade:alta/média/baixa`.
+- Ideias do dono: você abre uma Issue com a etiqueta `ideia`, escrita do jeito que quiser. O Designer lê, reescreve no formato padrão, estima o valor e o esforço, e encaixa no roadmap.
+- O `ROADMAP.md` é gerado automaticamente a partir das Issues.
 
-## 10. Fases
+## 13. Fases
 
 | Fase | Entrega |
 |---|---|
-| 0 | Esqueleto: repositório, ferramentas, CI, configs, docs dos agentes e teste de performance |
-| 1 | Grid, ruas, zonas (residencial, comercial, industrial) e tela isométrica |
-| 2 | Prédios crescendo, economia básica e registro da população |
-| 3 | Ciclo de vida completo das pessoas |
-| 4 | Trânsito: carros com dono, rotas e estacionamento |
-| 5 | Prefeito automático e testes de escala |
+| 0 | Esqueleto: monorepo, ferramentas, CI, config com validação, semente, logs, `npm run check`, instruções dos agentes, publicação no GitHub Pages |
+| 1 | Mapa, ruas, zonas e tela isométrica 3D com câmera (girar e zoom) |
+| 2 | Registro da população, chegada de moradores, prédios crescendo, empregos e economia básica. Deslocamento calculado pelo tempo de viagem nas ruas, ainda sem carros na tela |
+| 3 | Ciclo de vida completo com dados do IBGE, escola e saúde, placar de realismo |
+| 4 | Trânsito: carros com dono, rotas em paralelo, cache e estacionamento |
+| 5 | Prefeito automático, cidades de estresse (50 mil e 100 mil), save e replay |
 | 6 | IA opcional (diretora com LLM) |
 
-Um commit por fase, e cada fase só termina com `npm run check` verde.
+- Cada fase é feita em vários commits pequenos e só termina com `npm run check` verde.
+- No fim de cada fase: um resumo pra você, um print da tela e os números de performance.
 
-## 11. Decisões iniciais de jogo
+## 14. Revisão v2: o que mudou e por quê
 
-Todas configuráveis:
+| Antes | Agora | Motivo |
+|---|---|---|
+| Mapa 128 × 128 | 256 × 256, com quadradinho de 16 m | Com 128 × 128, 50 mil pessoas dariam o dobro da densidade de São Paulo. |
+| Dois relógios separados (dia e vida) | Cada dia do jogo = um ano de vida | Mais simples e sem contradição. Já foi testado pela comunidade (mod Real Time). |
+| Mortalidade pela fórmula de Gompertz | Tábua real do IBGE + modificadores | Dado real, que cobre também a mortalidade infantil. |
+| Teste de performance por tempo | Contadores de trabalho (fixos) + tempo como informação | Teste por tempo varia por máquina e faria os agentes perderem tempo com falha falsa. |
+| Rotas em paralelo, sem regra de ordem | Resultados aplicados sempre na mesma ordem | Sem isso, a simulação deixaria de ser reproduzível. |
+| Matemática livre | Sem `Math.pow`/`Math.exp` no motor | Essas funções podem dar resultados diferentes em cada navegador. |
+| Save simples | Save + replay de comandos | Transforma todo bug num arquivo pequeno e reproduzível. |
+| (não tinha) | Placar de realismo | Detecta "viagem na maionese" com dados e alimenta o roadmap. |
+| (não tinha) | Escopo de serviços definido | Escola e saúde entram primeiro porque o ciclo de vida depende delas. |
+| (não tinha) | Publicação no GitHub Pages | Pra dar pra jogar por um link. |
+| Um commit por fase | Vários commits pequenos por fase | Commit gigante é difícil de revisar e de desfazer. |
 
-- Mapa começa com 128×128 quadradinhos.
-- Dois modos de dinheiro: com orçamento (impostos, gastos, pode falir), que é o padrão, e livre (dinheiro infinito).
-- O mapa começa vazio. As pessoas chegam "de fora do mapa" quando existem casas e empregos, e a chegada fica registrada.
-- Nomes brasileiros, vindos de uma lista num arquivo de dados.
+## 15. Pendências do dono
 
-## 12. Pendências
+- Deixar o repositório público (GitHub → Settings → General → Change visibility).
+- Depois de público: ativar a proteção da branch `main` e o GitHub Pages.
 
-- Deixar o repositório público (feito pelo dono nas configurações do GitHub).
-- Validar com pesquisa os números padrão de cada regra antes de implementá-la.
+## 16. Fontes
+
+- Octoverse 2025 (TypeScript em 1º): https://github.blog/news-insights/octoverse/octoverse-a-new-developer-joins-github-every-second-as-ai-leads-typescript-to-1/
+- Compatibilidade do Babylon.js: https://babylonjs.medium.com/there-and-back-again-a-tale-of-backwards-compatibility-in-babylon-js-47ffc4f7ed6f
+- Babylon.js 9 (clustered lighting): https://app.cinevva.com/news/2026-03-26-babylonjs-9
+- Kenney City Kit: https://kenney.nl/assets/city-kit-roads
+- IBGE, expectativa de vida 2023: https://agenciadenoticias.ibge.gov.br/agencia-noticias/2012-agencia-de-noticias/noticias/41984-em-2023-expectativa-de-vida-chega-aos-76-4-anos-e-supera-patamar-pre-pandemia
+- IBGE, tábuas de mortalidade: https://www.ibge.gov.br/estatisticas/sociais/populacao/9126-tabuas-completas-de-mortalidade.html
+- IBGE, fecundidade 2023 (1,57): https://agenciabrasil.ebc.com.br/radioagencia-nacional/saude/audio/2024-08/taxa-de-fecundidade-no-brasil-cai-para-157-filho-por-mulher
+- IBGE, densidade de São Paulo: https://www.ibge.gov.br/cidades-e-estados/sp/sao-paulo.html
+- IBGE, API de nomes: https://servicodados.ibge.gov.br/api/docs/nomes?versao=2
+- Mod Real Time (1 dia = 1 ano): https://github.com/dymanoid/RealTime
+- Vida curta no Cities: Skylines: https://forum.paradoxplaza.com/forum/threads/game-mechanic-cims-lifespans-about-6-years-and-they-die-at-the-same-time.843496/
+- Gargalo de CPU no CS2: https://steamcommunity.com/app/949230/discussions/0/3937895062992023535/?ctp=2
+- `Math.pow` diferente entre navegadores: https://github.com/mdn/browser-compat-data/issues/19429
+- GitHub Pages sem headers COOP/COEP: https://github.com/orgs/community/discussions/13309
+- Servidores de CI do GitHub (4 núcleos, grátis em repo público): https://github.blog/news-insights/product-news/github-hosted-runners-double-the-power-for-open-source/
+- Papéis em times de agentes (MetaGPT): https://arxiv.org/html/2308.00352v6
