@@ -53,6 +53,7 @@ export const GameConfigSchema = z.object({
     realSecondsPerDayAt1x: pos,
     speeds: z.array(pos).min(1),
     startYear: z.number().int(),
+    startHour: z.number().min(0).max(23).default(0),
   }),
   roads: z.object({
     street: RoadKindConfig,
@@ -170,6 +171,8 @@ const BuildingType = z
     upkeepPerYear: nonneg.default(0),
     upkeepPerStudentPerYear: nonneg.default(0),
     constructionMonths: pos,
+    /** Andares (só visual). */
+    floors: z.number().int().min(1).default(1),
     models: z.array(z.string()).min(1),
   })
   .refine((b) => (b.zone ? 1 : 0) + (b.service ? 1 : 0) === 1, "cada prédio tem uma zona OU um serviço");

@@ -7,3 +7,5 @@ time:
   speeds: [1, 2, 4]
   # Cada dia do jogo representa um ano de vida (igual ao mod "Real Time" do Cities: Skylines).
   startYear: 2026
+  # A cidade começa às 7h da manhã do primeiro dia.
+  startHour: 7

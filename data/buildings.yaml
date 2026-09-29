@@ -5,9 +5,11 @@
 #   Empregos = área útil / m² por emprego (Employment Density Guide, HCA 2015: escritório 12 m²,
 #   varejo 15 m², indústria geral 36 m²). Área útil = 80% da construída (PENDENTE).
 #   Apartamentos: 75% dos lançados em SP em 2024 tinham até 45 m² (Secovi-SP).
+#   Andares (floors): área construída / (área do lote x taxa de ocupação), arredondado. Só muda o visual.
 #   Obra de casa: 6 a 18 meses (média 12). Como 1 dia do jogo = 1 ano, 12 meses = 1 dia.
 buildings:
   - id: casa
+    floors: 1
     label: Casa
     zone: residential_low
     w: 1
@@ -16,6 +18,7 @@ buildings:
     constructionMonths: 12
     models: [suburban/building-type-a, suburban/building-type-b, suburban/building-type-c, suburban/building-type-d, suburban/building-type-e, suburban/building-type-f, suburban/building-type-g, suburban/building-type-h, suburban/building-type-i, suburban/building-type-j, suburban/building-type-k, suburban/building-type-l, suburban/building-type-m, suburban/building-type-n, suburban/building-type-o, suburban/building-type-p, suburban/building-type-q, suburban/building-type-r, suburban/building-type-s, suburban/building-type-t, suburban/building-type-u]
   - id: predio_residencial
+    floors: 3
     label: Prédio residencial
     zone: residential_high
     w: 2
@@ -26,6 +29,7 @@ buildings:
     constructionMonths: 24
     models: [commercial/building-a, commercial/building-b, commercial/building-c, commercial/building-d, commercial/building-e, commercial/building-f]
   - id: loja
+    floors: 1
     label: Loja
     zone: commercial
     w: 1
@@ -35,6 +39,7 @@ buildings:
     constructionMonths: 9
     models: [commercial/low-detail-building-a, commercial/low-detail-building-b, commercial/low-detail-building-c, commercial/low-detail-building-d, commercial/low-detail-building-e]
   - id: escritorio
+    floors: 3
     label: Prédio comercial
     zone: commercial
     w: 2
@@ -44,6 +49,7 @@ buildings:
     constructionMonths: 24
     models: [commercial/building-g, commercial/building-h, commercial/building-i, commercial/building-j, commercial/building-k, commercial/building-l, commercial/building-m, commercial/building-n]
   - id: galpao
+    floors: 2
     label: Galpão industrial
     zone: industrial
     w: 2
@@ -53,6 +59,7 @@ buildings:
     constructionMonths: 12
     models: [commercial/low-detail-building-wide-a, commercial/low-detail-building-wide-b]
   - id: escola
+    floors: 1
     label: Escola (FNDE 12 salas)
     service: school
     # Terreno ideal 80 x 100 m (FNDE) = 5 x 6 quadradinhos.
@@ -70,6 +77,7 @@ buildings:
     constructionMonths: 18
     models: [proc/school]
   - id: ubs
+    floors: 1
     label: UBS (posto de saúde)
     service: health
     w: 2

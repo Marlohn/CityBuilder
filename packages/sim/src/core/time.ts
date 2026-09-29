@@ -4,6 +4,7 @@
 export interface TimeConfig {
   minutesPerTick: number;
   startYear: number;
+  startHour?: number;
 }
 
 export class Clock {
@@ -11,9 +12,10 @@ export class Clock {
 
   constructor(
     private cfg: TimeConfig,
-    public tick = 0,
+    public tick = -1,
   ) {
     this.ticksPerDay = Math.floor(1440 / cfg.minutesPerTick);
+    if (tick < 0) this.tick = Math.floor(((cfg.startHour ?? 0) * 60) / cfg.minutesPerTick);
   }
 
   get day(): number {
