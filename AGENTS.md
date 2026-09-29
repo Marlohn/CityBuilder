@@ -51,7 +51,7 @@ Cada pacote tem um `AGENTS.md` com as regras dele (ex.: `packages/sim/AGENTS.md`
 1. Designer: `ideia`/sinal → Issue `roadmap` (formulário padrão).
 2. Arquiteto: Issue `roadmap` → Issues `tarefa` pequenas, etiqueta `pronto-pra-teste`.
 3. QA: escreve o teste de aceitação em `tests/acceptance/` numa branch `qa/<issue>`, abre PR como rascunho (fica vermelho de propósito). Etiqueta `pronto-pra-dev`.
-4. Dev: branch `dev/<issue>` a partir da `qa/<issue>`, faz o teste passar e abre o PR contra a `main`. **Não pode mexer em `tests/acceptance/`** (o CI compara com a branch do QA e bloqueia).
+4. Dev: branch `dev/<issue>` a partir da `qa/<issue>`, faz o teste passar e abre o PR contra a `main`, com `Closes #<issue>` na descrição (em inglês; "Fecha #" não fecha a issue). **Não pode mexer em `tests/acceptance/`** (o CI compara com a branch do QA e bloqueia).
 5. Arquiteto revisa. CI verde + aprovação = merge do PR do Dev; o PR do QA é fechado.
 6. Falhou 3 vezes? A tarefa volta para o Arquiteto quebrar em partes menores.
 
