@@ -25,7 +25,8 @@ export function formSections(body: string): Record<string, string> {
   for (const part of parts) {
     const nl = part.indexOf("\n");
     const label = normalize(nl === -1 ? part : part.slice(0, nl));
-    let value = nl === -1 ? "" : part.slice(nl + 1).trim();
+    // Linha "---" encerra o formulário (rodapé de assinatura, comentário extra etc.).
+    let value = nl === -1 ? "" : (part.slice(nl + 1).split(/^-{3,}\s*$/m)[0] ?? "").trim();
     if (value === "_No response_" || value === "_Sem resposta_") value = "";
     out[label] = value;
   }
