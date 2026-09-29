@@ -17,7 +17,7 @@ export default defineConfig({
   },
   webServer: {
     command:
-      "npm run build && npx vite preview --config packages/web/vite.config.ts --port 4173 --strictPort",
+      "npm run build && npx vite preview --config packages/web/vite.config.ts --host 127.0.0.1 --port 4173 --strictPort",
     url: "http://127.0.0.1:4173",
     timeout: 240_000,
     reuseExistingServer: true,
