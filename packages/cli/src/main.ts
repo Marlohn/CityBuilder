@@ -6,11 +6,17 @@
  *   npm run sim -- replay <arquivo.json>
  *   npm run sim -- report --bot [--days=40] [--sandbox]   (prefeito automático)
  *   npm run sim -- scenarios
+ *   npm run sim -- director [--bot] [--days=30] [--recorded=respostas.json] [--record=respostas.json]
+ *       IA diretora (opcional). Sem --recorded usa um LLM de verdade: DIRECTOR_BASE_URL, DIRECTOR_MODEL e
+ *       DIRECTOR_API_KEY (qualquer API no formato da OpenAI: OpenRouter, Ollama...). Grava o replay em
+ *       out/director-replay.json, que depois abre sem LLM (npm run sim -- replay out/director-replay.json).
  */
-import { readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { type LlmClient, OpenAiCompatibleClient, RecordedClient, RecordingClient } from "@city/director";
 import {
   checkInvariants,
   createGame,
+  makeReplay,
   parseReplay,
   personView,
   replayInto,
@@ -18,7 +24,7 @@ import {
   statsView,
 } from "@city/sim";
 import { listScenarios, loadConfigAndData, loadScenario } from "./files";
-import { runGame } from "./run";
+import { runGame, runGameDirected } from "./run";
 
 function args() {
   const pos: string[] = [];
@@ -56,6 +62,13 @@ function main() {
   }
   if (cmd === "bench") {
     bench(opts);
+    return;
+  }
+  if (cmd === "director") {
+    director(opts).catch((e: unknown) => {
+      console.error(`ERRO: ${(e as Error).message}`);
+      process.exit(1);
+    });
     return;
   }
   const scenario = opts.scenario ? loadScenario(opts.scenario) : undefined;
@@ -153,6 +166,49 @@ function bench(opts: Record<string, string>) {
   console.log(
     `Na velocidade 1x um dia dura ${config.time.realSecondsPerDayAt1x} s: sobra ${out.realTimeFactorAt1x}x de folga.`,
   );
+}
+
+async function director(opts: Record<string, string>) {
+  const scenario = opts.scenario ? loadScenario(opts.scenario) : undefined;
+  const overrides = { ...(scenario?.overrides ?? {}), director: { enabled: true } };
+  const { config, data } = loadConfigAndData(overrides);
+  let client: LlmClient;
+  if (opts.recorded) {
+    client = new RecordedClient(JSON.parse(readFileSync(opts.recorded, "utf8")) as Record<string, string>);
+  } else {
+    const baseUrl = process.env.DIRECTOR_BASE_URL;
+    const model = process.env.DIRECTOR_MODEL;
+    if (!baseUrl || !model)
+      throw new Error("defina DIRECTOR_BASE_URL e DIRECTOR_MODEL (ou use --recorded=arquivo.json)");
+    client = new OpenAiCompatibleClient({
+      baseUrl,
+      model,
+      ...(process.env.DIRECTOR_API_KEY ? { apiKey: process.env.DIRECTOR_API_KEY } : {}),
+    });
+  }
+  const recorder = opts.record ? new RecordingClient(client) : null;
+  const seed = opts.seed ?? scenario?.seed ?? "diretora";
+  const days = Number(opts.days ?? scenario?.days ?? 30);
+  const game = await runGameDirected({
+    config,
+    data,
+    seed,
+    days,
+    ...(scenario ? { scenario } : {}),
+    bot: opts.bot === "true" || !scenario,
+    client: recorder ?? client,
+    onDecision: (day, r) => {
+      console.log(`dia ${day}: ${r.headline || "(sem manchete)"}`);
+      for (const c of r.commands)
+        if (c.type === "directorAdjust") console.log(`  ${c.param} = ${c.factor}: ${c.reason}`);
+      for (const x of r.rejected) console.log(`  recusado: ${x}`);
+    },
+  });
+  if (recorder) writeFileSync(opts.record!, JSON.stringify(recorder.recorded, null, 2));
+  mkdirSync("out", { recursive: true });
+  writeFileSync("out/director-replay.json", JSON.stringify(makeReplay(game, overrides)));
+  console.log(`\n${reportText(game)}`);
+  console.log("\nreplay gravado em out/director-replay.json");
 }
 
 try {

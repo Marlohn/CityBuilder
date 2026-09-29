@@ -192,6 +192,13 @@ Todos os limites ficam na config.
   2. Depois: dar ao LLM um "índice" (busca) com o estado da cidade e os documentos, pra ele consultar antes de decidir.
   3. Só se valer a pena: usar os logs do jogo pra ajustar um modelo pequeno.
 
+Como ficou (fase 7):
+
+- Pacote `packages/director`. Ela só pode ajustar multiplicadores de uma lista fechada (`immigration`, `industryGrowth`), dentro dos limites de `config/director.yaml`.
+- Cada ajuste vira o comando `directorAdjust`, então entra no save/replay: um jogo com a diretora abre de novo sem LLM e dá a mesma cidade.
+- Funciona com qualquer API no formato da OpenAI (OpenRouter, Ollama etc.): `npm run sim -- director`. Resposta inválida ou fora do limite = nenhum ajuste, com o motivo no log.
+- Nos testes, só respostas gravadas (`RecordedClient`).
+
 ## 8. Testes
 
 Tudo testável sem abrir o navegador, sempre que possível.

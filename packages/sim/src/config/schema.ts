@@ -174,6 +174,22 @@ export const GameConfigSchema = z.object({
     budgets: z.object({ nodesExpandedPerTick: intPos, personsUpdatedPerTick: intPos }),
     timingWindow: intPos,
   }),
+  director: z
+    .object({
+      enabled: z.boolean(),
+      everyDays: pos,
+      maxActions: intPos,
+      limits: z.object({
+        immigration: z.tuple([nonneg, pos]),
+        industryGrowth: z.tuple([nonneg, pos]),
+      }),
+    })
+    .default({
+      enabled: false,
+      everyDays: 5,
+      maxActions: 2,
+      limits: { immigration: [0.5, 2], industryGrowth: [0.25, 2] },
+    }),
   logging: z.object({
     default: z.enum(["error", "warn", "info", "debug"]),
     systems: z.record(z.string(), z.enum(["error", "warn", "info", "debug"])),

@@ -2,7 +2,7 @@
  * Aplica comandos no mundo. Cada regra aqui tenta fazer sentido na vida real:
  * via reta, via não atravessa prédio, prédio de serviço precisa de acesso por via, obra custa dinheiro.
  */
-import { type Command, type CommandResult, ROAD_ID, ZONE_ID } from "@city/contract";
+import { type Command, type CommandResult, type DirectorParam, ROAD_ID, ZONE_ID } from "@city/contract";
 import type { GameConfig } from "../config/schema";
 import type { Logger } from "../core/log";
 import type { Treasury } from "../economy/treasury";
@@ -24,6 +24,8 @@ export interface CommandContext {
   /** Chamado quando uma via some (prédios podem perder acesso). */
   onRoadsRemoved: () => void;
   variantFor: (x: number, y: number) => number;
+  /** Multiplicadores ajustados pela diretora (IA opcional). */
+  modifiers: Record<DirectorParam, number>;
 }
 
 export function applyCommand(ctx: CommandContext, command: Command): CommandResult {
@@ -54,7 +56,18 @@ function dispatch(ctx: CommandContext, c: Command): Partial {
       return bulldoze(ctx, c.x0, c.y0, c.x1, c.y1);
     case "placeService":
       return placeService(ctx, c.service, c.x, c.y);
+    case "directorAdjust":
+      return directorAdjust(ctx, c.param, c.factor);
   }
+}
+
+/** Ajuste da diretora: só dentro dos limites da config. Vale até o próximo ajuste do mesmo item. */
+function directorAdjust(ctx: CommandContext, param: DirectorParam, factor: number): Partial {
+  const [min, max] = ctx.config.director.limits[param];
+  if (factor < min || factor > max)
+    return { ok: false, reason: `fora do limite: ${param} aceita de ${min} a ${max}, pediu ${factor}` };
+  ctx.modifiers[param] = factor;
+  return { ok: true };
 }
 
 function clampRect(world: World, x0: number, y0: number, x1: number, y1: number) {

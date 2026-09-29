@@ -4,7 +4,7 @@
  * Princípio: a performance nunca muda o resultado, só a velocidade.
  * Mesma semente + mesmos comandos nos mesmos ticks = mesma cidade.
  */
-import type { Command, CommandResult, TimedCommand } from "@city/contract";
+import type { Command, CommandResult, DirectorParam, TimedCommand } from "@city/contract";
 import { applyCommand, type CommandContext } from "./commands/apply";
 import type { GameData } from "./config/load";
 import type { GameConfig } from "./config/schema";
@@ -50,6 +50,8 @@ export class Simulation {
   readonly systems: System[] = [];
   /** Todos os comandos aplicados, com o tick (para save e replay). */
   readonly commandLog: TimedCommand[] = [];
+  /** Multiplicadores ajustados pela diretora (IA opcional). 1 = regra normal. */
+  readonly modifiers: Record<DirectorParam, number> = { immigration: 1, industryGrowth: 1 };
   private queue: Command[] = [];
   private results: CommandResult[] = [];
 
@@ -133,6 +135,7 @@ export class Simulation {
       onRoadsRemoved: () => {
         for (const s of this.systems) s.onRoadsRemoved?.();
       },
+      modifiers: this.modifiers,
       variantFor: (x, y) => hashString(`${this.seed}:${x}:${y}`)[0] & 0xffff,
     };
   }

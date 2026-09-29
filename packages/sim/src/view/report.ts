@@ -59,6 +59,9 @@ export function reportText(game: Game): string {
   lines.push(
     `Saldo: ${money(s.money)} · receita no último ano: ${money(s.lastYearRevenue)} · despesa: ${money(s.lastYearExpenses)}`,
   );
+  const adjusted = Object.entries(sim.modifiers).filter(([, v]) => v !== 1);
+  if (adjusted.length > 0)
+    lines.push(`Ajustes da diretora (IA) em vigor: ${adjusted.map(([k, v]) => `${k}=${v}`).join(", ")}`);
   lines.push("");
   lines.push("## Placar de realismo");
   if (s.realism.length === 0) lines.push("(ainda sem ano fechado)");

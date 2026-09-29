@@ -28,6 +28,13 @@ export const ROAD_ID: Record<RoadKind, number> = { street: 1, avenue: 2 };
 
 const coord = z.number().int().min(0).max(4095);
 
+/**
+ * O que a diretora (IA opcional) pode ajustar. Cada um é um multiplicador sobre uma regra do jogo,
+ * com limites na config (config/director.yaml). Nada fora desta lista.
+ */
+export const DIRECTOR_PARAMS = ["immigration", "industryGrowth"] as const;
+export type DirectorParam = (typeof DIRECTOR_PARAMS)[number];
+
 export const CommandSchema = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("buildRoad"),
@@ -47,6 +54,12 @@ export const CommandSchema = z.discriminatedUnion("type", [
   }),
   z.object({ type: z.literal("bulldoze"), x0: coord, y0: coord, x1: coord, y1: coord }),
   z.object({ type: z.literal("placeService"), service: z.string().min(1), x: coord, y: coord }),
+  z.object({
+    type: z.literal("directorAdjust"),
+    param: z.enum(DIRECTOR_PARAMS),
+    factor: z.number().min(0).max(10),
+    reason: z.string().max(500),
+  }),
 ]);
 
 export type Command = z.infer<typeof CommandSchema>;

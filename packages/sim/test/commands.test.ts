@@ -126,3 +126,18 @@ describe("reprodutibilidade", () => {
     expect(share).toBeLessThan(0.23);
   });
 });
+
+describe("diretora (ajuste)", () => {
+  it("aceita ajuste dentro do limite e recusa fora", () => {
+    const sim = newSim();
+    sim.enqueue({ type: "directorAdjust", param: "immigration", factor: 1.5, reason: "onda de migração" });
+    sim.enqueue({ type: "directorAdjust", param: "industryGrowth", factor: 9, reason: "exagero" });
+    sim.step();
+    const [ok, bad] = sim.drainResults();
+    expect(ok?.ok).toBe(true);
+    expect(sim.modifiers.immigration).toBe(1.5);
+    expect(bad?.ok).toBe(false);
+    expect(bad?.reason).toMatch(/fora do limite/);
+    expect(sim.modifiers.industryGrowth).toBe(1);
+  });
+});

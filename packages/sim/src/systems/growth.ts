@@ -83,8 +83,10 @@ export class GrowthSystem implements System {
     const indVacancy = jobs.industrialCapacity > 0 ? jobs.industrialVacant / jobs.industrialCapacity : 0;
     const industrial =
       indVacancy < g.industryMaxVacancy
-        ? Math.max(g.industryMinStep, g.industryGrowthPerYear * jobs.industrialCapacity) -
-          pending.industrialJobs
+        ? Math.max(
+            g.industryMinStep,
+            g.industryGrowthPerYear * city.sim.modifiers.industryGrowth * jobs.industrialCapacity,
+          ) - pending.industrialJobs
         : 0;
     // Comércio e serviços (não básico): multiplicador sobre os empregos básicos.
     const basic = jobs.industrialFilled + city.outsideWorkers;

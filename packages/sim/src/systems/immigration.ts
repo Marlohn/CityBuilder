@@ -48,7 +48,7 @@ export class ImmigrationSystem implements System {
     if (cfg.requiresOutsideConnection && !sim.network.hasOutsideConnection()) return;
     // Taxa de chegada proporcional às casas vagas.
     const vacant = markets.housing.vacancies();
-    const expected = vacant / (cfg.vacancyFillDays * sim.clock.ticksPerDay);
+    const expected = (vacant * sim.modifiers.immigration) / (cfg.vacancyFillDays * sim.clock.ticksPerDay);
     const rng = city.rng.migration;
     let attempts = Math.floor(expected) + (rng.chance(expected - Math.floor(expected)) ? 1 : 0);
     attempts = Math.min(attempts, 20);
