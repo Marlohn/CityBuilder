@@ -68,6 +68,10 @@ Uma ferramenta automática (dependency-cruiser) impede que o motor importe a tel
 
 Câmera 3D de verdade, em ângulo isométrico, com o mapa em grid (cada coisa ocupa quadradinhos). Dá pra girar de 90° em 90° e dar zoom. É o estilo "maquete em grid" dos city builders clássicos, só que em 3D com luz e sombra.
 
+![Rascunho do visual isométrico](img/preview-isometrico.png)
+
+*Rascunho feito com formas simples no Babylon.js, só pra mostrar o ângulo e o grid. O jogo vai usar modelos 3D de verdade.*
+
 ## 5. A simulação
 
 ### 5.1 Tempo
