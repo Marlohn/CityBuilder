@@ -1,0 +1,50 @@
+{
+  "name": "citybuilder",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "check": "tsx tools/check.ts",
+    "test": "vitest run",
+    "test:slow": "SLOW=1 vitest run",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "biome check .",
+    "format": "biome check --write .",
+    "deps": "depcruise packages --config .dependency-cruiser.cjs --output-type err",
+    "sim": "tsx packages/cli/src/main.ts",
+    "dev": "vite --config packages/web/vite.config.ts",
+    "build": "vite build --config packages/web/vite.config.ts",
+    "preview": "vite preview --config packages/web/vite.config.ts",
+    "test:e2e": "playwright test",
+    "roadmap:signals": "tsx packages/roadmap/src/cli.ts signals",
+    "roadmap:build": "tsx packages/roadmap/src/cli.ts build",
+    "roadmap:check": "tsx packages/roadmap/src/cli.ts check"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.5.14",
+    "@playwright/test": "^1.63.0",
+    "@types/node": "^26.6.3",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.1",
+    "dependency-cruiser": "^18.4.0",
+    "fast-check": "^4.10.2",
+    "tsx": "^4.23.15",
+    "typescript": "^6.0.3",
+    "vite": "^8.3.1",
+    "vitest": "^5.0.2"
+  },
+  "dependencies": {
+    "@babylonjs/core": "^9.28.0",
+    "@babylonjs/loaders": "^9.28.0",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "yaml": "^2.9.1",
+    "zod": "^4.6.5"
+  }
+}

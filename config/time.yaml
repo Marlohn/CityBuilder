@@ -1,0 +1,11 @@
+# Tempo. Veja docs/PLANO.md seção 5.2.
+time:
+  # Cada tick = 1 minuto do jogo.
+  minutesPerTick: 1
+  # 1 dia do jogo = 2 minutos reais na velocidade 1x (decisão do dono do projeto).
+  realSecondsPerDayAt1x: 120
+  speeds: [1, 2, 4]
+  # Cada dia do jogo representa um ano de vida (igual ao mod "Real Time" do Cities: Skylines).
+  startYear: 2026
+  # A cidade começa às 7h da manhã do primeiro dia.
+  startHour: 7

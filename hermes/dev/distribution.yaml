@@ -1,0 +1,9 @@
+name: cb-dev
+version: 1.0.0
+description: "Dev do CityBuilder: implementa tarefas até os testes de aceitação passarem, com npm run check verde."
+author: "CityBuilder"
+license: "Apache-2.0"
+env_requires:
+  - name: GH_TOKEN
+    description: "Token do GitHub (fine-grained, só o repositório do CityBuilder) para o gh abrir issues e PRs"
+    required: true

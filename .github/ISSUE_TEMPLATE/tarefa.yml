@@ -1,0 +1,28 @@
+name: 🔧 Tarefa
+description: Tarefa pequena criada pelo Arquiteto a partir de um item do roadmap.
+labels: ["tarefa"]
+body:
+  - type: input
+    id: item
+    attributes:
+      label: Item do roadmap
+      description: "Ex.: #12"
+    validations: { required: true }
+  - type: textarea
+    id: oque
+    attributes:
+      label: O que fazer
+      description: No máximo ~3 arquivos. Cite os arquivos.
+    validations: { required: true }
+  - type: textarea
+    id: pronto
+    attributes:
+      label: Tá pronto quando
+      description: Lista de critérios verificáveis. O QA transforma em teste de aceitação.
+    validations: { required: true }
+  - type: input
+    id: tentativas
+    attributes:
+      label: Tentativas
+      description: Contador. Na 3ª falha a tarefa volta para o Arquiteto quebrar em partes menores.
+      value: "0"

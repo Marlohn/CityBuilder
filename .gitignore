@@ -1,0 +1,14 @@
+node_modules/
+dist/
+coverage/
+test-results/
+playwright-report/
+*.log
+.DS_Store
+.vite/
+out/
+out/
+
+# Chaves dos perfis do Hermes (nunca no git)
+hermes/**/.env
+hermes/**/auth.json

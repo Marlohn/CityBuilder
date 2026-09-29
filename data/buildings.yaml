@@ -1,0 +1,94 @@
+# Catálogo de prédios. Conteúdo é dado, não código: para um tipo novo, adicione aqui.
+# Contas de capacidade (a fonte de cada número está no comentário dele):
+#   área construída = área do lote x coeficiente de aproveitamento (CA)
+#   Zona Mista de SP (Lei 16.402/2016): CA básico 1, CA máximo 2; taxa de ocupação 0,85 (lote ≤ 500 m²) e 0,70 (lote > 500 m²).
+#   Empregos = área útil / m² por emprego (Employment Density Guide, HCA 2015: escritório 12 m²,
+#   varejo 15 m², indústria geral 36 m²). Área útil = 80% da construída (PENDENTE).
+#   Apartamentos: 75% dos lançados em SP em 2024 tinham até 45 m² (Secovi-SP).
+#   Andares (floors): área construída / (área do lote x taxa de ocupação), arredondado. Só muda o visual.
+#   Obra de casa: 6 a 18 meses (média 12). Como 1 dia do jogo = 1 ano, 12 meses = 1 dia.
+buildings:
+  - id: casa
+    floors: 1
+    label: Casa
+    zone: residential_low
+    w: 1
+    h: 1
+    homes: 1
+    constructionMonths: 12
+    models: [suburban/building-type-a, suburban/building-type-b, suburban/building-type-c, suburban/building-type-d, suburban/building-type-e, suburban/building-type-f, suburban/building-type-g, suburban/building-type-h, suburban/building-type-i, suburban/building-type-j, suburban/building-type-k, suburban/building-type-l, suburban/building-type-m, suburban/building-type-n, suburban/building-type-o, suburban/building-type-p, suburban/building-type-q, suburban/building-type-r, suburban/building-type-s, suburban/building-type-t, suburban/building-type-u]
+  - id: predio_residencial
+    floors: 3
+    label: Prédio residencial
+    zone: residential_high
+    w: 2
+    h: 2
+    # Lote 1.024 m² x CA 2 = 2.048 m²; 75% privativo / 45 m² = 34 apartamentos.
+    homes: 34
+    # PENDENTE: prazo de obra de prédio (usado 24 meses).
+    constructionMonths: 24
+    models: [commercial/building-a, commercial/building-b, commercial/building-c, commercial/building-d, commercial/building-e, commercial/building-f]
+  - id: loja
+    floors: 1
+    label: Loja
+    zone: commercial
+    w: 1
+    h: 1
+    # Lote 256 m² x CA 1 = 256 m²; 80% útil / 15 m² = 13 empregos.
+    jobs: 13
+    constructionMonths: 9
+    models: [commercial/low-detail-building-a, commercial/low-detail-building-b, commercial/low-detail-building-c, commercial/low-detail-building-d, commercial/low-detail-building-e, commercial/low-detail-building-f, commercial/low-detail-building-g, commercial/low-detail-building-h, commercial/low-detail-building-i, commercial/low-detail-building-j, commercial/low-detail-building-k, commercial/low-detail-building-l, commercial/low-detail-building-m, commercial/low-detail-building-n]
+  - id: escritorio
+    floors: 3
+    label: Prédio comercial
+    zone: commercial
+    w: 2
+    h: 2
+    # Lote 1.024 m² x CA 2 = 2.048 m²; 80% útil / 12 m² = 136 empregos.
+    jobs: 136
+    constructionMonths: 24
+    models: [commercial/building-g, commercial/building-h, commercial/building-i, commercial/building-j, commercial/building-k, commercial/building-l, commercial/building-m, commercial/building-n]
+  - id: galpao
+    floors: 2
+    label: Galpão industrial
+    zone: industrial
+    w: 2
+    h: 2
+    # Lote 1.024 m² x taxa de ocupação 0,70 = 717 m² (1 pavimento) / 36 m² = 20 empregos.
+    jobs: 20
+    constructionMonths: 12
+    models: [commercial/low-detail-building-wide-a, commercial/low-detail-building-wide-b]
+  - id: escola
+    floors: 1
+    label: Escola (FNDE 12 salas)
+    service: school
+    # Terreno ideal 80 x 100 m (FNDE) = 5 x 6 quadradinhos.
+    w: 5
+    h: 6
+    # Até 780 alunos em dois turnos (FNDE, Espaço Educativo Urbano 12 salas).
+    students: 780
+    # PENDENTE: professores e funcionários (24 turmas).
+    jobs: 40
+    # Exemplo de escola FNDE 12 salas com quadra: R$ 9,0 milhões (Itabaiana-SE).
+    cost: 9000000
+    # Custo por aluno por ano: VAAF-MIN do Fundeb 2024 = R$ 5.357,06.
+    upkeepPerStudentPerYear: 5357
+    # PENDENTE: prazo de obra.
+    constructionMonths: 18
+    models: [proc/school]
+  - id: ubs
+    floors: 1
+    label: UBS (posto de saúde)
+    service: health
+    w: 2
+    h: 2
+    # UBS Porte I abriga 1 equipe de Saúde da Família; cada equipe atende de 2.000 a 3.500 pessoas (PNAB 2017).
+    patients: 3500
+    # PENDENTE: equipe mínima (médico, enfermeiro, técnico, agentes comunitários).
+    jobs: 8
+    # Convênio de UBS Porte 1 no Novo PAC (2024): R$ 2,01 milhões.
+    cost: 2012826
+    # PENDENTE: custo anual da equipe e da unidade.
+    upkeepPerYear: 1200000
+    constructionMonths: 12
+    models: [proc/clinic]

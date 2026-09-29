@@ -1,0 +1,66 @@
+name: 🗺️ Item do roadmap
+description: Formato padrão usado pelo Designer. O motor de roadmap lê estes campos para calcular a prioridade.
+labels: ["roadmap"]
+body:
+  - type: dropdown
+    id: categoria
+    attributes:
+      label: Categoria
+      options: [feature, construcao, correcao, realismo, balanceamento, performance, saude-tecnica]
+    validations: { required: true }
+  - type: textarea
+    id: problema
+    attributes:
+      label: Problema
+      description: O que acontece hoje, com números do jogo (relatório ou sinal).
+    validations: { required: true }
+  - type: textarea
+    id: pesquisa
+    attributes:
+      label: Pesquisa
+      description: Como isso funciona na vida real, com LINK da fonte. Sem fonte, o item não avança.
+    validations: { required: true }
+  - type: textarea
+    id: proposta
+    attributes:
+      label: Proposta
+    validations: { required: true }
+  - type: input
+    id: metrica
+    attributes:
+      label: Métrica de sucesso
+      description: "Formato: <id da métrica> <operador> <valor>. Ex.: unmet.university < 500"
+    validations: { required: true }
+  - type: input
+    id: alcance
+    attributes:
+      label: Alcance
+      description: Quantas pessoas da cidade são afetadas (medido pela simulação).
+    validations: { required: true }
+  - type: dropdown
+    id: impacto
+    attributes:
+      label: Impacto
+      options: ["3 - vida ou morte", "2 - alto", "1 - médio", "0.5 - baixo", "0.25 - estética"]
+    validations: { required: true }
+  - type: dropdown
+    id: confianca
+    attributes:
+      label: Confiança
+      options: ["100 - dado do jogo + fonte real", "80 - só fonte real", "50 - só opinião"]
+    validations: { required: true }
+  - type: input
+    id: esforco
+    attributes:
+      label: Esforço
+      description: Número de tarefas pequenas (estimado pelo Arquiteto).
+  - type: input
+    id: dependencias
+    attributes:
+      label: Dependências
+      description: "Números das issues que precisam vir antes. Ex.: #12, #15"
+  - type: input
+    id: sinal
+    attributes:
+      label: Sinal de origem
+      description: Id do sinal gerado por `npm run roadmap:signals` (se houver).

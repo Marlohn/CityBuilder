@@ -1,0 +1,73 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`cidades de referência > cenário bairro-basico, 12 dias 1`] = `
+{
+  "buildings": 274,
+  "cars": 272,
+  "children": 130,
+  "employed": 973,
+  "events": 13714,
+  "households": 739,
+  "lastYear": {
+    "arrivals": 0,
+    "births": 17,
+    "deaths": 4,
+    "departures": 2,
+    "divorces": 6,
+    "marriages": 6,
+    "migrantsTurnedAway": {},
+    "parkingMisses": 4,
+    "transitRefusals": 0,
+  },
+  "money": 14343989,
+  "population": 2063,
+  "retired": 119,
+  "tick": 17700,
+  "unemployed": 63,
+  "unmet": {
+    "health": 0,
+    "housing": 11,
+    "job": 63,
+    "parking": 0,
+    "school": 0,
+    "transit": 0,
+    "university": 0,
+  },
+}
+`;
+
+exports[`cidades de referência > prefeito automático, 12 dias 1`] = `
+{
+  "buildings": 374,
+  "cars": 143,
+  "children": 299,
+  "employed": 476,
+  "events": 9573,
+  "households": 363,
+  "lastYear": {
+    "arrivals": 0,
+    "births": 15,
+    "deaths": 3,
+    "departures": 0,
+    "divorces": 5,
+    "marriages": 6,
+    "migrantsTurnedAway": {},
+    "parkingMisses": 5,
+    "transitRefusals": 0,
+  },
+  "money": 3249868,
+  "population": 970,
+  "retired": 50,
+  "tick": 17700,
+  "unemployed": 36,
+  "unmet": {
+    "health": 0,
+    "housing": 12,
+    "job": 36,
+    "parking": 0,
+    "school": 238,
+    "transit": 0,
+    "university": 0,
+  },
+}
+`;

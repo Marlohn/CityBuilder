@@ -1,0 +1,18 @@
+# Diretora (IA opcional com LLM). Veja docs/PLANO.md seção 7.
+# Desligada por padrão: o jogo funciona 100% sem ela. Quando ligada, olha o relatório da cidade de tempos
+# em tempos e pode ajustar só o que está na lista abaixo, dentro dos limites. Cada ajuste vira um comando
+# (entra no save/replay), então a cidade continua reproduzível.
+director:
+  enabled: false
+  # A cada quantos dias do jogo (= anos de vida) ela olha a cidade.
+  everyDays: 5
+  # Máximo de ajustes por vez.
+  maxActions: 2
+  # Multiplicadores permitidos [mínimo, máximo]. 1 = regra normal.
+  # PENDENTE: valores de jogo. A ideia é representar ciclos reais (recessão, onda de migração) sem
+  # tirar a cidade da realidade; limites largos demais viram "viagem".
+  limits:
+    # Chegada de famílias de fora (ex.: onda de migração regional ou crise que segura as pessoas).
+    immigration: [0.5, 2]
+    # Crescimento da indústria (ex.: recessão ou fábrica nova na região).
+    industryGrowth: [0.25, 2]

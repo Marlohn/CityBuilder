@@ -1,0 +1,84 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: npm run check
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run check
+
+  slow:
+    name: testes lentos (coorte IBGE e cidade de 50 mil)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run test:slow
+
+  e2e:
+    name: teste de tela (Playwright)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: prints-da-tela
+          path: test-results/
+
+  acceptance-tests-protected:
+    # O Dev não pode alterar testes de aceitação do QA (docs/PLANO.md seção 12).
+    # Branches de dev começam com "dev/".
+    name: testes de aceitação protegidos
+    if: github.event_name == 'pull_request' && startsWith(github.head_ref, 'dev/')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Verificar arquivos alterados
+        env:
+          HEAD_REF: ${{ github.head_ref }}
+        run: |
+          git fetch origin "${{ github.base_ref }}"
+          # O Dev parte da branch do QA (qa/<issue>): compara com ela, para só contar o que o Dev mudou.
+          ISSUE="${HEAD_REF#dev/}"
+          BASE="origin/${{ github.base_ref }}"
+          if git fetch origin "qa/${ISSUE}" 2>/dev/null; then BASE="origin/qa/${ISSUE}"; fi
+          echo "Comparando com ${BASE}"
+          CHANGED=$(git diff --name-only "${BASE}...HEAD" | grep -E '^tests/acceptance/' || true)
+          if [ -n "$CHANGED" ]; then
+            echo "O Dev alterou testes de aceitação do QA:"
+            echo "$CHANGED"
+            echo "Peça ao QA para ajustar o teste em outra branch (qa/...)."
+            exit 1
+          fi

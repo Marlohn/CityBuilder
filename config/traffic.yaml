@@ -1,0 +1,29 @@
+# Trânsito. Veja docs/PLANO.md seção 5.7.
+traffic:
+  cars:
+    # 48,1% dos domicílios tinham carro em 2023 (PNAD). A chance de ter carro cresce com a renda
+    # mensal da família. Os pontos abaixo foram escolhidos para aproximar os 48%. PENDENTE: calibração.
+    ownershipByHouseholdIncome: { "0": 0.08, "2000": 0.3, "4000": 0.55, "8000": 0.78, "15000": 0.92 }
+    # Velocidade com que as famílias chegam ao equilíbrio (compra/venda por ano). PENDENTE: valor de jogo.
+    yearlyTurnover: 0.3
+    # PENDENTE: vagas de garagem por casa e por apartamento.
+    parkingPerHome: 1
+    # Vagas por emprego em comércio/indústria. PENDENTE.
+    parkingPerJob: 0.3
+  walking:
+    # Caminhada utilitária média de 1,25 km (desvio 1,03 km) em Londrina (RBAFS). Aceitamos até
+    # média + 1 desvio ≈ 2,3 km para ir ao trabalho a pé.
+    maxWorkMeters: 2300
+    speedKmh: 4.8
+  # Função BPR (Bureau of Public Roads, 1964): tempo = tempo livre x (1 + 0,15 x (volume/capacidade)^4).
+  bpr:
+    alpha: 0.15
+    beta: 4
+  routine:
+    # Horário de entrada no trabalho: sorteado entre estes limites (minutos do dia). PENDENTE.
+    workStartMinute: [420, 540]
+    # Jornada de 44 h semanais (CLT) ≈ 8h48 por dia útil + 1h de almoço.
+    workDurationMinutes: 588
+    # Turno escolar da manhã: 7h às 12h. PENDENTE: distribuição de turnos.
+    schoolStartMinute: 420
+    schoolDurationMinutes: 300

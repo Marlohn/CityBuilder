@@ -1,0 +1,21 @@
+# Crescimento das zonas (demanda RCI). Veja docs/PLANO.md seção 5.5.
+growth:
+  # Demanda inicial por moradia quando a cidade está vazia. PENDENTE: valor de jogo.
+  initialResidentialDemand: 40
+  # Teoria da base econômica: empregos "básicos" (indústria que vende para fora e moradores que
+  # trabalham em outra cidade) sustentam empregos locais de comércio e serviços.
+  # Multiplicador de emprego (total / básico) medido em cidades pequenas: 1,93 (Engenheiro Beltrão-PR)
+  # e 2,36 (Mirandópolis-SP). Usada a média ~2,15. PENDENTE: mais cidades.
+  employmentMultiplier: 2.15
+  # A indústria cresce enquanto consegue contratar: se tiver menos de 10% de vagas sobrando, abre
+  # mais empregos (pelo menos um galpão). PENDENTE: taxa de crescimento real.
+  industryGrowthPerYear: 0.15
+  industryMinStep: 20
+  industryMaxVacancy: 0.1
+  # Quantos prédios podem começar a ser construídos por dia do jogo. PENDENTE: valor de jogo.
+  maxConstructionStartsPerDay: 400
+  # Vagas sobrando (%) acima disso derrubam a demanda. PENDENTE.
+  targetVacancy: 0.05
+  # Só constrói em lote cuja rua chega na estrada de fora do mapa: material e trabalhadores chegam
+  # por ela, e ninguém compra casa onde não dá para chegar.
+  requiresOutsideConnection: true

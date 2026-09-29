@@ -1,0 +1,10 @@
+# Logs. Níveis: error, warn, info, debug.
+logging:
+  default: warn
+  systems:
+    commands: info
+    lifecycle: warn
+    economy: warn
+    traffic: warn
+  # Quantas linhas de log ficam guardadas na memória (para o relatório de bug).
+  ringSize: 2000

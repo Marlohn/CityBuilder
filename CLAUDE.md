@@ -1,0 +1,3 @@
+# Instruções
+
+Leia `AGENTS.md`.
