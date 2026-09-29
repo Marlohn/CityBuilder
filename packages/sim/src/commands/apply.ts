@@ -99,6 +99,7 @@ function buildRoad(
     world.trees[i] = 0;
   }
   world.roadVersion++;
+  world.zoneVersion++;
   world.mapVersion++;
   return { ok: true, cost };
 }
@@ -122,7 +123,10 @@ function zone(ctx: CommandContext, zoneId: number, x0: number, y0: number, x1: n
       }
     }
   }
-  if (changed > 0) world.mapVersion++;
+  if (changed > 0) {
+    world.mapVersion++;
+    world.zoneVersion++;
+  }
   const note =
     skippedBuilt > 0
       ? `${skippedBuilt} quadradinhos com prédio ficaram como estavam (demola antes)`
@@ -149,6 +153,7 @@ function bulldoze(ctx: CommandContext, x0: number, y0: number, x1: number, y1: n
   for (const b of [...toRemove].sort((p, q) => p - q)) removeBuilding(ctx, b, "demolido pelo prefeito");
   if (roadsRemoved > 0) {
     world.roadVersion++;
+    world.zoneVersion++;
     world.mapVersion++;
     ctx.onRoadsRemoved();
   }
@@ -175,6 +180,7 @@ export function removeBuilding(
   }
   buildings.setState(id, BSTATE.demolished);
   world.mapVersion++;
+  world.zoneVersion++;
 }
 
 function placeService(ctx: CommandContext, service: string, x: number, y: number): Partial {

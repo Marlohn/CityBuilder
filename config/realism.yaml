@@ -2,6 +2,12 @@
 realism:
   # Só avalia quando a cidade tem pelo menos esta população (números pequenos variam demais).
   minPopulation: 1500
+  # Amostra mínima (na janela) para avaliar cada indicador. Com poucos casos o número varia demais.
+  minSamples:
+    births: 300
+    deaths: 150
+    marriages: 40
+    divorces: 20
   # Janela (em anos do jogo) usada nos indicadores de nascimento e morte.
   windowYears: 5
   items:

@@ -8,3 +8,10 @@ world:
   tileMeters: 16
   # Fração do mapa com vegetação nativa no início. PENDENTE: valor de jogo, sem fonte.
   treeCoverage: 0.18
+  # Estrada de acesso que já existe no começo (como no Cities: Skylines): liga a cidade ao resto
+  # do país. Sem ligação com a borda do mapa ninguém consegue chegar.
+  startingRoad:
+    enabled: true
+    kind: avenue
+    # Sai da borda oeste, na linha do meio do mapa.
+    length: 48

@@ -47,6 +47,9 @@ export const GameConfigSchema = z.object({
     height: z.number().int().min(16).max(1024),
     tileMeters: pos,
     treeCoverage: prob,
+    startingRoad: z
+      .object({ enabled: z.boolean(), kind: z.enum(["street", "avenue"]), length: intPos })
+      .default({ enabled: false, kind: "avenue", length: 1 }),
   }),
   time: z.object({
     minutesPerTick: z.number().int().min(1).max(60),
@@ -64,11 +67,20 @@ export const GameConfigSchema = z.object({
     sexRatioAtBirth: pos,
     immigration: z.object({
       enabled: z.boolean(),
+      requiresOutsideConnection: z.boolean().default(true),
       vacancyFillDays: pos,
       maxHouseholdsPerDay: intPos,
       householdTypes: z.array(HouseholdType).min(1),
       educationDistribution: z.array(nonneg).length(5),
     }),
+    outsideJobs: z
+      .object({
+        enabled: z.boolean(),
+        share: prob,
+        minWorkers: z.number().int().min(0),
+        extraCommuteMinutes: nonneg,
+      })
+      .default({ enabled: false, share: 0, minWorkers: 0, extraCommuteMinutes: 0 }),
   }),
   lifecycle: z.object({
     mortalityTable: z.string(),
@@ -89,7 +101,14 @@ export const GameConfigSchema = z.object({
       annualChance: prob,
       homelessCoupleAnnualChance: prob,
     }),
-    labor: z.object({ minAge: intPos, participation: prob, candidatesPerSearch: intPos }),
+    labor: z.object({
+      minAge: intPos,
+      participation: prob,
+      candidatesPerSearch: intPos,
+      annualSeparation: prob.default(0),
+      /** Duração da procura (anos) -> peso. */
+      searchYears: numericTable.default({ "0": 1 }),
+    }),
   }),
   education: z.object({
     schoolStartAge: intPos,
@@ -117,6 +136,7 @@ export const GameConfigSchema = z.object({
   traffic: z.object({
     cars: z.object({
       ownershipByHouseholdIncome: numericTable,
+      yearlyTurnover: prob.default(0.3),
       parkingPerHome: nonneg,
       parkingPerJob: nonneg,
     }),
@@ -138,6 +158,9 @@ export const GameConfigSchema = z.object({
   }),
   realism: z.object({
     minPopulation: intPos,
+    minSamples: z
+      .object({ births: intPos, deaths: intPos, marriages: intPos, divorces: intPos })
+      .default({ births: 300, deaths: 150, marriages: 40, divorces: 20 }),
     windowYears: intPos,
     items: z.array(RealismItem),
   }),

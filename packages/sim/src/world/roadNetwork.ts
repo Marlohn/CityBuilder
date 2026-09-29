@@ -8,6 +8,8 @@ export class RoadNetwork {
   /** Componente de cada quadradinho de via (-1 = não é via). */
   component: Int32Array;
   componentCount = 0;
+  /** Para cada componente ligado à borda do mapa: o quadradinho de via na borda (saída da cidade). */
+  edgeTileOfComponent = new Map<number, number>();
   private builtForVersion = -1;
 
   constructor(private world: World) {
@@ -40,7 +42,29 @@ export class RoadNetwork {
       count++;
     }
     this.componentCount = count;
+    this.edgeTileOfComponent.clear();
+    const { width, height } = this.world;
+    for (let i = 0; i < size; i++) {
+      if (comp[i]! < 0) continue;
+      const x = i % width;
+      const y = (i - x) / width;
+      if (x === 0 || y === 0 || x === width - 1 || y === height - 1) {
+        if (!this.edgeTileOfComponent.has(comp[i]!)) this.edgeTileOfComponent.set(comp[i]!, i);
+      }
+    }
     this.builtForVersion = this.world.roadVersion;
+  }
+
+  /** Quadradinho de saída da cidade alcançável a partir da via `tile`, ou -1 (sem ligação com fora). */
+  exitFor(tile: number): number {
+    this.refresh();
+    const c = tile >= 0 ? this.component[tile]! : -1;
+    return c >= 0 ? (this.edgeTileOfComponent.get(c) ?? -1) : -1;
+  }
+
+  hasOutsideConnection(): boolean {
+    this.refresh();
+    return this.edgeTileOfComponent.size > 0;
   }
 
   /** true se os dois quadradinhos de via estão ligados. */

@@ -13,7 +13,7 @@ lifecycle:
     minAge: 18
     # Idade média ao casar (solteiros, sexos opostos): 31,5 H / 29,2 M (IBGE Registro Civil 2023).
     # A chance anual por idade foi calibrada para aproximar essas médias. PENDENTE: calibração fina.
-    hazardByAge: { "18": 0.02, "22": 0.05, "25": 0.08, "28": 0.10, "32": 0.08, "36": 0.06, "40": 0.04, "50": 0.02, "60": 0.01 }
+    hazardByAge: { "18": 0.004, "22": 0.015, "25": 0.03, "28": 0.06, "31": 0.09, "35": 0.09, "40": 0.06, "50": 0.03, "60": 0.01 }
     # Casamentos entre pessoas do mesmo sexo: 11,2 mil em 2023 (IBGE). Com ~940 mil casamentos,
     # são ~1,2%. PENDENTE: total exato de casamentos de 2023.
     sameSexShare: 0.012
@@ -47,3 +47,10 @@ lifecycle:
     participation: 0.82
     # Quantas vagas cada pessoa olha ao procurar emprego. PENDENTE: valor de jogo.
     candidatesPerSearch: 10
+    # Rotatividade do mercado formal: 33,64% nos últimos 12 meses (CAGED, 2025). Chance anual de perder
+    # ou deixar o emprego.
+    annualSeparation: 0.336
+    # Quanto tempo a procura por emprego leva (em anos), com pesos. A média (~0,18 ano, ~2 meses) foi
+    # calibrada para que, com a rotatividade acima, o desemprego fique perto de 5,6% (PNAD 2025):
+    # desemprego ≈ s·d / (1 + s·d). PENDENTE: formato exato da distribuição.
+    searchYears: { "0.083": 0.6, "0.25": 0.3, "0.5": 0.1 }

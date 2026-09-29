@@ -1,0 +1,20 @@
+# Bairro básico: malha de ruas ligada à estrada de acesso, casas, comércio, indústria, escola e UBS.
+# Usado nos testes e como exemplo. Rode: npm run sim -- report --scenario=bairro-basico
+name: bairro-basico
+description: Bairro pequeno ligado à estrada, com escola e UBS.
+seed: bairro-basico
+days: 20
+steps:
+  - day: 0
+    do:
+      # Continua a estrada de acesso (que vem da borda oeste na linha y=128) e abre uma malha de ruas.
+      # Serviços primeiro (a escola precisa de via: começa pela rua de baixo).
+      - { type: buildRoad, kind: street, x0: 60, y0: 140, x1: 120, y1: 140 }
+      - { grid: { x0: 60, y0: 104, cols: 5, rows: 3, block: 12, kind: street } }
+      - { type: buildRoad, kind: avenue, x0: 47, y0: 128, x1: 120, y1: 128 }
+      - { type: zone, zone: residential_low, x0: 61, y0: 105, x1: 94, y1: 127 }
+      - { type: zone, zone: residential_high, x0: 97, y0: 105, x1: 107, y1: 115 }
+      - { type: zone, zone: commercial, x0: 61, y0: 129, x1: 94, y1: 139 }
+      - { type: zone, zone: industrial, x0: 97, y0: 129, x1: 119, y1: 151 }
+      - { type: placeService, service: escola, x: 61, y: 141 }
+      - { type: placeService, service: ubs, x: 73, y: 141 }

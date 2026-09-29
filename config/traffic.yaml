@@ -3,7 +3,9 @@ traffic:
   cars:
     # 48,1% dos domicílios tinham carro em 2023 (PNAD). A chance de ter carro cresce com a renda
     # mensal da família. Os pontos abaixo foram escolhidos para aproximar os 48%. PENDENTE: calibração.
-    ownershipByHouseholdIncome: { "0": 0.05, "2000": 0.2, "4000": 0.45, "8000": 0.7, "15000": 0.9 }
+    ownershipByHouseholdIncome: { "0": 0.08, "2000": 0.3, "4000": 0.55, "8000": 0.78, "15000": 0.92 }
+    # Velocidade com que as famílias chegam ao equilíbrio (compra/venda por ano). PENDENTE: valor de jogo.
+    yearlyTurnover: 0.3
     # PENDENTE: vagas de garagem por casa e por apartamento.
     parkingPerHome: 1
     # Vagas por emprego em comércio/indústria. PENDENTE.

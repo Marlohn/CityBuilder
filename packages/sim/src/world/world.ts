@@ -20,6 +20,8 @@ export class World {
   mapVersion = 0;
   /** Aumenta a cada mudança de via (rotas e conexões precisam ser recalculadas). */
   roadVersion = 0;
+  /** Aumenta quando zonas, vias ou terrenos livres mudam (lista de lotes para construir). */
+  zoneVersion = 0;
 
   constructor(width: number, height: number, tileMeters: number) {
     this.width = width;

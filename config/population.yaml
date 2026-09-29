@@ -4,6 +4,8 @@ population:
   sexRatioAtBirth: 1.05
   immigration:
     enabled: true
+    # Moradores novos chegam pela estrada: precisa existir via ligada à borda do mapa.
+    requiresOutsideConnection: true
     # Tempo médio (em dias do jogo) para uma casa vaga ser ocupada quando há demanda. PENDENTE: valor de jogo.
     vacancyFillDays: 0.15
     # Limite de famílias chegando por dia do jogo. PENDENTE: valor de jogo (proteção de performance).
@@ -23,3 +25,12 @@ population:
     # médio completo/superior incompleto 34,8%, superior completo 19,7%.
     educationDistribution: [0.06, 0.271, 0.124, 0.348, 0.197]
   # Personalidade: cada traço é sorteado de 0 a 1 (uniforme). Veja lifecycle.yaml.
+  # Trabalho em outro município (cidade vizinha, pela estrada).
+  # Censo 2022: 10,7% da população ocupada trabalha em outro município.
+  outsideJobs:
+    enabled: true
+    share: 0.107
+    # No começo a cidade não tem empregos: os primeiros moradores trabalham fora. PENDENTE: valor de jogo.
+    minWorkers: 150
+    # Tempo extra de viagem depois da borda do mapa. PENDENTE.
+    extraCommuteMinutes: 25

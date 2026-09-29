@@ -31,6 +31,8 @@ export interface System {
   onBuildingRemoved?(id: number, reason: string): void;
   /** Alguma via sumiu. */
   onRoadsRemoved?(): void;
+  /** Um prédio terminou a obra e começou a funcionar. */
+  onBuildingReady?(id: number): void;
 }
 
 export class Simulation {
@@ -154,6 +156,7 @@ export class Simulation {
           entity: `building:${id}`,
           data: { type: b.typeOf(id).id },
         });
+        for (const s of this.systems) s.onBuildingReady?.(id);
       } else still.push(id);
     }
     this.constructingIds = still;
