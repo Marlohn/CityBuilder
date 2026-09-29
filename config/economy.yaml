@@ -1,0 +1,20 @@
+# Economia. Veja docs/PLANO.md seção 5.5.
+economy:
+  # "budget" = com orçamento (pode ficar no vermelho); "sandbox" = dinheiro infinito.
+  mode: budget
+  # PENDENTE: valor de jogo. Dá para ruas, uma escola e uma UBS no começo.
+  startingMoney: 40000000
+  # Receita corrente dos municípios: R$ 1,077 trilhão em 2023 (Anuário Multi Cidades/FNP)
+  # para ~203 milhões de habitantes (Censo 2022) = ~R$ 5.300 por habitante por ano.
+  revenuePerResidentPerYear: 5300
+  income:
+    # Rendimento médio mensal por escolaridade (PNAD 2024): sem instrução R$ 1.999; fundamental
+    # completo R$ 2.660; superior completo R$ 6.177. PENDENTE: fundamental incompleto e médio
+    # (interpolados). Média geral 2025: R$ 3.560.
+    monthlyByEducation: [1999, 2300, 2660, 3100, 6177]
+    # Variação individual (desvio padrão relativo). PENDENTE: valor de jogo.
+    spread: 0.25
+    # Salário mínimo 2026: R$ 1.621 (Decreto 12.797/2025). Usado também como aposentadoria mínima.
+    minimumWage: 1621
+  # PENDENTE: fração da renda gasta com o custo de vida.
+  costOfLivingShare: 0.85

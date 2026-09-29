@@ -1,0 +1,19 @@
+name: 🐞 Bug
+description: Algo quebrou. Anexe o arquivo de replay (botão "Reportar problema" no jogo) sempre que possível.
+labels: ["bug"]
+body:
+  - type: textarea
+    id: oque
+    attributes:
+      label: O que aconteceu
+    validations: { required: true }
+  - type: textarea
+    id: esperado
+    attributes:
+      label: O que era esperado
+    validations: { required: true }
+  - type: textarea
+    id: replay
+    attributes:
+      label: Replay
+      description: "Cole o conteúdo do relatório (semente + comandos) ou o comando para reproduzir. Ex.: npm run sim -- replay bug.json"

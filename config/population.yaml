@@ -1,0 +1,25 @@
+# População e chegada de moradores. Veja docs/PLANO.md seções 5.3 e 5.5.
+population:
+  # IBGE (Registro Civil): 105 meninos para cada 100 meninas ao nascer.
+  sexRatioAtBirth: 1.05
+  immigration:
+    enabled: true
+    # Tempo médio (em dias do jogo) para uma casa vaga ser ocupada quando há demanda. PENDENTE: valor de jogo.
+    vacancyFillDays: 0.15
+    # Limite de famílias chegando por dia do jogo. PENDENTE: valor de jogo (proteção de performance).
+    maxHouseholdsPerDay: 3000
+    # Tipos de família que chegam. Pesos calibrados para média de ~2,8 pessoas por domicílio
+    # (IBGE Censo 2022: 2,79) e para o perfil de idade de migrantes (pico entre 20 e 30 anos,
+    # modelo Rogers-Castro). PENDENTE: pesos exatos por tipo.
+    householdTypes:
+      - { id: jovem_sozinho, weight: 22, adults: 1, adultAge: [20, 34], children: [0, 0] }
+      - { id: casal_sem_filhos, weight: 20, adults: 2, adultAge: [23, 40], children: [0, 0] }
+      - { id: casal_com_filhos, weight: 36, adults: 2, adultAge: [26, 45], children: [1, 3] }
+      - { id: mae_ou_pai_com_filhos, weight: 12, adults: 1, adultAge: [22, 45], children: [1, 2] }
+      - { id: casal_idoso, weight: 6, adults: 2, adultAge: [58, 75], children: [0, 0] }
+      - { id: idoso_sozinho, weight: 4, adults: 1, adultAge: [60, 80], children: [0, 0] }
+    # Escolaridade de adultos que chegam (PNAD Educação 2023, pessoas com 25 anos ou mais):
+    # sem instrução 6%, fundamental incompleto 27,1%, fundamental completo/médio incompleto 12,4%,
+    # médio completo/superior incompleto 34,8%, superior completo 19,7%.
+    educationDistribution: [0.06, 0.271, 0.124, 0.348, 0.197]
+  # Personalidade: cada traço é sorteado de 0 a 1 (uniforme). Veja lifecycle.yaml.

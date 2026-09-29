@@ -1,0 +1,49 @@
+# Ciclo de vida. Veja docs/PLANO.md seção 5.4 e docs/decisoes/fontes.md.
+lifecycle:
+  # Tábua de mortalidade por idade e sexo, calibrada para bater com os números oficiais do
+  # IBGE 2023 (e0 = 73,1 H / 79,7 M; e60 = 20,7 / 24,0; e80 = 8,3 / 9,4; mortalidade infantil
+  # 13,5 / 11,4 por mil; sobremortalidade masculina 20-24 anos = 4,1x). Gerada por tools/calibrate-demography.ts.
+  mortalityTable: mortality-br-2023.json
+  # Fecundidade por idade, calibrada para TFT 1,57 (IBGE 2023), idade média 28,1 anos e
+  # 24,4% dos nascimentos entre 25 e 29 anos (IBGE Censo 2022). Gerada pelo mesmo script.
+  fertilityTable: fertility-br-2023.json
+  # O desejo de ter filhos (traço de 0 a 1) multiplica a chance: fator = 2 x traço (média 1).
+  childWishWeight: 1.0
+  marriage:
+    minAge: 18
+    # Idade média ao casar (solteiros, sexos opostos): 31,5 H / 29,2 M (IBGE Registro Civil 2023).
+    # A chance anual por idade foi calibrada para aproximar essas médias. PENDENTE: calibração fina.
+    hazardByAge: { "18": 0.02, "22": 0.05, "25": 0.08, "28": 0.10, "32": 0.08, "36": 0.06, "40": 0.04, "50": 0.02, "60": 0.01 }
+    # Casamentos entre pessoas do mesmo sexo: 11,2 mil em 2023 (IBGE). Com ~940 mil casamentos,
+    # são ~1,2%. PENDENTE: total exato de casamentos de 2023.
+    sameSexShare: 0.012
+    maxAgeGap: 12
+    # Quantos solteiros cada pessoa "conhece" por ano ao procurar par. PENDENTE: valor de jogo.
+    candidatesPerSearch: 12
+  divorce:
+    # Taxa geral de divórcio: 2,8 por mil pessoas com 20+ anos (IBGE 2023). Supondo ~50% dos
+    # adultos casados, dá ~1,1% dos casais por ano. PENDENTE: fração de adultos casados.
+    annualHazard: 0.011
+  retirement:
+    # Idade mínima (EC 103/2019): 65 anos homens, 62 anos mulheres.
+    ageMale: 65
+    ageFemale: 62
+  leaveParentsHome:
+    # Cerca de 1/4 dos brasileiros de 25 a 34 anos ainda mora com os pais (IBGE, Síntese de
+    # Indicadores Sociais). A chance anual abaixo foi escolhida para aproximar isso. PENDENTE: calibração.
+    minAge: 20
+    annualChance: 0.12
+  emigration:
+    # Quem fica desempregado muito tempo pode ir embora. PENDENTE: sem fonte, valor de jogo.
+    unemployedYearsBeforeConsidering: 2
+    annualChance: 0.25
+    # Quem não consegue casa na cidade depois de casar pode ir embora. PENDENTE: valor de jogo.
+    homelessCoupleAnnualChance: 0.2
+  labor:
+    # Idade mínima para trabalhar no jogo (sem trabalho infantil).
+    minAge: 18
+    # Chance de um adulto (não estudante, não aposentado) querer trabalhar. Calibrado para aproximar
+    # o nível de ocupação de 59,1% (PNAD 2025). PENDENTE: calibração fina pelo placar de realismo.
+    participation: 0.82
+    # Quantas vagas cada pessoa olha ao procurar emprego. PENDENTE: valor de jogo.
+    candidatesPerSearch: 10

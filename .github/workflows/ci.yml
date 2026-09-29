@@ -1,0 +1,45 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: npm run check
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run check
+
+  acceptance-tests-protected:
+    # O Dev não pode alterar testes de aceitação do QA (docs/PLANO.md seção 12).
+    # Branches de dev começam com "dev/".
+    name: testes de aceitação protegidos
+    if: github.event_name == 'pull_request' && startsWith(github.head_ref, 'dev/')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Verificar arquivos alterados
+        run: |
+          git fetch origin "${{ github.base_ref }}"
+          CHANGED=$(git diff --name-only "origin/${{ github.base_ref }}...HEAD" | grep -E '^tests/acceptance/' || true)
+          if [ -n "$CHANGED" ]; then
+            echo "O Dev alterou testes de aceitação do QA:"
+            echo "$CHANGED"
+            echo "Peça ao QA para ajustar o teste em outra branch (qa/...)."
+            exit 1
+          fi

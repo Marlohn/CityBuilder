@@ -1,0 +1,12 @@
+# Crescimento das zonas (demanda RCI). Veja docs/PLANO.md seção 5.5.
+growth:
+  # Demanda inicial por moradia quando a cidade está vazia. PENDENTE: valor de jogo.
+  initialResidentialDemand: 40
+  # Proporção dos empregos por setor. PNAD: comércio e serviços são a maior parte dos ocupados;
+  # indústria ~13%. PENDENTE: tabela exata por setor.
+  jobShareCommercial: 0.75
+  jobShareIndustrial: 0.25
+  # Quantos prédios podem começar a ser construídos por dia do jogo. PENDENTE: valor de jogo.
+  maxConstructionStartsPerDay: 400
+  # Vagas sobrando (%) acima disso derrubam a demanda. PENDENTE.
+  targetVacancy: 0.05

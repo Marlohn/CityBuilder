@@ -1,0 +1,8 @@
+# Saúde.
+health:
+  # Distância máxima até a UBS. PENDENTE: sem fonte oficial encontrada; usado o mesmo limite de caminhada da escola.
+  maxDistanceMeters: 2000
+  # Quem NÃO tem UBS: mortalidade maior. Municípios com cobertura da Saúde da Família acima de 70%
+  # tiveram 36% menos mortes por doenças cardiovasculares (Rasella et al., BMJ 2014), e essas
+  # doenças são ~30% dos óbitos no Brasil (Ministério da Saúde). 30% x 36% ≈ 11%.
+  uncoveredMortalityMultiplier: 1.11

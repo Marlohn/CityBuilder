@@ -1,0 +1,11 @@
+# Performance. Veja docs/PLANO.md seção 6.
+performance:
+  # Máximo de rotas guardadas no cache.
+  routeCacheMax: 200000
+  # Limites de trabalho por tick usados no teste de performance (contadores determinísticos).
+  # O teste falha se a cidade de referência passar disso.
+  budgets:
+    nodesExpandedPerTick: 400000
+    personsUpdatedPerTick: 2000
+  # Quantos ticks medir para a média de tempo.
+  timingWindow: 120

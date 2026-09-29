@@ -1,0 +1,17 @@
+# Educação. LDB: ensino fundamental dos 6 aos 14 anos, ensino médio dos 15 aos 17.
+education:
+  schoolStartAge: 6
+  schoolEndAge: 17
+  # Anos de estudo para completar cada etapa.
+  yearsFundamental: 9
+  yearsMedio: 12
+  # Distância máxima casa-escola a pé: acima de 2 km o aluno tem direito a transporte escolar
+  # (jurisprudência e normas estaduais de SP e PR). Sem transporte escolar no jogo, a escola
+  # precisa estar a até 2 km.
+  maxDistanceMeters: 2000
+  higherEducation:
+    # 30,5% dos jovens de 18 a 24 anos frequentavam o ensino superior em 2023 (PNAD Educação:
+    # 27,7% homens, 33,4% mulheres). Quem tem ensino médio completo tem essa chance de querer
+    # fazer faculdade (ajustada pelo traço "gosto por estudar").
+    desireChance: 0.4
+    ageRange: [18, 24]

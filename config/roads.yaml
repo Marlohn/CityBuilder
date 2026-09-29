@@ -1,0 +1,22 @@
+# Vias. Velocidades: Código de Trânsito Brasileiro, art. 61, §1º (sem sinalização):
+# via local 30 km/h, coletora 40 km/h, arterial 60 km/h.
+roads:
+  street:
+    label: Rua (via local)
+    speedKmh: 30
+    lanes: 2
+    # Custo de pavimentação urbana: ~R$ 2,9 milhões por km (Joinville, NSC Total).
+    # 16 m de via = R$ 46.400.
+    costPerTile: 46400
+    # PENDENTE: capacidade por faixa em via urbana com cruzamentos. Valor usual de engenharia de tráfego.
+    capacityPerLanePerHour: 800
+  avenue:
+    label: Avenida (via arterial)
+    speedKmh: 60
+    lanes: 4
+    # PENDENTE: avenida é mais larga; estimado como o dobro da rua.
+    costPerTile: 92800
+    capacityPerLanePerHour: 900
+  # Pavimento asfáltico dura ~10 anos (TCM-SP). Manutenção anual estimada em 10% do custo.
+  # PENDENTE: fração exata.
+  maintenanceShareOfCostPerYear: 0.10

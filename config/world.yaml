@@ -1,0 +1,10 @@
+# Mapa. Veja docs/PLANO.md seção 5.1.
+world:
+  # 256 x 256 quadradinhos de 16 m = ~4,1 km de lado (~16,8 km²).
+  # Na densidade de São Paulo (7.528 hab/km², IBGE Censo 2022) cabem ~126 mil pessoas.
+  width: 256
+  height: 256
+  # Tamanho aproximado de um lote de casa (16 x 16 m = 256 m²).
+  tileMeters: 16
+  # Fração do mapa com vegetação nativa no início. PENDENTE: valor de jogo, sem fonte.
+  treeCoverage: 0.18
