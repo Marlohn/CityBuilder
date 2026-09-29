@@ -157,7 +157,8 @@ export const GameConfigSchema = z.object({
     bpr: z.object({ alpha: nonneg, beta: z.number().int().min(1).max(8) }),
     routine: z.object({
       workStartMinute: range,
-      workDurationMinutes: intPos,
+      workHoursWeekly: z.object({ mean: nonneg, spread: nonneg }),
+      tripsByHour: numericTable,
       schoolStartMinute: nonneg,
       schoolDurationMinutes: intPos,
     }),
