@@ -87,6 +87,18 @@ export function App({ store, client, tools, typeLabels }: AppProps) {
           >
             💾 Salvar
           </button>
+          <label className="file-button">
+            📂 Abrir
+            <input
+              type="file"
+              accept="application/json"
+              onChange={async (e) => {
+                const f = e.target.files?.[0];
+                if (f) client.load(await f.text());
+                e.target.value = "";
+              }}
+            />
+          </label>
         </div>
       </div>
       <div className="toasts">

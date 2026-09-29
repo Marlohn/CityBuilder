@@ -1,0 +1,14 @@
+# Cidade de estresse: o prefeito automático constrói com crescimento acelerado, até a população alvo.
+# Os números aqui NÃO são realistas de propósito: servem só para gerar uma cidade grande rápido.
+# Rode: npm run sim -- bench --target=50000
+name: estresse
+description: Crescimento acelerado para testar performance com cidades grandes.
+seed: estresse
+days: 80
+overrides:
+  economy: { mode: sandbox }
+  growth: { industryGrowthPerYear: 1.0, industryMinStep: 200, maxConstructionStartsPerDay: 3000 }
+  population:
+    immigration: { vacancyFillDays: 0.03, maxHouseholdsPerDay: 20000 }
+bot: { highDensityShare: 0.9 }
+steps: []

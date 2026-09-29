@@ -8,9 +8,13 @@ import {
   buildingsView,
   createGame,
   type Game,
+  makeBugReport,
+  makeReplay,
   mapView,
   parseGameConfig,
   parseGameData,
+  parseReplay,
+  replayInto,
   statsView,
 } from "@city/sim";
 import { answerQuery } from "./queries";
@@ -27,6 +31,7 @@ let sentMapVersion = -1;
 let sentStructureVersion = -1;
 let behind = false;
 let view: ViewRect = { x0: 0, y0: 0, x1: 0, y1: 0 };
+let overrides: unknown;
 
 function post(msg: FromWorker, transfer: Transferable[] = []) {
   self.postMessage(msg, transfer);
@@ -46,11 +51,40 @@ self.onmessage = (ev: MessageEvent<ToWorker>) => {
   try {
     switch (msg.type) {
       case "init": {
+        overrides = msg.overrides;
         const config = parseGameConfig(msg.configTexts, msg.overrides);
         const data = parseGameData(msg.dataTexts, config);
         startGame(createGame({ config, data, seed: msg.seed }));
         break;
       }
+      case "load": {
+        // Refaz a cidade a partir do save (semente + comandos).
+        const replay = parseReplay(msg.save);
+        overrides = replay.overrides;
+        const config = parseGameConfig(msg.configTexts, replay.overrides);
+        const data = parseGameData(msg.dataTexts, config);
+        const g = createGame({ config, data, seed: replay.seed });
+        game = null;
+        replayInto(g, replay);
+        startGame(g);
+        break;
+      }
+      case "save":
+        if (game)
+          post({
+            type: "saved",
+            requestId: msg.requestId,
+            save: JSON.stringify(makeReplay(game, overrides)),
+          });
+        break;
+      case "bugReport":
+        if (game)
+          post({
+            type: "bugReport",
+            requestId: msg.requestId,
+            report: JSON.stringify(makeBugReport(game, msg.note, overrides), null, 1),
+          });
+        break;
       case "command":
         game?.sim.enqueue(msg.command);
         break;

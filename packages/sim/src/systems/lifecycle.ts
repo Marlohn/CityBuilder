@@ -48,15 +48,18 @@ export class LifecycleSystem implements System {
     const rng = city.rng.life;
 
     // 1. Morte (tábua calibrada com o IBGE; sem UBS o risco aumenta).
+    // No aniversário de `age` anos a pessoa acabou de viver o ano entre `age - 1` e `age`:
+    // vale o risco dessa idade (assim o bebê passa pelo risco do primeiro ano de vida).
+    const lived = Math.max(0, age - 1);
     const table = sex === SEX.male ? city.sim.data.mortality.qxMale : city.sim.data.mortality.qxFemale;
-    let q = table[Math.min(age, table.length - 1)] ?? 1;
+    let q = table[Math.min(lived, table.length - 1)] ?? 1;
     if (pop.clinic[p]! < 0) q *= config.health.uncoveredMortalityMultiplier;
     if (rng.chance(q)) {
-      this.demo.death(sex, age);
+      this.demo.death(sex, lived);
       die(city, p);
       return;
     }
-    this.demo.exposed(sex, age);
+    this.demo.exposed(sex, lived);
 
     // 2. Estudo.
     const edu = config.education;

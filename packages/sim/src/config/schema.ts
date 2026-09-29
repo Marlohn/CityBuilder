@@ -153,8 +153,10 @@ export const GameConfigSchema = z.object({
   }),
   growth: z.object({
     initialResidentialDemand: nonneg,
-    jobShareCommercial: prob,
-    jobShareIndustrial: prob,
+    employmentMultiplier: z.number().min(1),
+    industryGrowthPerYear: nonneg,
+    industryMinStep: nonneg,
+    industryMaxVacancy: prob,
     maxConstructionStartsPerDay: intPos,
     targetVacancy: prob,
   }),

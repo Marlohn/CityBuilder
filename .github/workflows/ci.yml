@@ -23,6 +23,19 @@ jobs:
       - run: npm ci
       - run: npm run check
 
+  slow:
+    name: testes lentos (coorte IBGE e cidade de 50 mil)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run test:slow
+
   e2e:
     name: teste de tela (Playwright)
     runs-on: ubuntu-latest

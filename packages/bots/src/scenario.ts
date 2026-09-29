@@ -31,6 +31,15 @@ export const ScenarioSchema = z.object({
   seed: z.string().default("cenario"),
   days: z.number().positive().default(10),
   overrides: z.record(z.string(), z.unknown()).default({}),
+  /** Opções do prefeito automático (quando usado). */
+  bot: z
+    .object({
+      everyDays: z.number().positive(),
+      district: z.number().int().min(10),
+      highDensityShare: z.number().min(0).max(1),
+    })
+    .partial()
+    .default({}),
   steps: z.array(StepSchema).default([]),
 });
 

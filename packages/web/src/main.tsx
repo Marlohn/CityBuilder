@@ -55,6 +55,10 @@ window.addEventListener("keydown", (e) => {
 });
 
 client.onError = (message) => store.set({ error: `Erro: ${message}` });
+client.onLoadRequested = (save) => {
+  store.set({ ready: false, error: null });
+  client.send({ type: "load", save, configTexts, dataTexts });
+};
 client.onReady = () => store.set({ ready: true });
 client.onFrame = (f) => {
   if (f.map) {

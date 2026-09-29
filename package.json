@@ -11,6 +11,7 @@
   "scripts": {
     "check": "tsx tools/check.ts",
     "test": "vitest run",
+    "test:slow": "SLOW=1 vitest run",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "biome check .",
     "format": "biome check --write .",

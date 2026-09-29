@@ -24,6 +24,7 @@ export interface Census {
   householdsWaitingHome: number;
   householdsWithCar: number;
   pop14plus: number;
+  pop60plus: number;
   adults20plus: number;
   commuteUnder30: number;
   commuteKnown: number;
@@ -51,6 +52,7 @@ export function takeCensus(city: City): Census {
     householdsWaitingHome: 0,
     householdsWithCar: 0,
     pop14plus: 0,
+    pop60plus: 0,
     adults20plus: 0,
     commuteUnder30: 0,
     commuteKnown: 0,
@@ -74,6 +76,7 @@ export function takeCensus(city: City): Census {
     if (pop.job[p] === OUTSIDE_JOB) c.employedOutside++;
     else if (pop.job[p]! >= 0) c.employedLocal++;
     if (age >= 14) c.pop14plus++;
+    if (age >= 60) c.pop60plus++;
     if (age >= 20) c.adults20plus++;
     if (age >= edu.schoolStartAge && age <= edu.schoolEndAge) {
       c.children6to17++;

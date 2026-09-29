@@ -82,3 +82,12 @@ describe("nomes (IBGE)", () => {
     expect(data.names.surnames[0]![0]).toBe("Silva");
   });
 });
+
+describe("sobrescrever config", () => {
+  it("tabela número->valor é trocada inteira (não mesclada)", () => {
+    const c = parseGameConfig(readDir("config", [".yaml"]), {
+      lifecycle: { marriage: { hazardByAge: { "0": 0 } } },
+    });
+    expect(c.lifecycle.marriage.hazardByAge).toEqual({ "0": 0 });
+  });
+});

@@ -79,6 +79,9 @@ export function parseGameData(texts: Record<string, string>, config: GameConfig)
 
 function deepMerge(base: unknown, over: unknown): unknown {
   if (Array.isArray(over) || typeof over !== "object" || over === null) return over;
+  // Tabela "número -> valor" (ex.: idade -> chance) é trocada inteira, não mesclada.
+  const keys = Object.keys(over as Record<string, unknown>);
+  if (keys.length > 0 && keys.every((k) => k.trim() !== "" && Number.isFinite(Number(k)))) return over;
   if (typeof base !== "object" || base === null || Array.isArray(base)) return over;
   const out: Record<string, unknown> = { ...(base as Record<string, unknown>) };
   for (const [k, v] of Object.entries(over as Record<string, unknown>)) {

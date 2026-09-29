@@ -64,26 +64,52 @@ export class GrowthSystem implements System {
     const city = this.city;
     const { markets, sim } = city;
     const cfg = sim.config;
+    const g = cfg.growth;
     const vacantHomes = markets.housing.vacancies();
     const vacantJobs = markets.jobs.vacancies();
     const pending = this.pendingCapacity();
-    const workersPerHousehold =
-      c.households > 20 ? Math.max(0.6, (c.employedLocal + c.employedOutside) / c.households) : 1.2;
-    const oj = cfg.population.outsideJobs;
+    const jobs = this.jobsByZone();
     const workers = c.employedLocal + c.employedOutside;
+    const workersPerHousehold = c.households > 20 ? Math.max(0.6, workers / c.households) : 1.2;
+    // Casas: para quem vai ocupar as vagas de emprego (aqui e na cidade vizinha) + famílias esperando casa.
+    const oj = cfg.population.outsideJobs;
     const outsideCapacity = oj.enabled
       ? Math.max(oj.minWorkers, oj.share * workers) - city.outsideWorkers
       : 0;
     const jobsWaiting = Math.max(0, vacantJobs + Math.max(0, outsideCapacity) - c.byRole[3]!);
     let homes = jobsWaiting / workersPerHousehold - vacantHomes - pending.homes + c.householdsWaitingHome;
-    if (c.population === 0) homes = Math.max(homes, cfg.growth.initialResidentialDemand - pending.homes);
-    const wantLocal = c.byRole[3]! + c.employedOutside;
-    const jobsNeeded = Math.max(0, wantLocal - vacantJobs - pending.commercialJobs - pending.industrialJobs);
+    if (c.population === 0) homes = Math.max(homes, g.initialResidentialDemand - pending.homes);
+    // Indústria (básico): cresce enquanto consegue contratar.
+    const indVacancy = jobs.industrialCapacity > 0 ? jobs.industrialVacant / jobs.industrialCapacity : 0;
+    const industrial =
+      indVacancy < g.industryMaxVacancy
+        ? Math.max(g.industryMinStep, g.industryGrowthPerYear * jobs.industrialCapacity) -
+          pending.industrialJobs
+        : 0;
+    // Comércio e serviços (não básico): multiplicador sobre os empregos básicos.
+    const basic = jobs.industrialFilled + city.outsideWorkers;
+    const commercial =
+      (g.employmentMultiplier - 1) * basic - jobs.commercialCapacity - pending.commercialJobs;
     return {
       homes: Math.max(0, homes),
-      commercialJobs: jobsNeeded * cfg.growth.jobShareCommercial,
-      industrialJobs: jobsNeeded * cfg.growth.jobShareIndustrial,
+      commercialJobs: Math.max(0, commercial),
+      industrialJobs: Math.max(0, industrial),
     };
+  }
+
+  private jobsByZone() {
+    const b = this.city.sim.buildings;
+    const out = { industrialCapacity: 0, industrialFilled: 0, industrialVacant: 0, commercialCapacity: 0 };
+    for (let id = 0; id < b.count; id++) {
+      if (!b.isActive(id)) continue;
+      const t = b.typeOf(id);
+      if (t.zone === "industrial") {
+        out.industrialCapacity += t.jobs;
+        out.industrialFilled += b.jobsFilled[id]!;
+      } else if (t.zone === "commercial") out.commercialCapacity += t.jobs;
+    }
+    out.industrialVacant = out.industrialCapacity - out.industrialFilled;
+    return out;
   }
 
   /** Capacidade que já está em obra (para não construir demais). */

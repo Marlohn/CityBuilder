@@ -79,6 +79,12 @@ export class WorkerClient implements GameClient {
     );
   }
 
+  load(save: string) {
+    this.onLoadRequested?.(save);
+  }
+
+  onLoadRequested: ((save: string) => void) | null = null;
+
   bugReport(note: string): Promise<string> {
     return this.request(
       (requestId) => ({ type: "bugReport", requestId, note }),

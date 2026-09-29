@@ -70,6 +70,7 @@ export function computeRealism(city: City, demo: Demography, c: Census): Realism
     unemployment: labor > 0 ? (c.byRole[3]! / labor) * 100 : null,
     employmentLevel: c.pop14plus > 0 ? (workers / c.pop14plus) * 100 : null,
     householdSize: c.households > 0 ? c.population / c.households : null,
+    pop60plus: c.population > 0 ? (c.pop60plus / c.population) * 100 : null,
     householdsWithCar: c.households > 0 ? (c.householdsWithCar / c.households) * 100 : null,
     commuteUnder30: c.commuteKnown > 0 ? (c.commuteUnder30 / c.commuteKnown) * 100 : null,
     marriageAgeMale: marriages >= ms.marriages ? w.marriageAgeSum[1] / Math.max(1, w.marriageCount[1]) : null,

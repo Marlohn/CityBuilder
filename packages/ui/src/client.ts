@@ -12,6 +12,8 @@ export interface GameClient {
     buildingId?: number,
   ): Promise<{ total: number; items: PersonListItem[] }>;
   save(): Promise<string>;
+  /** Abre um save (refaz a cidade). */
+  load(save: string): void;
   bugReport(note: string): Promise<string>;
 }
 
