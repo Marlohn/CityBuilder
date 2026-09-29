@@ -68,6 +68,9 @@ jobs:
       - name: Verificar arquivos alterados
         env:
           HEAD_REF: ${{ github.head_ref }}
+          # Commit do Dev. HEAD aqui é o merge do PR na main ATUAL: com ele, teste que entrou na main
+          # depois do qa/N nascer aparecia como "alterado pelo Dev" (falso positivo no PR #46).
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           git fetch origin "${{ github.base_ref }}"
           # O Dev parte da branch do QA (qa/<issue>): compara com ela, para só contar o que o Dev mudou.
@@ -75,7 +78,7 @@ jobs:
           BASE="origin/${{ github.base_ref }}"
           if git fetch origin "qa/${ISSUE}" 2>/dev/null; then BASE="origin/qa/${ISSUE}"; fi
           echo "Comparando com ${BASE}"
-          CHANGED=$(git diff --name-only "${BASE}...HEAD" | grep -E '^tests/acceptance/' || true)
+          CHANGED=$(git diff --name-only "${BASE}...${HEAD_SHA}" | grep -E '^tests/acceptance/' || true)
           if [ -n "$CHANGED" ]; then
             echo "O Dev alterou testes de aceitação do QA:"
             echo "$CHANGED"

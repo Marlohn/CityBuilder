@@ -71,7 +71,7 @@ A ordem importa. Mudar a ordem muda a cidade (e quebra os testes de referência)
 - **Pessoas, famílias, prédios, carros e eventos ficam em arrays numéricos** (`Int32Array`, `Uint8Array`...), um array por campo. Exemplo: `pop.birthTick[id]`, `pop.job[id]`. Nada de um objeto por pessoa. Isso evita as pausas do coletor de lixo e deixa 50 mil pessoas leves.
 - Arrays crescem com `growTo` (`core/growable.ts`). Ao adicionar um campo novo em `Population`, lembre de crescer ele em `ensure`.
 - `IndexedSet` (`core/indexedSet.ts`) guarda conjuntos com sorteio em tempo constante (vagas, casas livres...).
-- Mercados (`markets/markets.ts`): vagas de emprego, escola, UBS e casa. `findNear` sorteia algumas vagas e pega a mais perto.
+- Mercados (`markets/markets.ts`): vagas de emprego, escola, UBS e casa. `findNear` sorteia algumas vagas e pega a mais perto. `Markets.findActiveNear(rng, fromTile, filtro, samples, maxMeters?)` devolve o predio em uso mais proximo de um tipo do catalogo (por `service` ou `zone`), na mesma malha de vias de saida - e o destino da viagem (loja, UBS, escola), sem vaga.
 
 ### Sorteio e reprodutibilidade
 
