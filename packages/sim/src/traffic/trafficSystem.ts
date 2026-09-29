@@ -384,7 +384,6 @@ export class TrafficSystem implements System {
 
   /** Tempo de viagem (segundos) com congestionamento (BPR) usando o volume de ontem nesta hora. */
   private travelSeconds(route: Route, minuteOfDay: number): number {
-    const world = this.city.sim.world;
     const cfg = this.city.config;
     this.refreshCapacity();
     const hour = Math.floor(minuteOfDay / 60) % 24;

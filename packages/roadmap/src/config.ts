@@ -15,6 +15,7 @@ const CategorySchema = z.enum([
 export const RoadmapConfigSchema = z.object({
   evaluation: z.object({
     botSeeds: z.array(z.string()).min(1),
+    sandboxSeeds: z.array(z.string()).default([]),
     botDays: z.number().positive(),
     scenario: z.string(),
     scenarioDays: z.number().positive(),

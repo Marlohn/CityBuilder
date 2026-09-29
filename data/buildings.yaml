@@ -37,7 +37,7 @@ buildings:
     # Lote 256 m² x CA 1 = 256 m²; 80% útil / 15 m² = 13 empregos.
     jobs: 13
     constructionMonths: 9
-    models: [commercial/low-detail-building-a, commercial/low-detail-building-b, commercial/low-detail-building-c, commercial/low-detail-building-d, commercial/low-detail-building-e]
+    models: [commercial/low-detail-building-a, commercial/low-detail-building-b, commercial/low-detail-building-c, commercial/low-detail-building-d, commercial/low-detail-building-e, commercial/low-detail-building-f, commercial/low-detail-building-g, commercial/low-detail-building-h, commercial/low-detail-building-i, commercial/low-detail-building-j, commercial/low-detail-building-k, commercial/low-detail-building-l, commercial/low-detail-building-m, commercial/low-detail-building-n]
   - id: escritorio
     floors: 3
     label: Prédio comercial

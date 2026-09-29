@@ -4,6 +4,8 @@ roadmap:
   # Cidades usadas para gerar os sinais: prefeito automático em várias sementes + um cenário fixo.
   evaluation:
     botSeeds: [avaliacao-1, avaliacao-2, avaliacao-3]
+    # Prefeito automático com dinheiro infinito: mostra o que falta numa cidade maior, sem o limite do orçamento.
+    sandboxSeeds: [avaliacao-livre]
     botDays: 40
     scenario: bairro-basico
     scenarioDays: 25

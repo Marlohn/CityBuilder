@@ -93,7 +93,7 @@ function nelderMead(f: (p: number[]) => number, start: number[], step: number[],
 }
 
 export function calibrateMortality() {
-  const fit = (t: typeof TARGETS.female, withHump: boolean, femaleQ?: number[]) => {
+  const fitSex = (t: typeof TARGETS.female, withHump: boolean, femaleQ?: number[]) => {
     const loss = (p: number[]) => {
       const q = qxFrom(p, t.infant, withHump);
       let l =
@@ -111,8 +111,8 @@ export function calibrateMortality() {
     for (let r = 0; r < 6; r++) best = nelderMead(loss, best, [0.2, 0.2, 0.005, 0.2]);
     return qxFrom(best, t.infant, withHump);
   };
-  const qxFemale = fit(TARGETS.female, false);
-  const qxMale = fit(TARGETS.male, true, qxFemale);
+  const qxFemale = fitSex(TARGETS.female, false);
+  const qxMale = fitSex(TARGETS.male, true, qxFemale);
   return { qxFemale, qxMale };
 }
 

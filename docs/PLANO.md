@@ -59,22 +59,7 @@ Idioma: **código em inglês, documentação em português.**
 - A tela **nunca** muda a cidade direto. Ela só manda comandos ("construir rua de A até B") e lê o estado.
 - Toda mudança na cidade acontece por comando. Isso permite gravar e repetir uma partida inteira (seção 5.9).
 
-Pastas:
-
-```
-packages/
-  sim/        motor da cidade (proibido importar render ou ui)
-  contract/   comandos, formato do estado, versões
-  render/     tela 3D em Babylon.js
-  ui/         painéis e menus em React
-  cli/        simulação pelo terminal, relatórios e replays
-  bots/       prefeito automático (gera cidades pros testes)
-config/       todos os números do jogo (com fonte anotada)
-data/         nomes, tipos de prédio, tábuas do IBGE
-scenarios/    cidades de teste
-docs/         plano e decisões
-agents/       instruções de cada agente
-```
+Pastas: o mapa atualizado, com todos os pacotes (inclusive `web`, `roadmap` e `director`, que surgiram na implementação), fica em `docs/GUIA-DO-CODIGO.md`, seção 1.
 
 ## 5. A simulação
 
@@ -380,6 +365,20 @@ Observação: os sinais do roadmap começam a ser coletados antes da fase 6. Os 
 - `npm run roadmap:build` lê as issues (API do GitHub ou arquivo), aplica a fórmula e as regras e gera `ROADMAP.md`, incluindo "Sinais sem item": a lista de candidatos para o Designer, já com fonte, métrica sugerida e nota provisória.
 - `npm run roadmap:check` confere a métrica dos itens com a etiqueta `entregue`.
 - O workflow `.github/workflows/roadmap.yml` roda tudo toda segunda, a cada mudança nas issues e a cada push em `main`, e publica o resultado na issue "Roadmap (gerado automaticamente)".
+
+### 14.3 O que do plano ainda não foi feito (revisão final)
+
+Conferido item por item contra este plano. Ficou para o roadmap:
+
+| Plano | Situação |
+|---|---|
+| Cérebro atrás de uma interface `CitizenBrain` (5.4) | As decisões de vida funcionam, mas estão dentro dos sistemas (`lifecycle`, `family`, `matching`). Falta separar numa interface trocável. |
+| Viagens de compras, lazer e escola; caminhão de entrega (5.7) | Só existe a viagem casa → trabalho → casa. |
+| Rotas por regiões e invalidação só da área mudada (6.3) | Uma via nova limpa o cache inteiro. Medido: ainda sobra muita folga em 50 mil pessoas. |
+| Carro longe da câmera com cálculo barato (6.3) | Não precisou até agora (medido). |
+| Migração de saves antigos (5.9) | Só existe a versão 1 do save. Na primeira mudança de formato, criar a migração. |
+| Comparar a tela com um print aprovado (8) | O teste de tela confere que desenhou e que não houve erro, mas não compara pixels (o desenho por software varia). |
+| Economia de cidades pequenas | Receita é a média nacional por habitante. Cidade pequena real recebe mais por habitante: municípios com até 5 mil habitantes têm receita externa média de ~R$ 10.886 por habitante, a maior parte do FPM (Gazeta do Povo, https://www.gazetadopovo.com.br/vozes/paulo-uebel/numero-de-municipios-no-brasil-deve-beneficiar-os-cidadaos-nao-os-politicos/; Jornal da USP, https://jornal.usp.br/radio-usp/municipios-pequenos-recebem-mais-recursos-per-capita-que-metropoles-com-maiores-desafios-urbanos/). Já a manutenção de vias (10% ao ano) está PENDENTE. Resultado: no modo com orçamento, a cidade do prefeito automático para em ~1.000 pessoas. O motor de roadmap já mostra isso (sinais `bot:cidade-parou` e `bot:falencia`). |
 
 ## 15. Pendências do dono
 

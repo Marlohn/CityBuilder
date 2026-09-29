@@ -63,6 +63,13 @@ function fmt(v: number): string {
     .replace(/\B(?=(\d{3})+(?!\d))/g, ".");
 }
 
+/** Receita real de municípios pequenos: base para conferir a economia do jogo. */
+const SMALL_TOWN_REVENUE = {
+  source:
+    "Municípios com até 5 mil habitantes: receita externa média ~R$ 10.886 por habitante, a maior parte do FPM (Gazeta do Povo; Jornal da USP: municípios pequenos recebem mais por habitante)",
+  url: "https://jornal.usp.br/radio-usp/municipios-pequenos-recebem-mais-recursos-per-capita-que-metropoles-com-maiores-desafios-urbanos/",
+};
+
 /** Desejos não atendidos (fonte 1). `ref` liga o desejo a uma linha da tabela de referência. */
 const DESIRES: {
   key: string;
@@ -102,6 +109,8 @@ export function signalsFromRun(
   cfg: RoadmapConfig,
   reference: ReferenceItem[],
   services: Set<string>,
+  /** População no meio da partida (para perceber cidade que parou de crescer). */
+  populationMidRun?: number,
 ): RunSignal[] {
   const out: RunSignal[] = [];
   const s = statsView(game);
@@ -192,8 +201,9 @@ export function signalsFromRun(
       detail: `Saldo final R$ ${fmt(s.money)}. Receita no último ano R$ ${fmt(s.lastYearRevenue)}, despesa R$ ${fmt(s.lastYearExpenses)}.`,
       reach: p,
       impact: 1,
-      evidence: "opinion",
+      evidence: "dataAndSource",
       urgent: false,
+      research: SMALL_TOWN_REVENUE,
       metric: "money > 0",
       proposal: "Rever impostos e custos de manutenção com dados reais de orçamento municipal (STN/Siconfi).",
     });
@@ -214,6 +224,35 @@ export function signalsFromRun(
       urgent: false,
       metric: `lastYear.migrantsTurnedAway < ${Math.max(1, Math.round(turnedTotal * 0.3))}`,
       proposal: "Ver o motivo mais comum e ajustar a oferta (casas/empregos) ou a regra de chegada.",
+    });
+  }
+
+  const homesWanted = game.growth.demand.homes;
+  if (
+    populationMidRun !== undefined &&
+    populationMidRun > 0 &&
+    p <= populationMidRun * 1.05 &&
+    homesWanted > 0
+  ) {
+    const t = game.sim.treasury;
+    out.push({
+      id: "bot:cidade-parou",
+      source: "bot",
+      category: "balanceamento",
+      title: "A cidade para de crescer",
+      detail: `População no meio da partida ${fmt(populationMidRun)}, no fim ${fmt(p)}, com demanda de ${fmt(homesWanted)} casas. Saldo R$ ${fmt(t.money)}; último ano: receita R$ ${fmt(t.lastYearRevenue)}, despesa R$ ${fmt(t.lastYearExpenses)} (${Object.entries(
+        t.expenses,
+      )
+        .map(([k, v]) => `${k} R$ ${fmt(v)}`)
+        .join(", ")} no ano atual).`,
+      reach: p,
+      impact: 2,
+      evidence: "dataAndSource",
+      urgent: false,
+      research: SMALL_TOWN_REVENUE,
+      metric: `population > ${Math.round(populationMidRun * 1.2)}`,
+      proposal:
+        "Descobrir o que trava (dinheiro, demanda, lotes) e comparar receita e despesa com dados reais de municípios do mesmo tamanho (Siconfi/FINBRA).",
     });
   }
 

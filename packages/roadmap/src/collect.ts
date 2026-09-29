@@ -25,14 +25,26 @@ export function collectSignals(
   const services = new Set<string>();
   for (const b of data.buildings) if (b.service) services.add(b.service);
   const games: { name: string; seed: string; days: number; game: Game }[] = [];
-  for (const seed of cfg.evaluation.botSeeds) {
-    log(`prefeito automático, semente "${seed}", ${cfg.evaluation.botDays} dias...`);
-    games.push({
-      name: `bot:${seed}`,
+  const mid = new Map<string, number>();
+  const bots = [
+    ...cfg.evaluation.botSeeds.map((seed) => ({ seed, sandbox: false })),
+    ...cfg.evaluation.sandboxSeeds.map((seed) => ({ seed, sandbox: true })),
+  ];
+  for (const { seed, sandbox } of bots) {
+    const name = `${sandbox ? "livre" : "bot"}:${seed}`;
+    const days = cfg.evaluation.botDays;
+    log(`prefeito automático${sandbox ? " (modo livre)" : ""}, semente "${seed}", ${days} dias...`);
+    const cd = sandbox ? loadConfigAndData({ economy: { mode: "sandbox" } }) : { config, data };
+    const game = runGame({
+      ...cd,
       seed,
-      days: cfg.evaluation.botDays,
-      game: runGame({ config, data, seed, days: cfg.evaluation.botDays, bot: true }),
+      days,
+      bot: true,
+      onDay: (g, d) => {
+        if (d === Math.floor(days / 2)) mid.set(name, g.city.pop.aliveCount);
+      },
     });
+    games.push({ name, seed, days, game });
   }
   const sc = cfg.evaluation.scenario;
   log(`cenário "${sc}", ${cfg.evaluation.scenarioDays} dias...`);
@@ -43,7 +55,9 @@ export function collectSignals(
     game: runGame({ config, data, seed: sc, days: cfg.evaluation.scenarioDays, scenario: loadScenario(sc) }),
   });
   const metrics = averageMetrics(games.map((g) => metricsOf(g.game)));
-  const signals = mergeRuns(games.map((g) => signalsFromRun(g.game, cfg, reference, services)));
+  const signals = mergeRuns(
+    games.map((g) => signalsFromRun(g.game, cfg, reference, services, mid.get(g.name))),
+  );
   signals.push(...pendingSignals(configTexts(), Math.round(metrics.population ?? 0)));
   return {
     generatedAt: now.toISOString(),

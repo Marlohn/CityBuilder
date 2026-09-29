@@ -175,6 +175,7 @@ Adicione em `metricsOf` (`packages/roadmap/src/signals.ts`). O nome vira o id us
 |---|---|---|
 | `packages/*/test`, `packages/*/src/**/*.test.ts` | regra isolada de um pacote | `npm test -- <arquivo>` |
 | `tests/unit` | cruzando pacotes (save, cidade inteira) | `npm test -- tests/unit` |
+| `tests/unit/reference.test.ts` | **cidades de referência**: o resultado guardado de algumas cidades. Mudou sem querer = bug; mudou de propósito = atualize com `-u` e explique no PR | `npm test -- tests/unit/reference -u` |
 | `tests/acceptance` | critérios de uma tarefa (escritos pelo QA **antes** do código) | `npm test -- tests/acceptance` |
 | `tests/slow` | coorte de 10 mil bebês contra o IBGE, cidade de 50 mil | `npm run test:slow` |
 | `tests/e2e` | navegador: abre o jogo, confere que Node e Chromium dão a mesma cidade | `npm run test:e2e` |

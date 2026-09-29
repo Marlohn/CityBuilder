@@ -9,7 +9,7 @@
  * - Coloca escola e UBS quando aparecem crianças sem escola ou pessoas sem UBS (os mesmos sinais do jogo).
  */
 import { type Command, ROAD_ID, type ZoneKind } from "@city/contract";
-import { currentCensus, type Game, Rng } from "@city/sim";
+import { BSTATE, currentCensus, type Game, Rng } from "@city/sim";
 
 export interface MayorOptions {
   /** A cada quantos dias do jogo o prefeito age. */
@@ -43,11 +43,9 @@ export class AutoMayor {
   private nextActionTick = 0;
   private col = 0;
   private row = 0;
-  private schools: [number, number][] = [];
   /** Quantos prédios existiam na última ação (para perceber quando a construção empaca). */
   private lastBuildingCount = -1;
   private stalledActions = 0;
-  private clinics: [number, number][] = [];
 
   constructor(
     private game: Game,
@@ -70,6 +68,14 @@ export class AutoMayor {
     this.stalledActions = count === this.lastBuildingCount ? this.stalledActions + 1 : 0;
     this.lastBuildingCount = count;
     const stalled = this.stalledActions >= 2;
+    // Serviços primeiro (como um prefeito de verdade): escola quando ~150 crianças estão sem vaga,
+    // UBS quando ~500 pessoas estão sem UBS. Sem dinheiro para o serviço, guarda dinheiro (não abre bairro).
+    let saving = false;
+    if (census.childrenWithoutSchool > 150)
+      saving = !this.placeServiceNearDemand("escola", census.samples.school ?? []) || saving;
+    if (census.withoutClinic > 500)
+      saving = !this.placeServiceNearDemand("ubs", census.samples.health ?? []) || saving;
+    if (saving && this.districts.length > 0) return;
     // Abre bairro do tipo que está faltando: indústria separada (como manda o zoneamento) ou misto.
     if (this.districts.length === 0) this.buildDistrict("mixed");
     else if (d.industrialJobs > 10 && (free.industrial < 8 || stalled)) {
@@ -82,10 +88,6 @@ export class AutoMayor {
       this.buildDistrict("mixed");
       this.stalledActions = 0;
     }
-    // Serviços: uma escola a cada ~500 crianças sem vaga, uma UBS a cada ~1.500 pessoas sem UBS.
-    if (census.childrenWithoutSchool > 150)
-      this.placeServiceNearDemand("escola", census.samples.school ?? []);
-    if (census.withoutClinic > 500) this.placeServiceNearDemand("ubs", census.samples.health ?? []);
   }
 
   /** Lotes zoneados e ainda vazios, por tipo. */
@@ -237,19 +239,26 @@ export class AutoMayor {
     this.send({ type: "zone", zone, x0, y0, x1, y1 });
   }
 
-  /** Coloca o serviço perto de onde está a demanda (amostras de casas sem atendimento). */
-  private placeServiceNearDemand(service: "escola" | "ubs", samples: number[]) {
-    if (samples.length === 0) return;
+  /**
+   * Coloca o serviço perto de onde está a demanda (amostras de casas sem atendimento).
+   * Devolve false só quando falta dinheiro (aí o prefeito guarda dinheiro em vez de abrir bairro).
+   */
+  private placeServiceNearDemand(service: "escola" | "ubs", samples: number[]): boolean {
+    if (samples.length === 0) return true;
     const sim = this.game.sim;
     const w = sim.world;
     const t = sim.buildings.catalog.find((b) => b.id === service);
-    if (!t) return;
-    const placed = service === "escola" ? this.schools : this.clinics;
+    if (!t) return true;
     const pick = samples[this.rng.int(samples.length)]!;
     const px = w.xOf(pick);
     const py = w.yOf(pick);
-    // Não coloca dois iguais muito perto (menos de 1 km).
-    if (placed.some(([x, y]) => Math.abs(x - px) + Math.abs(y - py) < 60)) return;
+    // Já tem um igual (pronto ou em obra) a menos de ~1 km: espera ele ficar pronto.
+    const b = sim.buildings;
+    for (let id = 0; id < b.count; id++) {
+      if (b.state[id]! > BSTATE.active || b.typeOf(id).id !== service) continue;
+      if (Math.abs(b.x[id]! - px) + Math.abs(b.y[id]! - py) < 60) return true;
+    }
+    if (!sim.treasury.canAfford(t.cost ?? 0)) return false;
     // Procura um lugar vazio encostado numa via, em espiral a partir do ponto.
     for (let r = 1; r < 25; r++) {
       for (let dy = -r; dy <= r; dy++) {
@@ -259,12 +268,12 @@ export class AutoMayor {
           const y = py + dy;
           if (this.fits(x, y, t.w, t.h) && sim.network.findAccess(x, y, t.w, t.h)[0] >= 0) {
             this.send({ type: "placeService", service, x, y });
-            placed.push([x, y]);
-            return;
+            return true;
           }
         }
       }
     }
+    return true;
   }
 
   private fits(x: number, y: number, w: number, h: number): boolean {

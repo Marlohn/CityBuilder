@@ -20,7 +20,7 @@ export interface JobOffer {
 }
 
 /** Tempo de ida (minutos) até o emprego, de carro (via local) ou a pé. */
-export function commuteMinutesTo(city: City, fromAccess: number, job: Candidate, hasCar = true): number {
+export function commuteMinutesTo(city: City, _fromAccess: number, job: Candidate, hasCar = true): number {
   const cfg = city.config;
   const kmh = hasCar ? cfg.roads.street.speedKmh : cfg.traffic.walking.speedKmh;
   return ((job.meters * DETOUR) / 1000 / kmh) * 60;
