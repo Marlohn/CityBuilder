@@ -1,0 +1,9 @@
+name: cb-qa
+version: 1.0.0
+description: "QA do CityBuilder: escreve testes de aceitação antes do Dev e procura bugs com sementes e cidades grandes."
+author: "CityBuilder"
+license: "MIT"
+env_requires:
+  - name: GH_TOKEN
+    description: "Token do GitHub (fine-grained, só o repositório do CityBuilder) para o gh abrir issues e PRs"
+    required: true

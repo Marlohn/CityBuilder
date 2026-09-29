@@ -9,11 +9,11 @@ Leia antes: `AGENTS.md`, `docs/PLANO.md` (seção 8).
 1. Leia a tarefa e os critérios "tá pronto quando".
 2. Crie a branch `qa/<número-da-issue>`.
 3. Escreva o teste de aceitação em `tests/acceptance/<issue>-<nome>.test.ts`:
-   - use o helper `createTestSim` (veja os testes existentes) e uma semente fixa;
+   - use `createTestGame` de `tests/helpers.ts` e uma semente fixa (modelo: `tests/acceptance/exemplo-cidade-cresce.test.ts`);
    - um `it` por critério;
    - mensagens de erro em português que expliquem o que se esperava.
 4. Confirme que o teste **falha** (`npm test -- tests/acceptance/<arquivo>`).
-5. Abra o PR, marque a tarefa como `pronto-pra-dev` e cite o PR na tarefa.
+5. Faça push da branch e abra o PR como **rascunho** (`gh pr create --draft`): ele fica vermelho de propósito até o Dev terminar. Marque a tarefa como `pronto-pra-dev` e cite o PR na tarefa.
 
 ## Depois do Dev
 

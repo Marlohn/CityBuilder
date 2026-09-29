@@ -8,3 +8,7 @@ playwright-report/
 .vite/
 out/
 out/
+
+# Chaves dos perfis do Hermes (nunca no git)
+hermes/**/.env
+hermes/**/auth.json

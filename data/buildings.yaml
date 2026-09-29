@@ -1,5 +1,5 @@
 # Catálogo de prédios. Conteúdo é dado, não código: para um tipo novo, adicione aqui.
-# Contas de capacidade (veja docs/decisoes/fontes.md):
+# Contas de capacidade (a fonte de cada número está no comentário dele):
 #   área construída = área do lote x coeficiente de aproveitamento (CA)
 #   Zona Mista de SP (Lei 16.402/2016): CA básico 1, CA máximo 2; taxa de ocupação 0,85 (lote ≤ 500 m²) e 0,70 (lote > 500 m²).
 #   Empregos = área útil / m² por emprego (Employment Density Guide, HCA 2015: escritório 12 m²,

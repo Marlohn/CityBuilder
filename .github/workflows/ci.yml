@@ -66,9 +66,16 @@ jobs:
         with:
           fetch-depth: 0
       - name: Verificar arquivos alterados
+        env:
+          HEAD_REF: ${{ github.head_ref }}
         run: |
           git fetch origin "${{ github.base_ref }}"
-          CHANGED=$(git diff --name-only "origin/${{ github.base_ref }}...HEAD" | grep -E '^tests/acceptance/' || true)
+          # O Dev parte da branch do QA (qa/<issue>): compara com ela, para só contar o que o Dev mudou.
+          ISSUE="${HEAD_REF#dev/}"
+          BASE="origin/${{ github.base_ref }}"
+          if git fetch origin "qa/${ISSUE}" 2>/dev/null; then BASE="origin/qa/${ISSUE}"; fi
+          echo "Comparando com ${BASE}"
+          CHANGED=$(git diff --name-only "${BASE}...HEAD" | grep -E '^tests/acceptance/' || true)
           if [ -n "$CHANGED" ]; then
             echo "O Dev alterou testes de aceitação do QA:"
             echo "$CHANGED"

@@ -1,0 +1,9 @@
+name: cb-arquiteto
+version: 1.0.0
+description: "Arquiteto do CityBuilder: quebra itens do roadmap em tarefas pequenas e revisa os PRs."
+author: "CityBuilder"
+license: "MIT"
+env_requires:
+  - name: GH_TOKEN
+    description: "Token do GitHub (fine-grained, só o repositório do CityBuilder) para o gh abrir issues e PRs"
+    required: true

@@ -15,6 +15,8 @@ export interface RunOptions {
   scenario?: Scenario;
   /** Comandos já com tick (replay). */
   timed?: TimedCommand[];
+  /** Comandos dados logo no começo (aplicados no primeiro tick). */
+  commands?: Command[];
   /** Chamado uma vez por dia do jogo. */
   onDay?: (game: Game, day: number) => void;
   /** Liga o prefeito automático (constrói a cidade sozinho). */
@@ -45,6 +47,7 @@ export function createRun(opts: RunOptions): Run {
   if (opts.scenario)
     for (const s of scenarioCommands(opts.scenario)) push(startTick + Math.round(s.day * tpd), s.command);
   for (const t of opts.timed ?? []) push(t.tick, t.command);
+  for (const c of opts.commands ?? []) push(startTick, c);
   const endTick = startTick + Math.round(opts.days * tpd);
   let lastDay = sim.clock.day;
   let done = false;

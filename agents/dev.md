@@ -12,7 +12,7 @@ Leia antes: `AGENTS.md`.
 4. Escreva o **mínimo** de código para passar. Pode escrever testes unitários seus em `packages/*/src/**/*.test.ts`.
 5. Números de regra vão para `config/*.yaml` com a fonte da tarefa. Nunca fixe número no código.
 6. `npm run format` e depois `npm run check` até dar `TUDO OK`.
-7. Abra o PR usando o modelo. Etiqueta `em-revisão`.
+7. Abra o PR contra a `main` usando o modelo (ele já leva o teste do QA junto). Etiqueta `em-revisão`. Cite o PR do QA: quando o seu entrar, o do QA é fechado.
 
 ## Proibido
 
