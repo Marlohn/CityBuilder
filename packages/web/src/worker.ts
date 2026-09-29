@@ -167,7 +167,10 @@ function sendFrame() {
       vehicles,
       commandResults: sim.drainResults(),
     },
-    [vehicles.data.buffer, ...(map ? [map.roads.buffer, map.zones.buffer, map.trees.buffer] : [])],
+    [
+      vehicles.data.buffer,
+      ...(map ? [map.roads.buffer, map.zones.buffer, map.trees.buffer, map.water.buffer] : []),
+    ],
   );
 }
 

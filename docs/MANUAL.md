@@ -4,7 +4,7 @@
 
 Você é quem planeja a cidade: abre ruas, define onde pode ter casa, comércio e indústria, e coloca escolas e postos de saúde. Quem constrói as casas e as lojas são as construtoras, e só quando há gente querendo morar ou trabalhar ali. Os moradores vivem a vida deles sozinhos.
 
-O mapa começa vazio, só com uma **avenida saindo da borda oeste**. Ela liga a cidade ao resto do mundo: é por ela que as famílias chegam e que o material das obras entra. Toda rua precisa se ligar a ela, senão nada é construído ali.
+O mapa começa vazio, com um **rio** no leste, alguns **lagos** e uma **avenida saindo da borda oeste**. Não dá para construir, zonear nem abrir via na água (ponte ainda não existe). Ela liga a cidade ao resto do mundo: é por ela que as famílias chegam e que o material das obras entra. Toda rua precisa se ligar a ela, senão nada é construído ali.
 
 ## O tempo
 

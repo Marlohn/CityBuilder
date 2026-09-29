@@ -15,6 +15,8 @@ export interface MapView {
   zones: Uint8Array;
   /** 1 = vegetação nativa. */
   trees: Uint8Array;
+  /** 1 = água (rio ou lago). */
+  water: Uint8Array;
   version: number;
 }
 

@@ -142,10 +142,27 @@ export class AutoMayor {
       const side: -1 | 1 = this.row % 2 === 0 ? -1 : 1;
       const layer = Math.floor(this.row / 2);
       const y0 = side < 0 ? midY - (layer + 1) * D : midY + 1 + layer * D;
-      if (y0 >= 1 && y0 + D < w.height - 1 && this.row < 6) return { x0, y0, side };
+      if (y0 >= 1 && y0 + D < w.height - 1 && this.row < 6) {
+        // Bairro, avenida vertical e avenida principal não podem passar por água (ainda não há ponte).
+        const blocked =
+          this.waterIn(x0, y0, x0 + D, y0 + D) ||
+          this.waterIn(x0, Math.min(y0, midY), x0, Math.max(y0 + D, midY)) ||
+          this.waterIn(startX - 1, midY, x0 + D, midY);
+        if (!blocked) return { x0, y0, side };
+        this.advanceSlot();
+        continue;
+      }
       this.row = 0;
       this.col++;
     }
+  }
+
+  private waterIn(x0: number, y0: number, x1: number, y1: number): boolean {
+    const w = this.game.sim.world;
+    for (let y = Math.max(0, y0); y <= Math.min(w.height - 1, y1); y++)
+      for (let x = Math.max(0, x0); x <= Math.min(w.width - 1, x1); x++)
+        if (w.water[w.idx(x, y)]) return true;
+    return false;
   }
 
   private advanceSlot() {
@@ -282,7 +299,7 @@ export class AutoMayor {
       for (let dx = 0; dx < w; dx++) {
         if (!world.inBounds(x + dx, y + dy)) return false;
         const i = world.idx(x + dx, y + dy);
-        if (world.roads[i] !== 0 || world.buildingAt[i]! >= 0) return false;
+        if (world.roads[i] !== 0 || world.buildingAt[i]! >= 0 || world.water[i]) return false;
       }
     }
     return true;

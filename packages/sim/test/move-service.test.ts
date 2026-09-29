@@ -6,7 +6,7 @@ import { loadDefaults } from "./helpers";
 function cityWithSchool() {
   // Limite de 1 km (em vez de 2) só neste teste, para "longe" ficar bem claro no mapa pequeno.
   const { config, data } = loadDefaults({
-    world: { width: 160, height: 160 },
+    world: { width: 160, height: 160, water: { enabled: false } },
     economy: { mode: "sandbox" },
     education: { maxDistanceMeters: 1000 },
   });

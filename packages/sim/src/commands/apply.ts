@@ -102,6 +102,8 @@ function buildRoad(
     for (let x = ax; x <= bx; x++) {
       const i = world.idx(x, y);
       if (world.buildingAt[i]! >= 0) return { ok: false, reason: `tem um prédio no caminho em (${x}, ${y})` };
+      if (world.water[i])
+        return { ok: false, reason: `tem água em (${x}, ${y}) (ponte ainda não existe no jogo)` };
       if (world.roads[i] !== id) tiles.push(i);
     }
   }
@@ -129,7 +131,7 @@ function zone(ctx: CommandContext, zoneId: number, x0: number, y0: number, x1: n
   for (let y = ay; y <= by; y++) {
     for (let x = ax; x <= bx; x++) {
       const i = world.idx(x, y);
-      if (world.roads[i] !== 0) continue;
+      if (world.roads[i] !== 0 || world.water[i]) continue;
       if (world.buildingAt[i]! >= 0) {
         skippedBuilt++;
         continue;
@@ -212,6 +214,7 @@ function placeService(ctx: CommandContext, service: string, x: number, y: number
       if (!world.inBounds(tx, ty)) return { ok: false, reason: "não cabe no mapa" };
       const i = world.idx(tx, ty);
       if (world.roads[i] !== 0) return { ok: false, reason: `tem uma via em (${tx}, ${ty})` };
+      if (world.water[i]) return { ok: false, reason: `tem água em (${tx}, ${ty})` };
       if (world.buildingAt[i]! >= 0) return { ok: false, reason: `tem um prédio em (${tx}, ${ty})` };
     }
   }
@@ -249,6 +252,7 @@ function moveService(ctx: CommandContext, id: number, x: number, y: number): Par
       if (!world.inBounds(tx, ty)) return { ok: false, reason: "não cabe no mapa" };
       const i = world.idx(tx, ty);
       if (world.roads[i] !== 0) return { ok: false, reason: `tem uma via em (${tx}, ${ty})` };
+      if (world.water[i]) return { ok: false, reason: `tem água em (${tx}, ${ty})` };
       const other = world.buildingAt[i]!;
       if (other >= 0 && other !== id) return { ok: false, reason: `tem um prédio em (${tx}, ${ty})` };
     }

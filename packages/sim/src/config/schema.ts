@@ -52,6 +52,16 @@ export const GameConfigSchema = z.object({
     startingRoad: z
       .object({ enabled: z.boolean(), kind: z.enum(["street", "avenue"]), length: intPos })
       .default({ enabled: false, kind: "avenue", length: 1 }),
+    water: z
+      .object({
+        enabled: z.boolean(),
+        riverWidth: intPos,
+        /** Faixa (fração da largura do mapa) onde o rio entra pelo norte. */
+        riverX: z.tuple([prob, prob]),
+        lakes: z.number().int().min(0),
+        lakeRadius: z.tuple([intPos, intPos]),
+      })
+      .default({ enabled: false, riverWidth: 5, riverX: [0.8, 0.9], lakes: 0, lakeRadius: [4, 8] }),
   }),
   time: z.object({
     minutesPerTick: z.number().int().min(1).max(60),

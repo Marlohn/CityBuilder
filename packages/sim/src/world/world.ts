@@ -14,6 +14,8 @@ export class World {
   readonly zones: Uint8Array;
   /** 1 = vegetação nativa. */
   readonly trees: Uint8Array;
+  /** 1 = água (rio ou lago): não dá para construir nem abrir via. */
+  readonly water: Uint8Array;
   /** Id do prédio que ocupa o quadradinho, ou -1. */
   readonly buildingAt: Int32Array;
   /** Aumenta a cada mudança de via, zona ou vegetação (a tela usa para saber quando redesenhar). */
@@ -31,6 +33,7 @@ export class World {
     this.roads = new Uint8Array(this.size);
     this.zones = new Uint8Array(this.size);
     this.trees = new Uint8Array(this.size);
+    this.water = new Uint8Array(this.size);
     this.buildingAt = new Int32Array(this.size).fill(-1);
   }
 
@@ -72,6 +75,49 @@ export class World {
   }
 
   /**
+   * Gera o rio (entra pelo norte e desce serpenteando até o sul) e os lagos.
+   * `clear` = retângulo que fica seco (a estrada de acesso e o começo da cidade).
+   * `lakeClear` = faixa sem lagos (a linha da avenida principal, que atravessa o mapa).
+   */
+  generateWater(
+    rng: Rng,
+    cfg: { riverWidth: number; riverX: [number, number]; lakes: number; lakeRadius: [number, number] },
+    clear: { x0: number; y0: number; x1: number; y1: number },
+    lakeClear: { x0: number; y0: number; x1: number; y1: number } = clear,
+  ) {
+    const w = this.width;
+    const h = this.height;
+    const minX = Math.floor(w * cfg.riverX[0]);
+    const maxX = Math.max(minX, Math.floor(w * cfg.riverX[1]) - cfg.riverWidth);
+    let x = minX + rng.int(maxX - minX + 1);
+    const isClear = (tx: number, ty: number) =>
+      tx >= clear.x0 && tx <= clear.x1 && ty >= clear.y0 && ty <= clear.y1;
+    for (let y = 0; y < h; y++) {
+      // O rio muda de lado aos poucos (no máximo 1 quadradinho por linha).
+      if (rng.chance(0.35)) x = Math.max(minX, Math.min(maxX, x + (rng.chance(0.5) ? 1 : -1)));
+      for (let k = 0; k < cfg.riverWidth; k++) {
+        if (x + k < w && !isClear(x + k, y)) this.water[y * w + x + k] = 1;
+      }
+    }
+    for (let n = 0; n < cfg.lakes; n++) {
+      const r = cfg.lakeRadius[0] + rng.int(cfg.lakeRadius[1] - cfg.lakeRadius[0] + 1);
+      const ry = Math.max(2, Math.round(r * (0.6 + rng.float() * 0.4)));
+      const cx = r + rng.int(Math.max(1, w - 2 * r));
+      const cy = ry + rng.int(Math.max(1, h - 2 * ry));
+      for (let y = cy - ry; y <= cy + ry; y++) {
+        for (let tx = cx - r; tx <= cx + r; tx++) {
+          if (!this.inBounds(tx, y) || isClear(tx, y)) continue;
+          if (tx >= lakeClear.x0 && tx <= lakeClear.x1 && y >= lakeClear.y0 && y <= lakeClear.y1) continue;
+          const dx = (tx - cx) / r;
+          const dy = (y - cy) / ry;
+          if (dx * dx + dy * dy <= 1) this.water[y * w + tx] = 1;
+        }
+      }
+    }
+    this.mapVersion++;
+  }
+
+  /**
    * Gera vegetação nativa com ruído suave (só contas inteiras e + - * /, determinístico).
    * `coverage` é a fração do mapa com árvores.
    */
@@ -102,7 +148,8 @@ export class World {
     }
     const sorted = Float64Array.from(values).sort();
     const threshold = sorted[Math.floor((1 - coverage) * (this.size - 1))] ?? 1;
-    for (let i = 0; i < this.size; i++) this.trees[i] = coverage > 0 && values[i]! >= threshold ? 1 : 0;
+    for (let i = 0; i < this.size; i++)
+      this.trees[i] = coverage > 0 && values[i]! >= threshold && !this.water[i] ? 1 : 0;
     this.mapVersion++;
   }
 }
