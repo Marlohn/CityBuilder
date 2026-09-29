@@ -354,6 +354,26 @@ Observação: os sinais do roadmap começam a ser coletados antes da fase 6. Os 
 | (não tinha) | Publicação no GitHub Pages | Pra dar pra jogar por um link. |
 | Um commit por fase | Vários commits pequenos por fase | Commit gigante é difícil de revisar e de desfazer. |
 
+### 14.1 Mudanças feitas durante a implementação
+
+| Plano | Como ficou | Motivo |
+|---|---|---|
+| Rotas calculadas por vários workers | Uma thread só, com a arquitetura pronta para vários | Medido: a cidade de 50 mil gasta ~0,6 s por dia do jogo, com mais de 100x de folga na velocidade 1x. Paralelizar agora só traria complexidade. |
+| Save = foto binária + comandos | Save = semente + mudanças de config + comandos (replay) | Menor e 100% fiel. Limite conhecido: abrir um jogo muito longo leva alguns segundos. |
+| Crescimento só por demanda | Teoria da base econômica (multiplicador de emprego 2,15) e empregos fora da cidade | Sem isso a cidade não crescia de forma realista (empregos locais dependem de empregos "básicos"). |
+| Mapa começa vazio | Começa com uma avenida saindo da borda oeste | Sem ligação com fora do mapa, ninguém consegue chegar (e nada é criado do nada). |
+| Tela no pacote `ui` | Pacote `web` separado (Worker + Babylon) e `ui` só com React | Troca de front fica mais fácil. |
+| Prefeito automático abre bairro inteiro | Abre algumas ruas por vez, só com dinheiro para a etapa inteira | Achado pelo próprio motor de roadmap: bairro pela metade deixava ruas soltas e milhares de famílias desistiam de vir. Junto veio a regra do jogo: construtora só constrói onde a rua chega na estrada. |
+
+### 14.2 Motor de roadmap: como ficou
+
+- `npm run roadmap:signals` roda 3 cidades do prefeito automático e 1 cenário (roadmap/config.yaml) e grava `roadmap/signals.json` com as métricas médias e os sinais.
+- A comparação com cidades reais usa `data/reference/cidade-real.yaml` (cada linha com fonte e link).
+- O alcance é sempre **medido** na cidade de teste, nunca projetado. Um serviço que só faz falta em cidades maiores entra com "só fonte" (confiança 80%).
+- `npm run roadmap:build` lê as issues (API do GitHub ou arquivo), aplica a fórmula e as regras e gera `ROADMAP.md`, incluindo "Sinais sem item": a lista de candidatos para o Designer, já com fonte, métrica sugerida e nota provisória.
+- `npm run roadmap:check` confere a métrica dos itens com a etiqueta `entregue`.
+- O workflow `.github/workflows/roadmap.yml` roda tudo toda segunda, a cada mudança nas issues e a cada push em `main`, e publica o resultado na issue "Roadmap (gerado automaticamente)".
+
 ## 15. Pendências do dono
 
 - ~~Deixar o repositório público~~ (feito).

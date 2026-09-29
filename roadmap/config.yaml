@@ -1,0 +1,35 @@
+# Motor de roadmap. Veja docs/PLANO.md seção 12.2. Estes números são regras de organização do trabalho
+# (não regras do jogo), por isso não precisam de fonte externa.
+roadmap:
+  # Cidades usadas para gerar os sinais: prefeito automático em várias sementes + um cenário fixo.
+  evaluation:
+    botSeeds: [avaliacao-1, avaliacao-2, avaliacao-3]
+    botDays: 40
+    scenario: bairro-basico
+    scenarioDays: 25
+  # Tamanho de cidade que o jogo promete aguentar (docs/VISAO.md). Serviços que uma cidade real desse
+  # tamanho teria entram como sinal mesmo que a cidade de teste ainda não tenha chegado lá.
+  targetPopulation: 50000
+  thresholds:
+    # Desejo não atendido só vira sinal se afetar pelo menos esta parte da população.
+    unmetShare: 0.005
+    # Famílias que desistiram de vir, em relação às que chegaram.
+    migrantsTurnedAwayShare: 0.1
+    # A simulação pode usar no máximo esta parte do tempo real na velocidade 1x (folga para a tela).
+    perfShareOfRealTime: 0.25
+  # Fórmula RICE: (alcance x impacto x confiança) / esforço.
+  confidence:
+    dataAndSource: 1.0
+    sourceOnly: 0.8
+    opinion: 0.5
+  # Esforço usado enquanto o Arquiteto não estima (número de tarefas pequenas).
+  defaultEffort: 3
+  # Peso extra para itens que vieram de ideias do dono do projeto (etiqueta "do-dono"). 0.5 = +50%.
+  ownerBoost: 0.5
+  # Quantos itens entram em "Agora" e a mistura garantida por grupo.
+  nowSize: 10
+  mix:
+    features: 0.5
+    fixes: 0.3
+    tech: 0.2
+  nextSize: 15

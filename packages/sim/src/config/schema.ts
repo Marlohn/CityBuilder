@@ -159,6 +159,7 @@ export const GameConfigSchema = z.object({
     industryMaxVacancy: prob,
     maxConstructionStartsPerDay: intPos,
     targetVacancy: prob,
+    requiresOutsideConnection: z.boolean().default(true),
   }),
   realism: z.object({
     minPopulation: intPos,

@@ -1,0 +1,234 @@
+/** Motor de roadmap: métrica, leitura das issues, fórmula, regras e o texto final. */
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { loadConfigAndData, loadScenario, ROOT, runGame } from "@city/cli";
+import { describe, expect, it } from "vitest";
+import { computeRoadmap, renderRoadmap } from "../src/build";
+import { parseReference, parseRoadmapConfig, type RoadmapConfig } from "../src/config";
+import { formSections, fromGithubApi, leadingNumber, parseItem } from "../src/items";
+import { checkMetric, isValidMetric } from "../src/metric";
+import { plan, rice, scoreItem } from "../src/rice";
+import { mergeRuns, metricsOf, pendingSignals, signalsFromRun } from "../src/signals";
+import type { IssueInput, Signal, SignalsFile } from "../src/types";
+
+const cfg: RoadmapConfig = parseRoadmapConfig(readFileSync(join(ROOT, "roadmap", "config.yaml"), "utf8"));
+const reference = parseReference(readFileSync(join(ROOT, "data", "reference", "cidade-real.yaml"), "utf8"));
+
+function form(fields: Record<string, string>): string {
+  return Object.entries(fields)
+    .map(([k, v]) => `### ${k}\n\n${v || "_No response_"}`)
+    .join("\n\n");
+}
+
+let nextNumber = 1;
+function item(
+  over: Partial<Record<string, string>> = {},
+  labels: string[] = ["roadmap"],
+  number?: number,
+): IssueInput {
+  const fields: Record<string, string> = {
+    Categoria: "feature",
+    Problema: "4.200 jovens querem faculdade",
+    Pesquisa: "INEP 2023 https://www.gov.br/inep",
+    Proposta: "Criar faculdade",
+    "Métrica de sucesso": "unmet.university < 500",
+    Alcance: "1000",
+    Impacto: "2 - alto",
+    Confiança: "100 - dado do jogo + fonte real",
+    Esforço: "4",
+    Dependências: "",
+    "Sinal de origem": "",
+    ...over,
+  };
+  return {
+    number: number ?? nextNumber++,
+    title: `item ${fields.Proposta}`,
+    body: form(fields),
+    labels,
+    state: "open",
+  };
+}
+
+const signals: SignalsFile = {
+  generatedAt: "2026-01-01T00:00:00.000Z",
+  runs: [{ name: "bot:a", seed: "a", days: 10, population: 5000 }],
+  metrics: { "unmet.university": 4200, population: 5000, "realism.tfr": 1.2 },
+  signals: [],
+};
+
+describe("métrica de sucesso", () => {
+  it("entende operadores, 'entre' e números no formato brasileiro", () => {
+    expect(checkMetric("unmet.university < 500", { "unmet.university": 499 }).ok).toBe(true);
+    expect(checkMetric("unmet.university < 500", { "unmet.university": 500 }).ok).toBe(false);
+    expect(checkMetric("population >= 4.200", { population: 4200 }).ok).toBe(true);
+    expect(checkMetric("realism.tfr entre 1,3 e 1,9", { "realism.tfr": 1.5 }).ok).toBe(true);
+    expect(checkMetric("realism.tfr entre 1,3 e 1,9", { "realism.tfr": 2 }).ok).toBe(false);
+  });
+
+  it("métrica desconhecida não passa e é apontada", () => {
+    expect(checkMetric("naoexiste < 1", {}).ok).toBe(false);
+    expect(isValidMetric("naoexiste < 1", { population: 1 })).toMatch(/não existe/);
+    expect(isValidMetric("sem operador", undefined)).toMatch(/formato/);
+  });
+});
+
+describe("leitura das issues", () => {
+  it("lê o formulário do GitHub", () => {
+    const s = formSections("### Categoria\n\nfeature\n\n### Esforço\n\n_No response_\n");
+    expect(s).toEqual({ categoria: "feature", esforco: "" });
+    const it1 = parseItem(item({ Dependências: "#12, #15", Esforço: "" }, ["roadmap", "do-dono"], 99));
+    expect(it1.category).toBe("feature");
+    expect(it1.impact).toBe(2);
+    expect(it1.confidence).toBe(1);
+    expect(it1.effort).toBeNull();
+    expect(it1.deps).toEqual([12, 15]);
+    expect(it1.owner).toBe(true);
+  });
+
+  it("números: 4.200 pessoas, 0,5 e 3 - vida ou morte", () => {
+    expect(leadingNumber("4.200 pessoas")).toBe(4200);
+    expect(leadingNumber("0.5 - baixo")).toBe(0.5);
+    expect(leadingNumber("0,25 - estética")).toBe(0.25);
+    expect(leadingNumber("3 - vida ou morte")).toBe(3);
+    expect(leadingNumber("")).toBeNull();
+  });
+
+  it("ignora pull requests da API", () => {
+    const list = fromGithubApi([
+      { number: 1, title: "a", body: null, labels: [{ name: "ideia" }], state: "open" },
+      { number: 2, title: "pr", body: "", labels: [], state: "open", pull_request: {} },
+    ]);
+    expect(list.map((i) => i.number)).toEqual([1]);
+    expect(list[0]!.labels).toEqual(["ideia"]);
+  });
+});
+
+describe("fórmula e regras", () => {
+  it("RICE = alcance x impacto x confiança / esforço, com peso para ideia do dono", () => {
+    expect(rice(1000, 2, 1, 4)).toBe(500);
+    const base = scoreItem(parseItem(item()), cfg, signals).score;
+    const owner = scoreItem(parseItem(item({}, ["roadmap", "do-dono"])), cfg, signals).score;
+    expect(owner).toBeCloseTo(base * (1 + cfg.ownerBoost));
+  });
+
+  it("sem fonte ou sem métrica o item não entra (fica em Incompletos)", () => {
+    const r = computeRoadmap(
+      [
+        item({ Pesquisa: "eu acho" }),
+        item({ "Métrica de sucesso": "" }),
+        item({ "Métrica de sucesso": "xyz < 1" }),
+      ],
+      signals,
+      cfg,
+    );
+    expect(r.plan.now).toHaveLength(0);
+    expect(r.incomplete).toHaveLength(3);
+    expect(r.incomplete[0]!.missing.join()).toMatch(/link/);
+    expect(r.incomplete[2]!.missing.join()).toMatch(/não existe/);
+  });
+
+  it("bug passa na frente de tudo; dependência sobe e o item bloqueado espera", () => {
+    const big = item({ Alcance: "100000", Dependências: "#501" });
+    const dep = item({ Alcance: "10", Proposta: "base" }, ["roadmap"], 501);
+    const bug = item({ Alcance: "1", Categoria: "correcao" }, ["roadmap", "bug"]);
+    const r = computeRoadmap([big, dep, bug], signals, cfg);
+    expect(r.plan.now[0]!.item.number).toBe(bug.number);
+    expect(r.plan.blocked.map((x) => x.item.number)).toEqual([big.number]);
+    const depRanked = r.plan.now.find((x) => x.item.number === 501)!;
+    expect(depRanked.why).toMatch(/bloqueia/);
+    expect(depRanked.score).toBeGreaterThanOrEqual(r.plan.blocked[0]!.score);
+  });
+
+  it("mistura garantida: correções entram em Agora mesmo com nota menor", () => {
+    const issues = [
+      ...Array.from({ length: 12 }, (_, k) => item({ Alcance: String(10000 + k) })),
+      item({ Alcance: "5", Categoria: "realismo" }),
+      item({ Alcance: "5", Categoria: "performance" }),
+    ];
+    const r = computeRoadmap(issues, signals, cfg);
+    const cats = r.plan.now.map((x) => x.item.category);
+    expect(r.plan.now).toHaveLength(cfg.nowSize);
+    expect(cats).toContain("realismo");
+    expect(cats).toContain("performance");
+  });
+
+  it("mistura nunca deixa vaga ociosa quando falta item de um grupo", () => {
+    const issues = Array.from({ length: 12 }, (_, k) => item({ Alcance: String(100 + k) }));
+    const ranked = computeRoadmap(issues, signals, cfg);
+    expect(ranked.plan.now).toHaveLength(cfg.nowSize);
+    expect(ranked.plan.next).toHaveLength(2);
+    // Sem nada a ordenar, plan devolve tudo vazio.
+    expect(plan([], cfg).now).toHaveLength(0);
+  });
+
+  it("confere a métrica dos itens entregues", () => {
+    const ok = item({ "Métrica de sucesso": "population > 100" }, ["roadmap", "entregue"]);
+    const bad = item({ "Métrica de sucesso": "unmet.university < 500" }, ["roadmap", "entregue"]);
+    const r = computeRoadmap([ok, bad], signals, cfg);
+    expect(r.deliveries.map((d) => d.check?.ok)).toEqual([true, false]);
+    const md = renderRoadmap(r, signals, cfg);
+    expect(md).toMatch(/✅ resolveu/);
+    expect(md).toMatch(/não-resolveu/);
+  });
+});
+
+describe("sinais", () => {
+  const sig = (id: string, reach: number): Omit<Signal, "seen" | "runs"> => ({
+    id,
+    source: "desejo",
+    category: "construcao",
+    title: id,
+    detail: "d",
+    reach,
+    impact: 1,
+    evidence: "opinion",
+    urgent: false,
+  });
+
+  it("agrupa o mesmo sinal de várias cidades e tira a duplicata desejo/comparação", () => {
+    const merged = mergeRuns([
+      [sig("desejo:university", 100), sig("comparacao:faculdade", 50)],
+      [sig("desejo:university", 300)],
+    ]);
+    expect(merged.map((s) => s.id)).toEqual(["desejo:university"]);
+    expect(merged[0]!.reach).toBe(200);
+    expect(merged[0]!.seen).toBe(2);
+  });
+
+  it("acha valores PENDENTE na config", () => {
+    const out = pendingSignals({ "a.yaml": "x: 1\n# PENDENTE: fonte\ny: 2", "b.yaml": "z: 1" }, 1000);
+    expect(out.map((s) => s.id)).toEqual(["pendente:a.yaml"]);
+    expect(out[0]!.detail).toMatch(/linha 2/);
+  });
+
+  it("roda numa cidade de verdade, sem sinal urgente e de forma reproduzível", () => {
+    const { config, data } = loadConfigAndData({ world: { width: 160, height: 256 } });
+    const services = new Set<string>();
+    for (const b of data.buildings) if (b.service) services.add(b.service);
+    const run = () =>
+      runGame({ config, data, seed: "roadmap", days: 6, scenario: loadScenario("bairro-basico") });
+    const a = run();
+    const s1 = signalsFromRun(a, cfg, reference, services);
+    const s2 = signalsFromRun(run(), cfg, reference, services);
+    expect(s1).toEqual(s2);
+    expect(s1.filter((s) => s.urgent)).toEqual([]);
+    // Cidade real de qualquer tamanho tem água e esgoto: o jogo ainda não tem.
+    expect(s1.map((s) => s.id)).toContain("comparacao:saneamento");
+    const m = metricsOf(a);
+    expect(m.population).toBeGreaterThan(0);
+    expect(m.invariantViolations).toBe(0);
+    expect(Object.keys(m)).toContain("unmet.university");
+    // Toda métrica sugerida pelos sinais existe no relatório.
+    for (const s of s1) if (s.metric) expect(isValidMetric(s.metric, m)).toBeNull();
+  });
+
+  it("sem issues, o roadmap lista os sinais como candidatos, urgentes primeiro", () => {
+    const file: SignalsFile = {
+      ...signals,
+      signals: mergeRuns([[sig("desejo:a", 10), { ...sig("saude:x", 1), urgent: true }]]),
+    };
+    const r = computeRoadmap([], file, cfg);
+    expect(r.unlinked.map((u) => u.signal.id)).toEqual(["saude:x", "desejo:a"]);
+    expect(renderRoadmap(r, file, cfg)).toMatch(/## Sinais sem item/);
+  });
+});

@@ -1,0 +1,49 @@
+name: Roadmap
+
+# Motor de roadmap (docs/PLANO.md seção 12.2): mede cidades de teste, lê as issues, ordena pela
+# fórmula e publica o resultado na issue "Roadmap (gerado automaticamente)" e no resumo do job.
+on:
+  schedule:
+    - cron: "17 6 * * 1" # toda segunda de manhã
+  workflow_dispatch:
+  issues:
+    types: [opened, edited, labeled, unlabeled, closed, reopened]
+  push:
+    branches: [main]
+    paths: ["packages/sim/**", "config/**", "data/**", "roadmap/**", "packages/roadmap/**"]
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: roadmap
+  cancel-in-progress: true
+
+jobs:
+  build:
+    # A própria issue do roadmap gerado não dispara outra rodada.
+    if: github.event_name != 'issues' || !contains(github.event.issue.labels.*.name, 'roadmap-gerado')
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run roadmap:signals
+      - run: npm run roadmap:build -- --publish
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - run: npm run roadmap:check || echo "::warning::algum item entregue não bateu a métrica (veja o ROADMAP.md)"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - run: cat ROADMAP.md >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: roadmap
+          path: |
+            ROADMAP.md
+            roadmap/signals.json

@@ -4,7 +4,7 @@
 name: estresse
 description: Crescimento acelerado para testar performance com cidades grandes.
 seed: estresse
-days: 80
+days: 200
 overrides:
   economy: { mode: sandbox }
   growth: { industryGrowthPerYear: 1.0, industryMinStep: 200, maxConstructionStartsPerDay: 3000 }

@@ -33,7 +33,8 @@ Seu papel específico está em `agents/<papel>.md`.
 | `npm run sim -- person <id> --seed=X --days=N` | História completa de uma pessoa. |
 | `npm run sim -- replay <arquivo>` | Repete um bug a partir do arquivo de replay. |
 | `npm run roadmap:signals` | Gera os sinais automáticos para o roadmap. |
-| `npm run roadmap:build` | Recalcula a ordem do roadmap e gera `ROADMAP.md`. |
+| `npm run roadmap:build` | Recalcula a ordem do roadmap e gera `ROADMAP.md` (`--issues=arquivo.json` para rodar sem a API). |
+| `npm run roadmap:check` | Confere a métrica de sucesso dos itens com a etiqueta `entregue`. |
 | `npm run dev` | Abre o jogo no navegador (só para humanos; agentes preferem o relatório em texto). |
 
 ## Fluxo de trabalho (GitHub)

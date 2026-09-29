@@ -1,0 +1,80 @@
+# O que uma cidade real costuma ter, e a partir de que tamanho. Usado pelo motor de roadmap para
+# achar o que falta no jogo ("comparação com cidades reais"). Cada linha tem fonte.
+# `inGame`: tipo de serviço do catálogo (data/buildings.yaml) que atende a isso; vazio = ainda não existe no jogo.
+# `reach`: quem é afetado (population, children0to3, youth18to24, households).
+# `impact`: 3 = vida ou morte, 2 = alto, 1 = médio, 0.5 = baixo, 0.25 = estética.
+items:
+  - id: saneamento
+    label: Água tratada e esgoto
+    category: construcao
+    minPopulation: 1
+    inGame: ""
+    reach: population
+    impact: 3
+    source: "Lei 14.026/2020 (marco do saneamento): meta de 99% com água potável e 90% com coleta e tratamento de esgoto até 2033"
+    url: https://www.gov.br/cidades/pt-br/assuntos/saneamento/marco-legal-do-saneamento
+  - id: hospital
+    label: Hospital (leitos de internação)
+    category: construcao
+    # 2,5 leitos por mil habitantes: a partir de ~8 mil habitantes já seriam 20 leitos (um hospital pequeno). PENDENTE: porte mínimo.
+    minPopulation: 8000
+    inGame: ""
+    reach: population
+    impact: 3
+    source: "Portaria GM/MS 1.101/2002: 2,5 a 3 leitos por 1.000 habitantes"
+    url: https://bvsms.saude.gov.br/bvs/saudelegis/gm/2002/prt1101_12_06_2002.html
+  - id: creche
+    label: Creche (0 a 3 anos)
+    category: construcao
+    minPopulation: 1000
+    inGame: ""
+    reach: children0to3
+    impact: 2
+    source: "PNE, meta 1: atender pelo menos 50% das crianças de 0 a 3 anos em creche (em 2023 eram 39,8%, PNAD)"
+    url: https://agenciadenoticias.ibge.gov.br/agencia-noticias/2012-agencia-de-noticias/noticias/42083-educacao-infantil-cresce-em-2023-e-retoma-patamar-pre-pandemia
+  - id: transporte_publico
+    label: Transporte público (ônibus)
+    category: feature
+    minPopulation: 20000
+    inGame: ""
+    reach: population
+    impact: 2
+    source: "Lei 12.587/2012 (Política Nacional de Mobilidade Urbana): municípios com mais de 20 mil habitantes precisam de plano de mobilidade"
+    url: https://www.planalto.gov.br/ccivil_03/_ato2011-2014/2012/lei/l12587.htm
+  - id: faculdade
+    label: Faculdade (ensino superior presencial)
+    category: construcao
+    # Só 19,5% dos municípios têm ensino superior presencial (INEP 2023); em geral os maiores. PENDENTE: porte mínimo.
+    minPopulation: 50000
+    inGame: ""
+    reach: youth18to24
+    impact: 2
+    source: "Censo da Educação Superior 2023 (INEP): 1.085 de 5.570 municípios têm cursos presenciais"
+    url: https://www.gov.br/inep/pt-br/centrais-de-conteudo/noticias/censo-da-educacao-superior/mec-e-inep-divulgam-resultado-do-censo-superior-2023
+  - id: plano_diretor
+    label: Plano diretor (regras de zoneamento editáveis)
+    category: feature
+    minPopulation: 20000
+    inGame: ""
+    reach: households
+    impact: 0.5
+    source: "Estatuto da Cidade (Lei 10.257/2001), art. 41: plano diretor obrigatório para cidades com mais de 20 mil habitantes"
+    url: https://www.planalto.gov.br/ccivil_03/leis/leis_2001/l10257.htm
+  - id: escola
+    label: Escola (ensino fundamental e médio)
+    category: construcao
+    minPopulation: 1
+    inGame: school
+    reach: population
+    impact: 2
+    source: "LDB: ensino obrigatório dos 4 aos 17 anos"
+    url: https://www.planalto.gov.br/ccivil_03/leis/l9394.htm
+  - id: ubs
+    label: UBS (atenção básica)
+    category: construcao
+    minPopulation: 1
+    inGame: health
+    reach: population
+    impact: 3
+    source: "PNAB 2017: 1 equipe de Saúde da Família para 2.000 a 3.500 pessoas"
+    url: https://bvsms.saude.gov.br/bvs/saudelegis/gm/2017/prt2436_22_09_2017.html

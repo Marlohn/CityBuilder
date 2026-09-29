@@ -17,7 +17,7 @@ describe("cidade de estresse (50 mil pessoas)", () => {
       config,
       data,
       seed: scenario.seed,
-      days: 150,
+      days: 200,
       bot: true,
       scenario,
       onDay: (g, d) => {

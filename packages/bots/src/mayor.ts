@@ -8,7 +8,7 @@
  * - Zoneia mais quando a demanda está alta e acabam os lotes livres.
  * - Coloca escola e UBS quando aparecem crianças sem escola ou pessoas sem UBS (os mesmos sinais do jogo).
  */
-import type { Command, ZoneKind } from "@city/contract";
+import { type Command, ROAD_ID, type ZoneKind } from "@city/contract";
 import { currentCensus, type Game, Rng } from "@city/sim";
 
 export interface MayorOptions {
@@ -26,7 +26,16 @@ interface District {
   x0: number;
   y0: number;
   kind: "mixed" | "industrial";
+  /** -1 = bairro acima da avenida principal (cresce para cima), 1 = abaixo (cresce para baixo). */
+  side: -1 | 1;
+  /** Quantas faixas de quarteirões já foram abertas (cresce a partir da avenida). */
+  steps: number;
+  /** Sorteio feito ao abrir o bairro (define onde vão os prédios residenciais). */
+  r: number;
 }
+
+/** Ruas horizontais abertas por etapa (3 faixas de quarteirão com 2 lotes de fundo). */
+const ROWS_PER_STEP = 3;
 
 export class AutoMayor {
   private rng: Rng;
@@ -97,68 +106,131 @@ export class AutoMayor {
     this.game.sim.enqueue(c);
   }
 
-  /** Abre um bairro novo encostado nos anteriores, ligado à avenida principal. */
+  /**
+   * Cresce a cidade: continua um bairro do mesmo tipo que ainda não terminou ou abre um novo.
+   * Como um prefeito de verdade, abre algumas ruas por vez e só quando tem dinheiro para a etapa inteira
+   * (etapa pela metade deixa ruas sem ligação com a estrada, onde ninguém consegue chegar).
+   */
   private buildDistrict(kind: District["kind"]) {
+    const D = this.opts.district;
+    const steps = Math.ceil(D / 3 / ROWS_PER_STEP);
+    let d = this.districts.find((x) => x.kind === kind && x.steps < steps);
+    if (!d) {
+      const slot = this.nextSlot();
+      if (!slot) return;
+      const fresh: District = { ...slot, kind, steps: 0, r: this.rng.float() };
+      if (!this.extend(fresh)) return;
+      this.districts.push(fresh);
+      this.advanceSlot();
+      d = fresh;
+    } else if (!this.extend(d)) return;
+    // Com dinheiro sobrando (ou no modo livre), continua o bairro na mesma vez, guardando reserva.
+    while (d.steps < steps && this.extend(d, 3)) {}
+  }
+
+  /** Próximo lugar livre para um bairro: colunas a partir do fim da estrada, alternando acima e abaixo. */
+  private nextSlot(): { x0: number; y0: number; side: -1 | 1 } | null {
     const w = this.game.sim.world;
     const D = this.opts.district;
     const midY = Math.floor(w.height / 2);
-    // Bairros em colunas a partir do fim da estrada de acesso, alternando acima e abaixo da avenida.
     const startX = this.game.sim.config.world.startingRoad.length;
-    const x0 = startX + this.col * D;
-    const side = this.row % 2 === 0 ? -1 : 1;
-    const layer = Math.floor(this.row / 2);
-    const y0 = side < 0 ? midY - (layer + 1) * D : midY + 1 + layer * D;
-    if (x0 + D >= w.width - 1 || y0 < 1 || y0 + D >= w.height - 1) {
+    for (;;) {
+      const x0 = startX + this.col * D;
+      if (x0 + D >= w.width - 1) return null;
+      const side: -1 | 1 = this.row % 2 === 0 ? -1 : 1;
+      const layer = Math.floor(this.row / 2);
+      const y0 = side < 0 ? midY - (layer + 1) * D : midY + 1 + layer * D;
+      if (y0 >= 1 && y0 + D < w.height - 1 && this.row < 6) return { x0, y0, side };
       this.row = 0;
       this.col++;
-      if (startX + this.col * D + D >= w.width - 1) return;
-      this.buildDistrict(kind);
-      return;
     }
-    this.districts.push({ x0, y0, kind });
-    // Avenida principal até o fim deste bairro.
-    this.send({ type: "buildRoad", kind: "avenue", x0: startX - 1, y0: midY, x1: x0 + D, y1: midY });
-    // Avenida vertical ligando o bairro à principal.
-    this.send({
-      type: "buildRoad",
-      kind: "avenue",
-      x0,
-      y0: Math.min(y0, midY),
-      x1: x0,
-      y1: Math.max(y0 + D, midY),
-    });
-    // Ruas: horizontais a cada 3 (quarteirão com 2 lotes de fundo), verticais a cada 12.
-    for (let y = y0; y <= y0 + D; y += 3)
-      this.send({ type: "buildRoad", kind: "street", x0, y0: y, x1: x0 + D, y1: y });
-    for (let x = x0; x <= x0 + D; x += 12)
-      this.send({ type: "buildRoad", kind: "street", x0: x, y0, x1: x, y1: y0 + D });
-    this.send({ type: "buildRoad", kind: "street", x0: x0 + D, y0, x1: x0 + D, y1: y0 + D });
-    // Zonas.
-    if (kind === "industrial") this.zone("industrial", x0 + 1, y0 + 1, x0 + D - 1, y0 + D - 1);
-    else {
-      const third = Math.floor(D / 3);
-      const r = this.rng.float();
-      // Faixa comercial perto da avenida; o resto residencial (parte em prédios).
-      const nearAve = side < 0 ? [y0 + D - third, y0 + D - 1] : [y0 + 1, y0 + third];
-      const far = side < 0 ? [y0 + 1, y0 + D - third - 1] : [y0 + third + 1, y0 + D - 1];
-      this.zone("commercial", x0 + 1, nearAve[0]!, x0 + D - 1, nearAve[1]!);
-      const split = x0 + Math.floor(D / 2);
-      const hd = this.opts.highDensityShare;
-      // Metade oeste: prédios com chance hd; metade leste: prédios só se hd for alto.
-      this.zone(r < hd ? "residential_high" : "residential_low", x0 + 1, far[0]!, split, far[1]!);
-      this.zone(
-        r < hd - 0.5 ? "residential_high" : "residential_low",
-        split + 1,
-        far[0]!,
-        x0 + D - 1,
-        far[1]!,
-      );
-    }
+  }
+
+  private advanceSlot() {
     this.row++;
     if (this.row >= 6) {
       this.row = 0;
       this.col++;
     }
+  }
+
+  /** Abre a próxima etapa do bairro. Devolve false se não tinha dinheiro (nada é feito). */
+  private extend(d: District, reserve = 1): boolean {
+    const w = this.game.sim.world;
+    const D = this.opts.district;
+    const midY = Math.floor(w.height / 2);
+    const startX = this.game.sim.config.world.startingRoad.length;
+    const { x0, y0, side } = d;
+    // Faixa de linhas desta etapa, contando a partir do lado da avenida principal.
+    const depth0 = d.steps * ROWS_PER_STEP * 3;
+    const depth1 = Math.min(D, depth0 + ROWS_PER_STEP * 3);
+    const near = side < 0 ? y0 + D : y0;
+    const ya = side < 0 ? near - depth1 : near + depth0;
+    const yb = side < 0 ? near - depth0 : near + depth1;
+    type Road = Extract<Command, { type: "buildRoad" }>;
+    const roads: Road[] = [];
+    // Avenida principal até o fim deste bairro e avenida vertical até o fim da etapa.
+    roads.push({ type: "buildRoad", kind: "avenue", x0: startX - 1, y0: midY, x1: x0 + D, y1: midY });
+    roads.push({
+      type: "buildRoad",
+      kind: "avenue",
+      x0,
+      y0: Math.min(ya, midY),
+      x1: x0,
+      y1: Math.max(yb, midY),
+    });
+    // Ruas: horizontais a cada 3 (quarteirão com 2 lotes de fundo), verticais a cada 12 e na borda.
+    for (let y = y0; y <= y0 + D; y += 3)
+      if (y >= ya && y <= yb) roads.push({ type: "buildRoad", kind: "street", x0, y0: y, x1: x0 + D, y1: y });
+    for (let x = x0 + 12; x < x0 + D; x += 12)
+      roads.push({ type: "buildRoad", kind: "street", x0: x, y0: ya, x1: x, y1: yb });
+    roads.push({ type: "buildRoad", kind: "street", x0: x0 + D, y0: ya, x1: x0 + D, y1: yb });
+    if (!this.game.sim.treasury.canAfford(this.roadsCost(roads) * reserve)) return false;
+    for (const r of roads) this.send(r);
+    // Zonas desta etapa.
+    const za = Math.max(ya + 1, y0 + 1);
+    const zb = Math.min(yb - 1, y0 + D - 1);
+    if (d.kind === "industrial") this.zone("industrial", x0 + 1, za, x0 + D - 1, zb);
+    else {
+      // Faixa comercial perto da avenida (um terço do bairro); o resto residencial (parte em prédios).
+      const third = Math.floor(D / 3);
+      const [ca, cb] = side < 0 ? [y0 + D - third, y0 + D - 1] : [y0 + 1, y0 + third];
+      const split = x0 + Math.floor(D / 2);
+      const hd = this.opts.highDensityShare;
+      // Metade oeste: prédios com chance hd; metade leste: prédios só se hd for alto.
+      const west: ZoneKind = d.r < hd ? "residential_high" : "residential_low";
+      const east: ZoneKind = d.r < hd - 0.5 ? "residential_high" : "residential_low";
+      for (let y = za; y <= zb; y++) {
+        if (y >= ca && y <= cb) this.zone("commercial", x0 + 1, y, x0 + D - 1, y);
+        else {
+          this.zone(west, x0 + 1, y, split, y);
+          this.zone(east, split + 1, y, x0 + D - 1, y);
+        }
+      }
+    }
+    d.steps++;
+    return true;
+  }
+
+  /** Custo das vias que ainda não existem (mesma conta do comando buildRoad). */
+  private roadsCost(roads: Extract<Command, { type: "buildRoad" }>[]): number {
+    const sim = this.game.sim;
+    const w = sim.world;
+    const seen = new Set<number>();
+    let cost = 0;
+    for (const r of roads) {
+      const id = ROAD_ID[r.kind];
+      for (let y = Math.min(r.y0, r.y1); y <= Math.max(r.y0, r.y1); y++) {
+        for (let x = Math.min(r.x0, r.x1); x <= Math.max(r.x0, r.x1); x++) {
+          if (!w.inBounds(x, y)) continue;
+          const i = w.idx(x, y);
+          if (w.roads[i] === id || seen.has(i * 2 + id)) continue;
+          seen.add(i * 2 + id);
+          cost += sim.config.roads[r.kind].costPerTile;
+        }
+      }
+    }
+    return cost;
   }
 
   private zone(zone: ZoneKind, x0: number, y0: number, x1: number, y1: number) {

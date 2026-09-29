@@ -1,0 +1,451 @@
+{
+  "generatedAt": "2026-09-29T02:55:02.009Z",
+  "runs": [
+    {
+      "name": "bot:avaliacao-1",
+      "seed": "avaliacao-1",
+      "days": 40,
+      "population": 5161
+    },
+    {
+      "name": "bot:avaliacao-2",
+      "seed": "avaliacao-2",
+      "days": 40,
+      "population": 6099
+    },
+    {
+      "name": "bot:avaliacao-3",
+      "seed": "avaliacao-3",
+      "days": 40,
+      "population": 4099
+    },
+    {
+      "name": "cenario:bairro-basico",
+      "seed": "bairro-basico",
+      "days": 25,
+      "population": 2074
+    }
+  ],
+  "metrics": {
+    "buildings": 1165.25,
+    "cars": 637.5,
+    "employed": 2067.75,
+    "households": 1733.75,
+    "invariantViolations": 0,
+    "lastYear.arrivals": 140.5,
+    "lastYear.births": 49,
+    "lastYear.deaths": 27,
+    "lastYear.departures": 11.5,
+    "lastYear.migrantsTurnedAway": 0,
+    "money": 62906623.135,
+    "perf.msPerTick": 0.082,
+    "perf.peak.jobSearches": 96.5,
+    "perf.peak.nodesExpanded": 3409.5,
+    "perf.peak.personsUpdated": 14,
+    "perf.peak.routeCacheHits": 9.25,
+    "perf.peak.routesComputed": 9.75,
+    "perf.peak.tripsStarted": 12.75,
+    "population": 4358.25,
+    "realism.commuteUnder30": 99.99,
+    "realism.divorceRate": 4.118,
+    "realism.employmentLevel": 60.94,
+    "realism.higherEducation": 0,
+    "realism.householdSize": 2.498,
+    "realism.householdsWithCar": 37.693,
+    "realism.marriageAgeFemale": 32.785,
+    "realism.marriageAgeMale": 32.41,
+    "realism.pop60plus": 13.405,
+    "realism.schoolEnrollment": 50.567,
+    "realism.tfr": 1.59,
+    "realism.unemployment": 5.773,
+    "unemployed": 135,
+    "unmet.health": 1275.5,
+    "unmet.housing": 32.25,
+    "unmet.job": 135,
+    "unmet.parking": 0.25,
+    "unmet.school": 483.75,
+    "unmet.transit": 0,
+    "unmet.university": 0,
+    "vacantHomes": 0,
+    "vacantJobs": 586.5
+  },
+  "signals": [
+    {
+      "id": "comparacao:creche",
+      "source": "comparacao",
+      "category": "construcao",
+      "title": "Falta no jogo: Creche (0 a 3 anos)",
+      "detail": "Cidades reais com mais de 1.000 habitantes têm isso; a cidade de teste tem 5.161 e o jogo não oferece.",
+      "reach": 204,
+      "impact": 2,
+      "evidence": "dataAndSource",
+      "urgent": false,
+      "research": {
+        "source": "PNE, meta 1: atender pelo menos 50% das crianças de 0 a 3 anos em creche (em 2023 eram 39,8%, PNAD)",
+        "url": "https://agenciadenoticias.ibge.gov.br/agencia-noticias/2012-agencia-de-noticias/noticias/42083-educacao-infantil-cresce-em-2023-e-retoma-patamar-pre-pandemia"
+      },
+      "proposal": "Criar creche (0 a 3 anos) (pesquisar como funciona e o custo real antes).",
+      "seen": 4,
+      "runs": 4
+    },
+    {
+      "id": "comparacao:faculdade",
+      "source": "comparacao",
+      "category": "construcao",
+      "title": "Falta no jogo: Faculdade (ensino superior presencial)",
+      "detail": "Cidades reais com mais de 50.000 habitantes têm isso. A cidade de teste tem 5.161, mas o jogo promete 50.000: vai precisar (alcance = pessoas de hoje).",
+      "reach": 373,
+      "impact": 2,
+      "evidence": "sourceOnly",
+      "urgent": false,
+      "research": {
+        "source": "Censo da Educação Superior 2023 (INEP): 1.085 de 5.570 municípios têm cursos presenciais",
+        "url": "https://www.gov.br/inep/pt-br/centrais-de-conteudo/noticias/censo-da-educacao-superior/mec-e-inep-divulgam-resultado-do-censo-superior-2023"
+      },
+      "proposal": "Criar faculdade (ensino superior presencial) (pesquisar como funciona e o custo real antes).",
+      "seen": 4,
+      "runs": 4
+    },
+    {
+      "id": "comparacao:hospital",
+      "source": "comparacao",
+      "category": "construcao",
+      "title": "Falta no jogo: Hospital (leitos de internação)",
+      "detail": "Cidades reais com mais de 8.000 habitantes têm isso. A cidade de teste tem 5.161, mas o jogo promete 50.000: vai precisar (alcance = pessoas de hoje).",
+      "reach": 4358,
+      "impact": 3,
+      "evidence": "sourceOnly",
+      "urgent": false,
+      "research": {
+        "source": "Portaria GM/MS 1.101/2002: 2,5 a 3 leitos por 1.000 habitantes",
+        "url": "https://bvsms.saude.gov.br/bvs/saudelegis/gm/2002/prt1101_12_06_2002.html"
+      },
+      "proposal": "Criar hospital (leitos de internação) (pesquisar como funciona e o custo real antes).",
+      "seen": 4,
+      "runs": 4
+    },
+    {
+      "id": "comparacao:plano_diretor",
+      "source": "comparacao",
+      "category": "feature",
+      "title": "Falta no jogo: Plano diretor (regras de zoneamento editáveis)",
+      "detail": "Cidades reais com mais de 20.000 habitantes têm isso. A cidade de teste tem 5.161, mas o jogo promete 50.000: vai precisar (alcance = pessoas de hoje).",
+      "reach": 1734,
+      "impact": 0.5,
+      "evidence": "sourceOnly",
+      "urgent": false,
+      "research": {
+        "source": "Estatuto da Cidade (Lei 10.257/2001), art. 41: plano diretor obrigatório para cidades com mais de 20 mil habitantes",
+        "url": "https://www.planalto.gov.br/ccivil_03/leis/leis_2001/l10257.htm"
+      },
+      "proposal": "Criar plano diretor (regras de zoneamento editáveis) (pesquisar como funciona e o custo real antes).",
+      "seen": 4,
+      "runs": 4
+    },
+    {
+      "id": "comparacao:saneamento",
+      "source": "comparacao",
+      "category": "construcao",
+      "title": "Falta no jogo: Água tratada e esgoto",
+      "detail": "Toda cidade real tem isso; a cidade de teste tem 5.161 e o jogo não oferece.",
+      "reach": 4358,
+      "impact": 3,
+      "evidence": "dataAndSource",
+      "urgent": false,
+      "research": {
+        "source": "Lei 14.026/2020 (marco do saneamento): meta de 99% com água potável e 90% com coleta e tratamento de esgoto até 2033",
+        "url": "https://www.gov.br/cidades/pt-br/assuntos/saneamento/marco-legal-do-saneamento"
+      },
+      "proposal": "Criar água tratada e esgoto (pesquisar como funciona e o custo real antes).",
+      "seen": 4,
+      "runs": 4
+    },
+    {
+      "id": "comparacao:transporte_publico",
+      "source": "comparacao",
+      "category": "feature",
+      "title": "Falta no jogo: Transporte público (ônibus)",
+      "detail": "Cidades reais com mais de 20.000 habitantes têm isso. A cidade de teste tem 5.161, mas o jogo promete 50.000: vai precisar (alcance = pessoas de hoje).",
+      "reach": 4358,
+      "impact": 2,
+      "evidence": "sourceOnly",
+      "urgent": false,
+      "research": {
+        "source": "Lei 12.587/2012 (Política Nacional de Mobilidade Urbana): municípios com mais de 20 mil habitantes precisam de plano de mobilidade",
+        "url": "https://www.planalto.gov.br/ccivil_03/_ato2011-2014/2012/lei/l12587.htm"
+      },
+      "proposal": "Criar transporte público (ônibus) (pesquisar como funciona e o custo real antes).",
+      "seen": 4,
+      "runs": 4
+    },
+    {
+      "id": "desejo:health",
+      "source": "desejo",
+      "category": "balanceamento",
+      "title": "Desejo não atendido: pessoas sem UBS",
+      "detail": "1.661 pessoas sem UBS numa cidade de 5.161 pessoas. O jogo já tem isso: o problema é o prefeito automático (ou o jogador) não atender, ou falta informação na tela para perceber. (apareceu em 3 de 4 cidades de teste; números de uma delas)",
+      "reach": 1276,
+      "impact": 3,
+      "evidence": "dataAndSource",
+      "urgent": false,
+      "research": {
+        "source": "PNAB 2017: 1 equipe de Saúde da Família para 2.000 a 3.500 pessoas",
+        "url": "https://bvsms.saude.gov.br/bvs/saudelegis/gm/2017/prt2436_22_09_2017.html"
+      },
+      "metric": "unmet.health < 166",
+      "proposal": "Ensinar o prefeito automático a atender e mostrar a cobertura no mapa (camada de cobertura).",
+      "seen": 3,
+      "runs": 4
+    },
+    {
+      "id": "desejo:housing",
+      "source": "desejo",
+      "category": "balanceamento",
+      "title": "Desejo não atendido: famílias esperando casa própria",
+      "detail": "91 famílias esperando casa própria numa cidade de 2.074 pessoas. O jogo já tem isso: o problema é o prefeito automático (ou o jogador) não atender, ou falta informação na tela para perceber. (apareceu em 1 de 4 cidades de teste; números de uma delas)",
+      "reach": 23,
+      "impact": 1,
+      "evidence": "opinion",
+      "urgent": false,
+      "metric": "unmet.housing < 9",
+      "proposal": "Ensinar o prefeito automático a atender e mostrar a cobertura no mapa (camada de cobertura).",
+      "seen": 1,
+      "runs": 4
+    },
+    {
+      "id": "desejo:school",
+      "source": "desejo",
+      "category": "balanceamento",
+      "title": "Desejo não atendido: crianças de 6 a 17 anos sem vaga em escola",
+      "detail": "285 crianças de 6 a 17 anos sem vaga em escola numa cidade de 5.161 pessoas. O jogo já tem isso: o problema é o prefeito automático (ou o jogador) não atender, ou falta informação na tela para perceber. (apareceu em 3 de 4 cidades de teste; números de uma delas)",
+      "reach": 484,
+      "impact": 2,
+      "evidence": "dataAndSource",
+      "urgent": false,
+      "research": {
+        "source": "LDB: ensino obrigatório dos 4 aos 17 anos",
+        "url": "https://www.planalto.gov.br/ccivil_03/leis/l9394.htm"
+      },
+      "metric": "unmet.school < 29",
+      "proposal": "Ensinar o prefeito automático a atender e mostrar a cobertura no mapa (camada de cobertura).",
+      "seen": 3,
+      "runs": 4
+    },
+    {
+      "id": "realismo:divorceRate",
+      "source": "realismo",
+      "category": "realismo",
+      "title": "Realismo: Divórcios por mil adultos (20+) acima da vida real",
+      "detail": "Na cidade: 4.99 por mil. Na vida real: 1.5 a 4.5. (apareceu em 1 de 4 cidades de teste; números de uma delas)",
+      "reach": 1290,
+      "impact": 1,
+      "evidence": "dataAndSource",
+      "urgent": false,
+      "research": {
+        "source": "IBGE 2023: 2,8"
+      },
+      "metric": "realism.divorceRate entre 1.5 e 4.5",
+      "proposal": "Achar a regra que gera esse número (relatório + log) e corrigir com base na fonte.",
+      "seen": 1,
+      "runs": 4
+    },
+    {
+      "id": "realismo:employmentLevel",
+      "source": "realismo",
+      "category": "realismo",
+      "title": "Realismo: Nível de ocupação acima da vida real",
+      "detail": "Na cidade: 66.02 %. Na vida real: 50 a 66. (apareceu em 1 de 4 cidades de teste; números de uma delas)",
+      "reach": 519,
+      "impact": 1,
+      "evidence": "dataAndSource",
+      "urgent": false,
+      "research": {
+        "source": "PNAD 2025: 59,1%"
+      },
+      "metric": "realism.employmentLevel entre 50 e 66",
+      "proposal": "Achar a regra que gera esse número (relatório + log) e corrigir com base na fonte.",
+      "seen": 1,
+      "runs": 4
+    },
+    {
+      "id": "realismo:higherEducation",
+      "source": "realismo",
+      "category": "realismo",
+      "title": "Realismo: Jovens 18-24 no ensino superior abaixo da vida real",
+      "detail": "Na cidade: 0 %. Na vida real: 15 a 45.",
+      "reach": 4358,
+      "impact": 1,
+      "evidence": "dataAndSource",
+      "urgent": false,
+      "research": {
+        "source": "PNAD Educação 2023: 30,5%"
+      },
+      "metric": "realism.higherEducation entre 15 e 45",
+      "proposal": "Achar a regra que gera esse número (relatório + log) e corrigir com base na fonte.",
+      "seen": 4,
+      "runs": 4
+    },
+    {
+      "id": "realismo:marriageAgeFemale",
+      "source": "realismo",
+      "category": "realismo",
+      "title": "Realismo: Idade média ao casar (mulheres) acima da vida real",
+      "detail": "Na cidade: 35.68 anos. Na vida real: 25 a 34. (apareceu em 1 de 4 cidades de teste; números de uma delas)",
+      "reach": 1290,
+      "impact": 1,
+      "evidence": "dataAndSource",
+      "urgent": false,
+      "research": {
+        "source": "IBGE Registro Civil 2023: 29,2"
+      },
+      "metric": "realism.marriageAgeFemale entre 25 e 34",
+      "proposal": "Achar a regra que gera esse número (relatório + log) e corrigir com base na fonte.",
+      "seen": 1,
+      "runs": 4
+    },
+    {
+      "id": "realismo:schoolEnrollment",
+      "source": "realismo",
+      "category": "realismo",
+      "title": "Realismo: Crianças 6-17 na escola abaixo da vida real",
+      "detail": "Na cidade: 72.36 %. Na vida real: 90 a 100. (apareceu em 3 de 4 cidades de teste; números de uma delas)",
+      "reach": 3840,
+      "impact": 1,
+      "evidence": "dataAndSource",
+      "urgent": false,
+      "research": {
+        "source": "PENDENTE: taxa de escolarização (PNAD Educação)"
+      },
+      "metric": "realism.schoolEnrollment entre 90 e 100",
+      "proposal": "Achar a regra que gera esse número (relatório + log) e corrigir com base na fonte.",
+      "seen": 3,
+      "runs": 4
+    },
+    {
+      "id": "pendente:economy.yaml",
+      "source": "pendente",
+      "category": "realismo",
+      "title": "Valores sem fonte em config/economy.yaml (4)",
+      "detail": "linha 5: PENDENTE: valor de jogo. Dá para ruas, uma escola e uma UBS no começo. | linha 12: completo R$ 2.660; superior completo R$ 6.177. PENDENTE: fundamental incompleto e médio | linha 15: Variação individual (desvio padrão relativo). PENDENTE: valor de jogo. | linha 19: PENDENTE: fração da renda gasta com o custo de vida.",
+      "reach": 4358,
+      "impact": 0.5,
+      "evidence": "opinion",
+      "urgent": false,
+      "seen": 1,
+      "runs": 1,
+      "proposal": "Pesquisar fonte real para cada valor PENDENTE e trocar o comentário pela fonte."
+    },
+    {
+      "id": "pendente:growth.yaml",
+      "source": "pendente",
+      "category": "realismo",
+      "title": "Valores sem fonte em config/growth.yaml (5)",
+      "detail": "linha 3: Demanda inicial por moradia quando a cidade está vazia. PENDENTE: valor de jogo. | linha 8: e 2,36 (Mirandópolis-SP). Usada a média ~2,15. PENDENTE: mais cidades. | linha 11: mais empregos (pelo menos um galpão). PENDENTE: taxa de crescimento real. | linha 15: Quantos prédios podem começar a ser construídos por dia do jogo. PENDENTE: valor de jogo.",
+      "reach": 4358,
+      "impact": 0.5,
+      "evidence": "opinion",
+      "urgent": false,
+      "seen": 1,
+      "runs": 1,
+      "proposal": "Pesquisar fonte real para cada valor PENDENTE e trocar o comentário pela fonte."
+    },
+    {
+      "id": "pendente:health.yaml",
+      "source": "pendente",
+      "category": "realismo",
+      "title": "Valores sem fonte em config/health.yaml (1)",
+      "detail": "linha 3: Distância máxima até a UBS. PENDENTE: sem fonte oficial encontrada; usado o mesmo limite de caminhada da escola.",
+      "reach": 4358,
+      "impact": 0.5,
+      "evidence": "opinion",
+      "urgent": false,
+      "seen": 1,
+      "runs": 1,
+      "proposal": "Pesquisar fonte real para cada valor PENDENTE e trocar o comentário pela fonte."
+    },
+    {
+      "id": "pendente:lifecycle.yaml",
+      "source": "pendente",
+      "category": "realismo",
+      "title": "Valores sem fonte em config/lifecycle.yaml (10)",
+      "detail": "linha 15: A chance anual por idade foi calibrada para aproximar essas médias. PENDENTE: calibração fina. | linha 18: são ~1,2%. PENDENTE: total exato de casamentos de 2023. | linha 21: Quantos solteiros cada pessoa \"conhece\" por ano ao procurar par. PENDENTE: valor de jogo. | linha 25: adultos casados, dá ~1,1% dos casais por ano. PENDENTE: fração de adultos casados.",
+      "reach": 4358,
+      "impact": 0.5,
+      "evidence": "opinion",
+      "urgent": false,
+      "seen": 1,
+      "runs": 1,
+      "proposal": "Pesquisar fonte real para cada valor PENDENTE e trocar o comentário pela fonte."
+    },
+    {
+      "id": "pendente:population.yaml",
+      "source": "pendente",
+      "category": "realismo",
+      "title": "Valores sem fonte em config/population.yaml (5)",
+      "detail": "linha 9: Tempo médio (em dias do jogo) para uma casa vaga ser ocupada quando há demanda. PENDENTE: valor de jogo. | linha 11: Limite de famílias chegando por dia do jogo. PENDENTE: valor de jogo (proteção de performance). | linha 15: modelo Rogers-Castro). PENDENTE: pesos exatos por tipo. | linha 33: No começo a cidade não tem empregos: os primeiros moradores trabalham fora. PENDENTE: valor de jogo.",
+      "reach": 4358,
+      "impact": 0.5,
+      "evidence": "opinion",
+      "urgent": false,
+      "seen": 1,
+      "runs": 1,
+      "proposal": "Pesquisar fonte real para cada valor PENDENTE e trocar o comentário pela fonte."
+    },
+    {
+      "id": "pendente:realism.yaml",
+      "source": "pendente",
+      "category": "realismo",
+      "title": "Valores sem fonte em config/realism.yaml (3)",
+      "detail": "linha 19: Faixa: Censo 2010 (10,8%) até estados mais envelhecidos. PENDENTE: faixa por UF. | linha 24: habitantes (PENDENTE: faixa por porte de cidade). | linha 30: - { id: schoolEnrollment, label: Crianças 6-17 na escola, unit: \"%\", min: 90, max: 100, source: \"PENDENTE: taxa de escolarização (PNAD Educação)\" }",
+      "reach": 4358,
+      "impact": 0.5,
+      "evidence": "opinion",
+      "urgent": false,
+      "seen": 1,
+      "runs": 1,
+      "proposal": "Pesquisar fonte real para cada valor PENDENTE e trocar o comentário pela fonte."
+    },
+    {
+      "id": "pendente:roads.yaml",
+      "source": "pendente",
+      "category": "realismo",
+      "title": "Valores sem fonte em config/roads.yaml (3)",
+      "detail": "linha 11: PENDENTE: capacidade por faixa em via urbana com cruzamentos. Valor usual de engenharia de tráfego. | linha 17: PENDENTE: avenida é mais larga; estimado como o dobro da rua. | linha 21: PENDENTE: fração exata.",
+      "reach": 4358,
+      "impact": 0.5,
+      "evidence": "opinion",
+      "urgent": false,
+      "seen": 1,
+      "runs": 1,
+      "proposal": "Pesquisar fonte real para cada valor PENDENTE e trocar o comentário pela fonte."
+    },
+    {
+      "id": "pendente:traffic.yaml",
+      "source": "pendente",
+      "category": "realismo",
+      "title": "Valores sem fonte em config/traffic.yaml (6)",
+      "detail": "linha 5: mensal da família. Os pontos abaixo foram escolhidos para aproximar os 48%. PENDENTE: calibração. | linha 7: Velocidade com que as famílias chegam ao equilíbrio (compra/venda por ano). PENDENTE: valor de jogo. | linha 9: PENDENTE: vagas de garagem por casa e por apartamento. | linha 11: Vagas por emprego em comércio/indústria. PENDENTE.",
+      "reach": 4358,
+      "impact": 0.5,
+      "evidence": "opinion",
+      "urgent": false,
+      "seen": 1,
+      "runs": 1,
+      "proposal": "Pesquisar fonte real para cada valor PENDENTE e trocar o comentário pela fonte."
+    },
+    {
+      "id": "pendente:world.yaml",
+      "source": "pendente",
+      "category": "realismo",
+      "title": "Valores sem fonte em config/world.yaml (1)",
+      "detail": "linha 9: Fração do mapa com vegetação nativa no início. PENDENTE: valor de jogo, sem fonte.",
+      "reach": 4358,
+      "impact": 0.5,
+      "evidence": "opinion",
+      "urgent": false,
+      "seen": 1,
+      "runs": 1,
+      "proposal": "Pesquisar fonte real para cada valor PENDENTE e trocar o comentário pela fonte."
+    }
+  ]
+}

@@ -200,6 +200,7 @@ export class GrowthSystem implements System {
         if (!this.fits(ax, ay, type.w, type.h, zone)) continue;
         const [access, facing] = network.findAccess(ax, ay, type.w, type.h);
         if (access < 0) continue;
+        if (city.sim.config.growth.requiresOutsideConnection && network.exitFor(access) < 0) continue;
         const ready = clock.tick + Math.round((type.constructionMonths / 12) * clock.ticksPerDay);
         const variant = rng.int(65536);
         const id = buildings.add(idx, ax, ay, access, facing, ready, variant);

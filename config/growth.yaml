@@ -16,3 +16,6 @@ growth:
   maxConstructionStartsPerDay: 400
   # Vagas sobrando (%) acima disso derrubam a demanda. PENDENTE.
   targetVacancy: 0.05
+  # Só constrói em lote cuja rua chega na estrada de fora do mapa: material e trabalhadores chegam
+  # por ela, e ninguém compra casa onde não dá para chegar.
+  requiresOutsideConnection: true

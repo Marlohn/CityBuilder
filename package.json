@@ -22,7 +22,8 @@
     "preview": "vite preview --config packages/web/vite.config.ts",
     "test:e2e": "playwright test",
     "roadmap:signals": "tsx packages/roadmap/src/cli.ts signals",
-    "roadmap:build": "tsx packages/roadmap/src/cli.ts build"
+    "roadmap:build": "tsx packages/roadmap/src/cli.ts build",
+    "roadmap:check": "tsx packages/roadmap/src/cli.ts check"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.14",
