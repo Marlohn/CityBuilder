@@ -81,6 +81,8 @@ export function HelpPanel() {
         </li>
         <li>
           <b>Zonas:</b> arraste um retângulo encostado nas vias. Casas e prédios aparecem quando há demanda.
+          Só dá para construir em lote com frente para a rua: quarteirões de 4 a 6 quadradinhos aproveitam
+          melhor o espaço.
         </li>
         <li>
           <b>Serviços:</b> escola e UBS precisam encostar numa via. Crianças precisam de escola a até 2 km.

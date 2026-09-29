@@ -12,10 +12,19 @@ export interface ViewRect {
 }
 
 export type ToWorker =
-  | { type: "init"; seed: string; configTexts: Record<string, string>; dataTexts: Record<string, string> }
+  | {
+      type: "init";
+      seed: string;
+      configTexts: Record<string, string>;
+      dataTexts: Record<string, string>;
+      /** Valores que sobrescrevem a config (ex.: { economy: { mode: "sandbox" } }). */
+      overrides?: unknown;
+    }
   | { type: "load"; save: string; configTexts: Record<string, string>; dataTexts: Record<string, string> }
   | { type: "command"; command: Command }
   | { type: "speed"; speed: number }
+  /** Avança N ticks de uma vez (testes e depuração). */
+  | { type: "advance"; ticks: number }
   | { type: "view"; rect: ViewRect }
   | { type: "queryPerson"; id: number; requestId: number }
   | {

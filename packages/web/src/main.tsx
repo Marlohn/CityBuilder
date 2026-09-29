@@ -12,8 +12,10 @@ import { ToolController, toolDefs } from "./tools";
 
 const params = new URLSearchParams(location.search);
 const seed = params.get("seed") ?? `cidade-${Math.floor(Math.random() * 1e9)}`;
+// ?modo=livre = dinheiro infinito (modo "sandbox" da config).
+const overrides = params.get("modo") === "livre" ? { economy: { mode: "sandbox" } } : undefined;
 
-const config = parseGameConfig(configTexts);
+const config = parseGameConfig(configTexts, overrides);
 const data = parseGameData(dataTexts, config);
 const store = new Store();
 const client = new WorkerClient();
@@ -83,11 +85,17 @@ createRoot(document.getElementById("ui")!).render(
 renderer
   .loadAssets()
   .then(() => {
+    let lastView = 0;
     renderer.start(() => {
       const p = tools.preview();
       renderer.setPreview(p.rect, p.valid);
+      const now = performance.now();
+      if (now - lastView > 200) {
+        lastView = now;
+        client.setView(renderer.visibleTileRect());
+      }
     });
-    client.send({ type: "init", seed, configTexts, dataTexts });
+    client.send({ type: "init", seed, configTexts, dataTexts, overrides });
   })
   .catch((e) => store.set({ error: `Erro ao carregar modelos: ${(e as Error).message}` }));
 

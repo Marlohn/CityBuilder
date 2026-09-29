@@ -82,8 +82,16 @@ export function computeRealism(city: City, demo: Demography, c: Census): Realism
   };
   return cfg.items.map((item) => {
     const v = values[item.id] ?? null;
+    const bigEnough = c.population >= (item.minPopulation ?? 0);
     const status: RealismItem["status"] =
-      !enough || v === null ? "insufficient-data" : v < item.min ? "low" : v > item.max ? "high" : "ok";
-    return { ...item, value: v === null ? null : Math.round(v * 100) / 100, status };
+      !enough || !bigEnough || v === null
+        ? "insufficient-data"
+        : v < item.min
+          ? "low"
+          : v > item.max
+            ? "high"
+            : "ok";
+    const { minPopulation: _mp, ...rest } = item;
+    return { ...rest, value: v === null ? null : Math.round(v * 100) / 100, status };
   });
 }

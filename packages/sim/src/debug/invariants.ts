@@ -97,5 +97,32 @@ export function checkInvariants(city: City, maxReports = 20): string[] {
     }
   }
   if (!Number.isFinite(sim.treasury.money)) add("dinheiro da prefeitura não é um número");
+  checkVehicles(city, add);
   return out;
+}
+
+/** Todo carro tem dono, lugar e, se estiver andando, rota. Vagas contadas batem com os carros parados. */
+function checkVehicles(city: City, add: (m: string) => void) {
+  const traffic = city.traffic;
+  if (!traffic) return;
+  const veh = traffic.vehicles;
+  const b = city.sim.buildings;
+  const parked = new Int32Array(b.count);
+  for (let v = 0; v < veh.count; v++) {
+    const st = veh.state[v];
+    if (st === 3) continue;
+    const owner = veh.owner[v]!;
+    if (owner < 0 || !city.hh.alive[owner]) add(`carro ${v}: sem dono vivo (família ${owner})`);
+    else if (city.hh.car[owner] !== v) add(`carro ${v}: a família ${owner} não aponta para ele`);
+    if (st === 0) {
+      if (veh.parkedAt[v]! >= 0) parked[veh.parkedAt[v]!]!++;
+      else if (veh.streetTile[v]! < 0 && veh.driver[v] === -1) add(`carro ${v}: estacionado em lugar nenhum`);
+    }
+    if (st === 1 && !veh.routes[v]) add(`carro ${v}: andando sem rota`);
+    if (st === 1 && !veh.moving.has(v)) add(`carro ${v}: andando fora da lista de movimento`);
+  }
+  for (let id = 0; id < b.count; id++) {
+    if (b.parked[id] !== parked[id])
+      add(`prédio ${id}: diz ter ${b.parked[id]} carros estacionados, mas são ${parked[id]}`);
+  }
 }

@@ -213,6 +213,14 @@ export class CityRenderer {
     return { x, y };
   }
 
+  /** Retângulo aproximado (em quadradinhos) que aparece na tela. */
+  visibleTileRect(): { x0: number; y0: number; x1: number; y1: number } {
+    const t = this.camera.target;
+    const ar = this.canvas.width / Math.max(1, this.canvas.height);
+    const r = this.zoom * Math.max(1, ar) * 1.6;
+    return { x0: t.x - r, y0: t.z - r, x1: t.x + r, y1: t.z + r };
+  }
+
   lookAt(x: number, y: number) {
     this.camera.target.set(x, 0, y);
   }

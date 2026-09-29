@@ -15,12 +15,14 @@ import { ImmigrationSystem } from "./systems/immigration";
 import { LifecycleSystem } from "./systems/lifecycle";
 import { MatchingSystem } from "./systems/matching";
 import { RemovalSystem } from "./systems/removal";
+import { TrafficSystem } from "./traffic/trafficSystem";
 
 export interface Game {
   sim: Simulation;
   city: City;
   demo: Demography;
   growth: GrowthSystem;
+  traffic: TrafficSystem;
   /** Placar de realismo do último ano fechado. */
   realism: RealismItem[];
 }
@@ -40,7 +42,9 @@ export function createGame(opts: SimOptions): Game {
   const city = new City(sim);
   const demo = new Demography(opts.config.realism.windowYears);
   const growth = new GrowthSystem(city);
-  const game: Game = { sim, city, demo, growth, realism: [] };
+  const traffic = new TrafficSystem(city);
+  city.traffic = traffic;
+  const game: Game = { sim, city, demo, growth, traffic, realism: [] };
   placeStartingRoad(sim);
   const onYearEnd = () => {
     sim.treasury.closeYear();
@@ -56,6 +60,7 @@ export function createGame(opts: SimOptions): Game {
   sim.addSystem(new ImmigrationSystem(city));
   sim.addSystem(new LifecycleSystem(city, demo));
   sim.addSystem(new MatchingSystem(city));
+  sim.addSystem(traffic);
   return game;
 }
 

@@ -4,6 +4,7 @@ import type { Store, UiState } from "../store";
 
 const SPEEDS = [
   { v: 0, label: "⏸", title: "Pausar" },
+  { v: 0.25, label: "🐢", title: "Devagar (1/4): bom para observar o trânsito" },
   { v: 1, label: "▶", title: "Velocidade 1x (1 dia = 2 min)" },
   { v: 2, label: "▶▶", title: "Velocidade 2x" },
   { v: 4, label: "▶▶▶", title: "Velocidade 4x" },

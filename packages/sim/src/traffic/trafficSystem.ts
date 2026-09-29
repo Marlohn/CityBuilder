@@ -1,0 +1,525 @@
+/**
+ * Trânsito e rotina diária.
+ * - De manhã cada trabalhador sai de casa (horário de entrada sorteado por pessoa, config traffic.routine).
+ * - Se a família tem carro e ele está em casa, vai de carro: pede rota, sai no tick seguinte, estaciona no destino.
+ * - Sem carro disponível: vai a pé (se perto) ou por outro meio (ônibus/aplicativo, abstrato) e isso conta
+ *   como desejo não atendido de transporte.
+ * - Fim do expediente: volta para casa pelo mesmo caminho.
+ * - Congestionamento: função BPR (1964) com o volume do dia anterior em cada quadradinho, por hora.
+ */
+import type { City } from "../city";
+import { hashString } from "../core/rng";
+import { fire } from "../people/actions";
+import { EV, UNMET } from "../people/events";
+import { OUTSIDE_JOB, PSTATUS } from "../people/population";
+import { tileCostDs } from "../routing/pathfinder";
+import { type Route, RouteService } from "../routing/routeService";
+import type { System } from "../sim";
+import { Vehicles, VSTATE } from "./vehicles";
+
+interface PendingTrip {
+  person: number;
+  vehicle: number;
+  from: number;
+  to: number;
+  /** Prédio de destino (-2 = saída da cidade para emprego fora). */
+  dest: number;
+  toWork: boolean;
+}
+
+const MODELS = 4;
+
+export class TrafficSystem implements System {
+  readonly name = "traffic";
+  readonly vehicles = new Vehicles();
+  readonly routes: RouteService;
+  private departures: number[][];
+  private returns: number[][];
+  private arrivals: number[][];
+  private vehicleArrivals: number[][];
+  /** Viagens pedidas neste tick (junto com o pedido de rota, na mesma ordem). */
+  private newTrips: PendingTrip[] = [];
+  /** Viagens do tick anterior, já com rota resolvida (mesma ordem de `resolved`). */
+  private pendingTrips: PendingTrip[] = [];
+  private resolved: (Route | null)[] = [];
+  private volumes: Uint16Array;
+  private prevVolumes: Uint16Array;
+  private capacity: Float32Array;
+  private capacityVersion = -1;
+  private lastDay = -1;
+
+  constructor(private city: City) {
+    const sim = city.sim;
+    const cfg = sim.config;
+    const tm = sim.world.tileMeters;
+    this.routes = new RouteService(
+      sim.world,
+      { tileCost: [0, tileCostDs(tm, cfg.roads.street.speedKmh), tileCostDs(tm, cfg.roads.avenue.speedKmh)] },
+      sim.perf,
+      cfg.performance.routeCacheMax,
+    );
+    const tpd = sim.clock.ticksPerDay;
+    this.departures = Array.from({ length: tpd }, () => []);
+    this.returns = Array.from({ length: tpd }, () => []);
+    this.arrivals = Array.from({ length: tpd }, () => []);
+    this.vehicleArrivals = Array.from({ length: tpd }, () => []);
+    this.volumes = new Uint16Array(sim.world.size * 24);
+    this.prevVolumes = new Uint16Array(sim.world.size * 24);
+    this.capacity = new Float32Array(sim.world.size);
+    city.onCarBought = (h) => this.buyCar(h);
+    city.onCarGone = (v) => this.removeCar(v);
+    city.onCarMoved = (v, h) => {
+      this.vehicles.owner[v] = h;
+    };
+    city.onHouseholdMoved = (h, home) => this.householdMoved(h, home);
+    city.onJobEnding = (p, job) => this.jobEnding(p, job);
+    city.onPersonGone = (p) => this.personGone(p);
+  }
+
+  /** Família mudou de casa: o carro estacionado vai junto (levado por alguém da família). */
+  private householdMoved(h: number, home: number) {
+    const v = this.city.hh.car[h]!;
+    if (v < 0 || this.vehicles.state[v] !== VSTATE.parked || this.vehicles.driver[v] !== -1) return;
+    this.unpark(v);
+    this.park(v, home);
+  }
+
+  /** Perdeu o emprego no meio do expediente: volta para casa agora (de carro, se veio de carro). */
+  private jobEnding(p: number, job: number) {
+    const city = this.city;
+    const { pop } = city;
+    if (pop.tripState[p] !== 2) return;
+    const car = city.hh.car[pop.household[p]!] ?? -1;
+    const veh = this.vehicles;
+    const homeAccess = city.homeAccess(p);
+    const from = job === OUTSIDE_JOB ? city.sim.network.exitFor(homeAccess) : city.sim.buildings.access[job]!;
+    if (
+      car >= 0 &&
+      veh.driver[car] === p &&
+      veh.state[car] !== VSTATE.moving &&
+      homeAccess >= 0 &&
+      from >= 0
+    ) {
+      this.newTrips.push({
+        person: p,
+        vehicle: car,
+        from,
+        to: homeAccess,
+        dest: city.homeBuilding(p),
+        toWork: false,
+      });
+      this.routes.request(from, homeAccess);
+      pop.tripState[p] = 3;
+    } else pop.tripState[p] = 0;
+  }
+
+  /** Motorista morreu ou foi embora: a família busca o carro (ou ele vai junto com a família). */
+  private personGone(p: number) {
+    const city = this.city;
+    const h = city.pop.household[p]!;
+    const car = h >= 0 ? city.hh.car[h]! : -1;
+    const veh = this.vehicles;
+    if (car < 0 || veh.driver[car] !== p) return;
+    veh.driver[car] = -1;
+    if (veh.state[car] === VSTATE.moving) return; // termina a viagem e estaciona no destino
+    const home = city.hh.home[h]!;
+    this.unpark(car);
+    if (home >= 0) this.park(car, home);
+  }
+
+  tick() {
+    const city = this.city;
+    const clock = city.sim.clock;
+    if (clock.day !== this.lastDay) {
+      this.lastDay = clock.day;
+      this.startDay();
+    }
+    // 1. Rotas pedidas no tick anterior: carros saem agora (na ordem dos pedidos).
+    this.applyResolved();
+    const tod = clock.tickOfDay;
+    // 2. Chegadas (primeiro os carros estacionam, depois as pessoas).
+    const varr = this.vehicleArrivals[tod]!;
+    for (let i = 0; i < varr.length; i++) this.vehicleArrive(varr[i]!);
+    varr.length = 0;
+    const arr = this.arrivals[tod]!;
+    for (let i = 0; i < arr.length; i++) this.arrive(arr[i]!);
+    arr.length = 0;
+    // 3. Saídas para o trabalho e voltas para casa.
+    const dep = this.departures[tod]!;
+    for (let i = 0; i < dep.length; i++) this.leave(dep[i]!, true);
+    dep.length = 0;
+    const ret = this.returns[tod]!;
+    for (let i = 0; i < ret.length; i++) this.leave(ret[i]!, false);
+    ret.length = 0;
+    // 4. Resolve as rotas pedidas neste tick (aplicadas no próximo, na mesma ordem).
+    this.resolved = this.routes.resolvePending();
+    this.pendingTrips = this.newTrips;
+    this.newTrips = [];
+    city.sim.perf.count("vehiclesMoving", 0);
+  }
+
+  /** Começo do dia: agenda a saída de todos os trabalhadores e vira a página do volume de tráfego. */
+  private startDay() {
+    const city = this.city;
+    const { pop, sim } = city;
+    const tmp = this.prevVolumes;
+    this.prevVolumes = this.volumes;
+    this.volumes = tmp;
+    this.volumes.fill(0);
+    const r = sim.config.traffic.routine;
+    const tpd = sim.clock.ticksPerDay;
+    const mpt = sim.config.time.minutesPerTick;
+    for (let p = 0; p < pop.count; p++) {
+      if (pop.status[p] !== PSTATUS.alive || pop.job[p] === -1) continue;
+      if (pop.workStartMinute[p] === 0) {
+        // Horário de entrada estável por pessoa (sorteado a partir do id e da semente).
+        const h = hashString(`${sim.seed}:work:${p}`)[0];
+        pop.workStartMinute[p] =
+          r.workStartMinute[0] + (h % (r.workStartMinute[1] - r.workStartMinute[0] + 1));
+      }
+      const leaveMin = pop.workStartMinute[p]! - Math.max(5, pop.commuteMinutes[p]!) - 5;
+      const t = Math.floor(Math.max(0, leaveMin) / mpt) % tpd;
+      pop.tripState[p] = 0;
+      this.departures[t]!.push(p);
+    }
+  }
+
+  private buyCar(h: number) {
+    const city = this.city;
+    const home = city.hh.home[h]!;
+    const model = city.rng.market.int(MODELS);
+    const v = this.vehicles.create(h, model, home);
+    city.hh.car[h] = v;
+    if (home >= 0) this.park(v, home);
+  }
+
+  private removeCar(v: number) {
+    const veh = this.vehicles;
+    if (veh.state[v] === VSTATE.gone) return;
+    this.unpark(v);
+    veh.moving.delete(v);
+    veh.state[v] = VSTATE.gone;
+    veh.routes[v] = null;
+    veh.routeCum[v] = null;
+  }
+
+  private parkingCapacity(b: number): number {
+    const bs = this.city.sim.buildings;
+    const cars = this.city.config.traffic.cars;
+    return Math.ceil(bs.homesCapacity(b) * cars.parkingPerHome + bs.jobsCapacity(b) * cars.parkingPerJob);
+  }
+
+  private park(v: number, b: number) {
+    const veh = this.vehicles;
+    const bs = this.city.sim.buildings;
+    veh.state[v] = VSTATE.parked;
+    veh.routes[v] = null;
+    veh.routeCum[v] = null;
+    if (b >= 0 && bs.parked[b]! < this.parkingCapacity(b)) {
+      veh.parkedAt[v] = b;
+      veh.streetTile[v] = -1;
+      bs.parked[b]!++;
+    } else {
+      // Sem vaga no prédio: estaciona na rua em frente (e conta como desejo não atendido).
+      veh.parkedAt[v] = -1;
+      veh.streetTile[v] = b >= 0 ? bs.access[b]! : -1;
+      this.city.year.parkingMisses++;
+    }
+  }
+
+  private unpark(v: number) {
+    const veh = this.vehicles;
+    const b = veh.parkedAt[v]!;
+    if (veh.state[v] === VSTATE.parked && b >= 0) this.city.sim.buildings.parked[b]!--;
+    veh.parkedAt[v] = -1;
+    veh.streetTile[v] = -1;
+  }
+
+  /** A pessoa sai de casa (toWork) ou do trabalho. */
+  private leave(p: number, toWork: boolean) {
+    const city = this.city;
+    const { pop, hh, sim } = city;
+    if (pop.status[p] !== PSTATUS.alive) return;
+    const job = pop.job[p]!;
+    if (job === -1) return;
+    if (toWork && pop.tripState[p] !== 0) return;
+    if (!toWork && pop.tripState[p] !== 2) return;
+    const homeAccess = city.homeAccess(p);
+    if (homeAccess < 0) return;
+    const jobAccess = job === OUTSIDE_JOB ? sim.network.exitFor(homeAccess) : sim.buildings.access[job]!;
+    if (jobAccess < 0) return;
+    const from = toWork ? homeAccess : jobAccess;
+    const to = toWork ? jobAccess : homeAccess;
+    const h = pop.household[p]!;
+    const car = hh.car[h]!;
+    const veh = this.vehicles;
+    const home = city.homeBuilding(p);
+    const carHere =
+      car >= 0 &&
+      veh.state[car] === VSTATE.parked &&
+      veh.driver[car] === -1 &&
+      (toWork ? veh.parkedAt[car] === home || veh.streetTile[car] === homeAccess : veh.driver[car] === -1);
+    // De carro: só se o carro estiver onde a pessoa está (em casa de manhã; na volta, com o motorista).
+    const drivesBack =
+      !toWork &&
+      car >= 0 &&
+      veh.driver[car] === p &&
+      veh.state[car] !== VSTATE.moving &&
+      veh.state[car] !== VSTATE.gone;
+    if ((toWork && carHere) || drivesBack) {
+      veh.driver[car] = p;
+      this.newTrips.push({ person: p, vehicle: car, from, to, dest: toWork ? job : home, toWork });
+      this.routes.request(from, to);
+      pop.tripState[p] = toWork ? 1 : 3;
+      return;
+    }
+    // Sem carro: a pé (se perto) ou por outro meio. Tempo estimado; sem veículo na tela.
+    const meters = sim.world.manhattanMeters(from, to);
+    const walkMax = sim.config.traffic.walking.maxWorkMeters;
+    const kmh =
+      meters <= walkMax ? sim.config.traffic.walking.speedKmh : sim.config.roads.avenue.speedKmh / 2;
+    if (meters > walkMax && toWork) {
+      city.year.transitRefusals++;
+      if (city.rng.market.chance(0.05)) city.log(EV.unmet, p, UNMET.transit);
+    }
+    const minutes =
+      (meters / 1000 / kmh) * 60 +
+      (job === OUTSIDE_JOB ? sim.config.population.outsideJobs.extraCommuteMinutes : 0);
+    this.scheduleArrival(p, minutes, toWork);
+  }
+
+  private scheduleArrival(p: number, minutes: number, toWork: boolean) {
+    const clock = this.city.sim.clock;
+    const ticks = clock.minutesToTicks(minutes);
+    const at = (clock.tickOfDay + ticks) % clock.ticksPerDay;
+    this.city.pop.tripState[p] = toWork ? 1 : 3;
+    if (toWork) this.city.pop.commuteMinutes[p] = Math.min(65535, Math.round(minutes));
+    this.arrivals[at]!.push(toWork ? p : -1 - p);
+  }
+
+  private applyResolved() {
+    const city = this.city;
+    const trips = this.pendingTrips;
+    const results = this.resolved;
+    this.pendingTrips = [];
+    this.resolved = [];
+    if (trips.length !== results.length)
+      throw new Error(`trânsito: ${trips.length} viagens para ${results.length} rotas`);
+    for (let i = 0; i < trips.length; i++) {
+      const t = trips[i]!;
+      const route = results[i] ?? null;
+      const { pop } = city;
+      const veh = this.vehicles;
+      if (!route || pop.status[t.person] !== PSTATUS.alive || veh.state[t.vehicle] === VSTATE.gone) {
+        veh.driver[t.vehicle] = -1;
+        if (!route && t.toWork && pop.status[t.person] === PSTATUS.alive) {
+          // Não existe caminho até o trabalho (via demolida): perde o emprego.
+          fire(city, t.person, "sem caminho até o trabalho");
+        }
+        pop.tripState[t.person] = 0;
+        continue;
+      }
+      this.depart(t, route);
+    }
+  }
+
+  private depart(t: PendingTrip, route: Route) {
+    const city = this.city;
+    const clock = city.sim.clock;
+    const veh = this.vehicles;
+    const v = t.vehicle;
+    this.unpark(v);
+    const seconds = this.travelSeconds(route, clock.minuteOfDay);
+    const extra =
+      t.dest === OUTSIDE_JOB && t.toWork ? city.config.population.outsideJobs.extraCommuteMinutes : 0;
+    const minutes = seconds / 60 + extra;
+    veh.state[v] = VSTATE.moving;
+    veh.routes[v] = route.tiles;
+    veh.routeCum[v] = route.cum;
+    veh.departTick[v] = clock.tick;
+    veh.arriveTick[v] = clock.tick + Math.max(1, Math.round(seconds / 60 / city.config.time.minutesPerTick));
+    veh.destBuilding[v] = t.dest;
+    veh.moving.add(v);
+    city.sim.perf.count("tripsStarted");
+    if (t.toWork) city.pop.commuteMinutes[t.person] = Math.min(65535, Math.round(minutes));
+    const drive = veh.arriveTick[v]! - clock.tick;
+    this.vehicleArrivals[(clock.tickOfDay + drive) % clock.ticksPerDay]!.push(v);
+    const at = (clock.tickOfDay + drive + (extra > 0 ? clock.minutesToTicks(extra) : 0)) % clock.ticksPerDay;
+    this.arrivals[at]!.push(t.toWork ? t.person : -1 - t.person);
+  }
+
+  /** Prédio demolido: carros estacionados nele vão para a rua em frente. */
+  onBuildingRemoved(b: number) {
+    const veh = this.vehicles;
+    const bs = this.city.sim.buildings;
+    for (let v = 0; v < veh.count; v++) {
+      if (veh.state[v] === VSTATE.parked && veh.parkedAt[v] === b) {
+        bs.parked[b]!--;
+        veh.parkedAt[v] = -1;
+        veh.streetTile[v] = bs.access[b]!;
+      }
+    }
+  }
+
+  private vehicleArrive(v: number) {
+    const veh = this.vehicles;
+    if (veh.state[v] !== VSTATE.moving) return;
+    veh.moving.delete(v);
+    const dest = veh.destBuilding[v]!;
+    if (dest >= 0 && this.city.sim.buildings.state[dest] === 3) {
+      // O destino foi demolido durante a viagem: estaciona na rua.
+      veh.state[v] = VSTATE.parked;
+      veh.routes[v] = null;
+      veh.routeCum[v] = null;
+      veh.parkedAt[v] = -1;
+      veh.streetTile[v] = this.city.sim.buildings.access[dest]!;
+      return;
+    }
+    if (dest === OUTSIDE_JOB) {
+      veh.state[v] = VSTATE.outside;
+      veh.routes[v] = null;
+      veh.routeCum[v] = null;
+    } else this.park(v, dest);
+  }
+
+  /** Tempo de viagem (segundos) com congestionamento (BPR) usando o volume de ontem nesta hora. */
+  private travelSeconds(route: Route, minuteOfDay: number): number {
+    const world = this.city.sim.world;
+    const cfg = this.city.config;
+    this.refreshCapacity();
+    const hour = Math.floor(minuteOfDay / 60) % 24;
+    const alpha = cfg.traffic.bpr.alpha;
+    const beta = cfg.traffic.bpr.beta;
+    const tiles = route.tiles;
+    const cum = route.cum;
+    let total = 0;
+    for (let i = 1; i < tiles.length; i++) {
+      const tile = tiles[i]!;
+      const t0 = cum[i]! - cum[i - 1]!;
+      const k = tile * 24 + hour;
+      const x = this.prevVolumes[k]! / this.capacity[tile]!;
+      let xb = 1;
+      for (let b = 0; b < beta; b++) xb *= x;
+      total += t0 * (1 + alpha * xb);
+      if (this.volumes[k]! < 65535) this.volumes[k]!++;
+    }
+    return total / 10;
+  }
+
+  private refreshCapacity() {
+    const world = this.city.sim.world;
+    if (this.capacityVersion === world.roadVersion) return;
+    this.capacityVersion = world.roadVersion;
+    const r = this.city.config.roads;
+    for (let i = 0; i < world.size; i++) {
+      const kind = world.roads[i];
+      this.capacity[i] =
+        kind === 1
+          ? r.street.lanes * r.street.capacityPerLanePerHour
+          : kind === 2
+            ? r.avenue.lanes * r.avenue.capacityPerLanePerHour
+            : 1;
+    }
+  }
+
+  private arrive(code: number) {
+    const city = this.city;
+    const toWork = code >= 0;
+    const p = toWork ? code : -1 - code;
+    const { pop, hh } = city;
+    if (pop.status[p] !== PSTATUS.alive) return;
+    const car = hh.car[pop.household[p]!] ?? -1;
+    const veh = this.vehicles;
+    if (!toWork && car >= 0 && veh.driver[car] === p) veh.driver[car] = -1;
+    if (pop.job[p] === -1 && toWork) {
+      pop.tripState[p] = 0;
+      return;
+    }
+    if (toWork) {
+      pop.tripState[p] = 2;
+      // Volta no fim do expediente.
+      const clock = city.sim.clock;
+      const dur = clock.minutesToTicks(city.config.traffic.routine.workDurationMinutes);
+      this.returns[(clock.tickOfDay + dur) % clock.ticksPerDay]!.push(p);
+    } else pop.tripState[p] = 0;
+  }
+
+  /**
+   * Posições dos carros dentro do retângulo (para a tela): os que estão andando e os estacionados
+   * (na frente do prédio onde estão parados, ou na rua). Só leitura; usa Math.atan2 porque é só visual.
+   */
+  positions(rect: { x0: number; y0: number; x1: number; y1: number }, subTick = 0): Float32Array {
+    const veh = this.vehicles;
+    const world = this.city.sim.world;
+    const bs = this.city.sim.buildings;
+    const now = this.city.sim.clock.tick + subTick;
+    const out: number[] = [];
+    const inRect = (x: number, y: number) => x >= rect.x0 && y >= rect.y0 && x <= rect.x1 && y <= rect.y1;
+    // Estacionados.
+    const slot = new Map<number, number>();
+    for (let v = 0; v < veh.count && out.length < 4 * 30000; v++) {
+      if (veh.state[v] !== VSTATE.parked) continue;
+      const b = veh.parkedAt[v]!;
+      const access = b >= 0 ? bs.access[b]! : veh.streetTile[v]!;
+      if (access < 0) continue;
+      const key = b >= 0 ? b : -1 - access;
+      const k = slot.get(key) ?? 0;
+      slot.set(key, k + 1);
+      let x: number;
+      let y: number;
+      let angle: number;
+      if (b >= 0) {
+        // Na frente do prédio, junto à calçada, um ao lado do outro.
+        const f = bs.facing[b]!;
+        const w = bs.w[b]!;
+        const h = bs.h[b]!;
+        const along = (0.3 + (k % 3) * 0.3) * (f === 0 || f === 2 ? w : h);
+        const bx = bs.x[b]!;
+        const by = bs.y[b]!;
+        if (f === 0) [x, y, angle] = [bx + along, by + 0.12, Math.PI / 2];
+        else if (f === 2) [x, y, angle] = [bx + along, by + h - 0.12, Math.PI / 2];
+        else if (f === 1) [x, y, angle] = [bx + w - 0.12, by + along, 0];
+        else [x, y, angle] = [bx + 0.12, by + along, 0];
+      } else {
+        x = world.xOf(access) + 0.2 + (k % 3) * 0.3;
+        y = world.yOf(access) + 0.12;
+        angle = Math.PI / 2;
+      }
+      if (inRect(x, y)) out.push(x, y, angle, veh.model[v]!);
+    }
+    for (let i = 0; i < veh.moving.size && out.length < 4 * 20000; i++) {
+      const v = veh.moving.at(i);
+      const tiles = veh.routes[v];
+      const cum = veh.routeCum[v];
+      if (!tiles || !cum) continue;
+      const span = Math.max(1, veh.arriveTick[v]! - veh.departTick[v]!);
+      const f = Math.min(1, Math.max(0, (now - veh.departTick[v]!) / span));
+      const target = f * cum[cum.length - 1]!;
+      let lo = 0;
+      let hi = cum.length - 1;
+      while (lo < hi) {
+        const mid = (lo + hi + 1) >> 1;
+        if (cum[mid]! <= target) lo = mid;
+        else hi = mid - 1;
+      }
+      const a = tiles[lo]!;
+      const b = tiles[Math.min(lo + 1, tiles.length - 1)]!;
+      const segT = cum[Math.min(lo + 1, cum.length - 1)]! - cum[lo]!;
+      const u = segT > 0 ? (target - cum[lo]!) / segT : 0;
+      const ax = world.xOf(a) + 0.5;
+      const ay = world.yOf(a) + 0.5;
+      const bx = world.xOf(b) + 0.5;
+      const by = world.yOf(b) + 0.5;
+      const dx = bx - ax;
+      const dy = by - ay;
+      // Mão direita: desloca para a direita do sentido do movimento.
+      const x = ax + dx * u - dy * 0.18;
+      const y = ay + dy * u + dx * 0.18;
+      if (!inRect(x, y)) continue;
+      // Ângulo no plano do chão (X, Z=y) para girar o modelo.
+      const angle = dx === 0 && dy === 0 ? 0 : Math.atan2(dx, dy);
+      out.push(x, y, angle, veh.model[v]!);
+    }
+    return Float32Array.from(out);
+  }
+}

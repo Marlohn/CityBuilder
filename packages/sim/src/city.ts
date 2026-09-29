@@ -62,6 +62,8 @@ export class City {
   readonly marriageHazard: (age: number) => number;
   private searchValues: number[];
   private searchCum: number[];
+  /** Sistema de trânsito (preenchido pelo jogo; usado pelas verificações). */
+  traffic: import("./traffic/trafficSystem").TrafficSystem | null = null;
   /** Quantas pessoas trabalham fora da cidade agora. */
   outsideWorkers = 0;
   /** Filas de quem está procurando algo (processadas aos poucos pelo sistema de "matching"). */
@@ -76,6 +78,12 @@ export class City {
   onCarGone: ((car: number) => void) | null = null;
   /** Chamado quando uma família compra um carro (o trânsito cria o veículo). */
   onCarBought: ((household: number) => void) | null = null;
+  /** A família mudou de casa (o carro vai junto). */
+  onHouseholdMoved: ((household: number, home: number) => void) | null = null;
+  /** A pessoa está deixando o emprego (antes de apagar o vínculo). */
+  onJobEnding: ((person: number, job: number) => void) | null = null;
+  /** A pessoa morreu ou foi embora. */
+  onPersonGone: ((person: number) => void) | null = null;
   /** Chamado quando o carro passa para outra família (ex.: casamento). */
   onCarMoved: ((car: number, household: number) => void) | null = null;
 

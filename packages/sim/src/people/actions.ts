@@ -95,6 +95,7 @@ export function moveHouseholdTo(city: City, h: number, building: number, logMove
   sim.buildings.residents[building]! += hh.size[h]!;
   markets.housing.update(building);
   if (logMove) for (const m of hh.members(h)) city.log(EV.movedHome, m, building);
+  city.onHouseholdMoved?.(h, building);
 }
 
 export function leaveHome(city: City, h: number) {
@@ -204,6 +205,7 @@ export function fire(city: City, p: number, _reason: string) {
   const { pop, sim, markets } = city;
   const b = pop.job[p]!;
   if (b === -1) return;
+  city.onJobEnding?.(p, b);
   if (b === OUTSIDE_JOB) city.outsideWorkers--;
   else {
     sim.buildings.jobsFilled[b]!--;
@@ -309,6 +311,7 @@ export function householdLeavesCity(city: City, h: number, reason: number) {
 
 function removeFromCity(city: City, p: number, status: number) {
   const { pop, hh } = city;
+  city.onPersonGone?.(p);
   const h = pop.household[p]!;
   if (h >= 0) {
     hh.removeMember(h, p);

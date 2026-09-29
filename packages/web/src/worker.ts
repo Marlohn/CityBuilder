@@ -46,7 +46,7 @@ self.onmessage = (ev: MessageEvent<ToWorker>) => {
   try {
     switch (msg.type) {
       case "init": {
-        const config = parseGameConfig(msg.configTexts);
+        const config = parseGameConfig(msg.configTexts, msg.overrides);
         const data = parseGameData(msg.dataTexts, config);
         startGame(createGame({ config, data, seed: msg.seed }));
         break;
@@ -60,6 +60,9 @@ self.onmessage = (ev: MessageEvent<ToWorker>) => {
         break;
       case "view":
         view = msg.rect;
+        break;
+      case "advance":
+        game?.sim.step(msg.ticks);
         break;
       default:
         if (game) {
@@ -121,6 +124,10 @@ function sendFrame() {
   );
 }
 
-function vehiclesIn(_rect: ViewRect) {
-  return { data: new Float32Array(0), count: 0 };
+function vehiclesIn(rect: ViewRect) {
+  if (!game || rect.x1 <= rect.x0) return { data: new Float32Array(0), count: 0 };
+  // Fração do tick (para o carro andar suave entre um tick e outro).
+  const sub = Math.min(0.99, Math.max(0, backlog));
+  const data = game.traffic.positions(rect, sub);
+  return { data, count: data.length / 4 };
 }

@@ -76,6 +76,10 @@ export class Population {
   searchUntilTick = new Int32Array(0);
   /** Tempo de ida ao trabalho (minutos). */
   commuteMinutes = new Uint16Array(0);
+  /** Hora de entrada no trabalho (minuto do dia). */
+  workStartMinute = new Uint16Array(0);
+  /** 0 = em casa, 1 = indo trabalhar, 2 = no trabalho, 3 = voltando. */
+  tripState = new Uint8Array(0);
   /** Idade no primeiro casamento (0 = nunca casou). */
   firstMarriageAge = new Uint8Array(0);
   lastEvent = new Int32Array(0);
@@ -153,6 +157,8 @@ export class Population {
     this.unemployedSinceTick = growTo(this.unemployedSinceTick, len);
     this.searchUntilTick = growTo(this.searchUntilTick, len);
     this.commuteMinutes = growTo(this.commuteMinutes, len);
+    this.workStartMinute = growTo(this.workStartMinute, len);
+    this.tripState = growTo(this.tripState, len);
     this.firstMarriageAge = growTo(this.firstMarriageAge, len);
     this.lastEvent = growTo(this.lastEvent, len);
     this.triedJob = growTo(this.triedJob, len);

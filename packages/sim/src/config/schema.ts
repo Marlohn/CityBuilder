@@ -34,6 +34,8 @@ const HouseholdType = z.object({
 
 const RealismItem = z.object({
   id: z.string(),
+  /** População mínima para este indicador fazer sentido. */
+  minPopulation: z.number().int().min(0).optional(),
   label: z.string(),
   unit: z.string(),
   min: z.number(),
