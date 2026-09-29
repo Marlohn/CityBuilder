@@ -31,3 +31,4 @@ describe("exemplo: a cidade começa a crescer", () => {
     expect(checkInvariants(game.city)).toEqual([]);
   });
 });
+// mexido
