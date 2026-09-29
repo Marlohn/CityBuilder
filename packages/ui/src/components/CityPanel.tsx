@@ -9,6 +9,8 @@ const UNMET_LABELS: Record<keyof StatsView["unmet"], string> = {
   job: "Procurando emprego",
   transit: "Recusaram emprego (longe e sem carro)",
   parking: "Sem vaga para estacionar",
+  water: "Morando sem água",
+  power: "Morando sem luz",
 };
 
 function Bar({ label, value, color }: { label: string; value: number; color: string }) {
@@ -80,6 +82,10 @@ export function CityPanel({ s }: { s: StatsView }) {
             <td>
               {int(s.cars)} / {int(s.vehiclesMoving)}
             </td>
+          </tr>
+          <tr>
+            <td>Pessoas andando a pé</td>
+            <td>{int(s.peopleWalking)}</td>
           </tr>
         </tbody>
       </table>

@@ -23,6 +23,8 @@ export interface CommandContext {
   onBuildingRemoved: (id: number, reason: string) => void;
   /** Chamado quando uma via some (prédios podem perder acesso). */
   onRoadsRemoved: () => void;
+  /** Chamado quando um serviço muda de lugar (quem ficou longe procura outro). */
+  onBuildingMoved: (id: number) => void;
   variantFor: (x: number, y: number) => number;
   /** Multiplicadores ajustados pela diretora (IA opcional). */
   modifiers: Record<DirectorParam, number>;
@@ -56,6 +58,8 @@ function dispatch(ctx: CommandContext, c: Command): Partial {
       return bulldoze(ctx, c.x0, c.y0, c.x1, c.y1);
     case "placeService":
       return placeService(ctx, c.service, c.x, c.y);
+    case "moveService":
+      return moveService(ctx, c.building, c.x, c.y);
     case "directorAdjust":
       return directorAdjust(ctx, c.param, c.factor);
   }
@@ -98,6 +102,8 @@ function buildRoad(
     for (let x = ax; x <= bx; x++) {
       const i = world.idx(x, y);
       if (world.buildingAt[i]! >= 0) return { ok: false, reason: `tem um prédio no caminho em (${x}, ${y})` };
+      if (world.water[i])
+        return { ok: false, reason: `tem água em (${x}, ${y}) (ponte ainda não existe no jogo)` };
       if (world.roads[i] !== id) tiles.push(i);
     }
   }
@@ -125,7 +131,7 @@ function zone(ctx: CommandContext, zoneId: number, x0: number, y0: number, x1: n
   for (let y = ay; y <= by; y++) {
     for (let x = ax; x <= bx; x++) {
       const i = world.idx(x, y);
-      if (world.roads[i] !== 0) continue;
+      if (world.roads[i] !== 0 || world.water[i]) continue;
       if (world.buildingAt[i]! >= 0) {
         skippedBuilt++;
         continue;
@@ -208,11 +214,14 @@ function placeService(ctx: CommandContext, service: string, x: number, y: number
       if (!world.inBounds(tx, ty)) return { ok: false, reason: "não cabe no mapa" };
       const i = world.idx(tx, ty);
       if (world.roads[i] !== 0) return { ok: false, reason: `tem uma via em (${tx}, ${ty})` };
+      if (world.water[i]) return { ok: false, reason: `tem água em (${tx}, ${ty})` };
       if (world.buildingAt[i]! >= 0) return { ok: false, reason: `tem um prédio em (${tx}, ${ty})` };
     }
   }
   const [access, facing] = network.findAccess(x, y, t.w, t.h);
   if (access < 0) return { ok: false, reason: `${t.label} precisa encostar numa via` };
+  if (t.nearWater > 0 && !nearWater(world, x, y, t.w, t.h, t.nearWater))
+    return { ok: false, reason: `${t.label} precisa ficar a até ${t.nearWater} quadradinhos de rio ou lago` };
   if (!ctx.treasury.trySpend(t.cost, "obras_servicos")) {
     return { ok: false, reason: `dinheiro insuficiente (custa R$ ${fmt(t.cost)})` };
   }
@@ -228,6 +237,64 @@ function placeService(ctx: CommandContext, service: string, x: number, y: number
   }
   world.mapVersion++;
   return { ok: true, cost: t.cost };
+}
+
+/** Muda um serviço de lugar: mesmo prédio (mesmos alunos e pacientes), outro terreno. */
+function moveService(ctx: CommandContext, id: number, x: number, y: number): Partial {
+  const { world, buildings, network } = ctx;
+  if (id >= buildings.count || buildings.state[id] === BSTATE.demolished)
+    return { ok: false, reason: "prédio não existe" };
+  const t = buildings.typeOf(id);
+  if (!t.service) return { ok: false, reason: `${t.label} não pode ser movido (só serviços)` };
+  if (buildings.x[id] === x && buildings.y[id] === y) return { ok: true, cost: 0, reason: "já está aí" };
+  for (let dy = 0; dy < t.h; dy++) {
+    for (let dx = 0; dx < t.w; dx++) {
+      const tx = x + dx;
+      const ty = y + dy;
+      if (!world.inBounds(tx, ty)) return { ok: false, reason: "não cabe no mapa" };
+      const i = world.idx(tx, ty);
+      if (world.roads[i] !== 0) return { ok: false, reason: `tem uma via em (${tx}, ${ty})` };
+      if (world.water[i]) return { ok: false, reason: `tem água em (${tx}, ${ty})` };
+      const other = world.buildingAt[i]!;
+      if (other >= 0 && other !== id) return { ok: false, reason: `tem um prédio em (${tx}, ${ty})` };
+    }
+  }
+  const [access, facing] = network.findAccess(x, y, t.w, t.h);
+  if (access < 0) return { ok: false, reason: `${t.label} precisa encostar numa via` };
+  if (t.nearWater > 0 && !nearWater(world, x, y, t.w, t.h, t.nearWater))
+    return { ok: false, reason: `${t.label} precisa ficar a até ${t.nearWater} quadradinhos de rio ou lago` };
+  const cost = Math.round(t.cost * ctx.config.economy.serviceMoveCostShare);
+  if (!ctx.treasury.trySpend(cost, "obras_servicos")) {
+    return { ok: false, reason: `dinheiro insuficiente (mudar custa R$ ${fmt(cost)})` };
+  }
+  const ox = buildings.x[id]!;
+  const oy = buildings.y[id]!;
+  for (let dy = 0; dy < t.h; dy++)
+    for (let dx = 0; dx < t.w; dx++) world.buildingAt[world.idx(ox + dx, oy + dy)] = -1;
+  for (let dy = 0; dy < t.h; dy++) {
+    for (let dx = 0; dx < t.w; dx++) {
+      const i = world.idx(x + dx, y + dy);
+      world.buildingAt[i] = id;
+      world.zones[i] = 0;
+      world.trees[i] = 0;
+    }
+  }
+  buildings.x[id] = x;
+  buildings.y[id] = y;
+  buildings.access[id] = access;
+  buildings.facing[id] = facing;
+  buildings.structureVersion++;
+  world.mapVersion++;
+  ctx.onBuildingMoved(id);
+  return { ok: true, cost };
+}
+
+/** Tem água (rio ou lago) a até `d` quadradinhos do retângulo? */
+function nearWater(world: World, x: number, y: number, w: number, h: number, d: number): boolean {
+  for (let ty = y - d; ty < y + h + d; ty++)
+    for (let tx = x - d; tx < x + w + d; tx++)
+      if (world.inBounds(tx, ty) && world.water[world.idx(tx, ty)]) return true;
+  return false;
 }
 
 export function fmt(n: number): string {

@@ -89,6 +89,8 @@ const DESIRES: {
   },
   { key: "health", what: "pessoas sem UBS", ref: "ubs", impact: 3 },
   { key: "housing", what: "famílias esperando casa própria", impact: 1 },
+  { key: "water", what: "pessoas morando em prédio sem água", ref: "agua", impact: 3 },
+  { key: "power", what: "pessoas morando em prédio sem luz", ref: "energia", impact: 3 },
   {
     key: "transit",
     what: "recusas de emprego por distância sem carro (último ano)",

@@ -33,6 +33,8 @@ export interface System {
   onRoadsRemoved?(): void;
   /** Um prédio terminou a obra e começou a funcionar. */
   onBuildingReady?(id: number): void;
+  /** Um serviço mudou de lugar. */
+  onBuildingMoved?(id: number): void;
 }
 
 export class Simulation {
@@ -65,6 +67,18 @@ export class Simulation {
     this.perf = new Perf(opts.config.performance.timingWindow);
     const w = opts.config.world;
     this.world = new World(w.width, w.height, w.tileMeters);
+    if (w.water.enabled) {
+      // Fica seco: a faixa da estrada de acesso (oeste, linha do meio) com folga.
+      const mid = Math.floor(w.height / 2);
+      const len = w.startingRoad.enabled ? w.startingRoad.length : 0;
+      this.world.generateWater(
+        this.rng.stream("water"),
+        w.water,
+        { x0: 0, y0: mid - 6, x1: len + 6, y1: mid + 6 },
+        // Lagos longe da linha do meio (onde a avenida principal costuma crescer).
+        { x0: 0, y0: mid - 10, x1: w.width, y1: mid + 10 },
+      );
+    }
     this.world.generateTrees(this.rng.stream("terrain"), w.treeCoverage);
     this.network = new RoadNetwork(this.world);
     this.buildings = new Buildings(opts.data.buildings);
@@ -134,6 +148,9 @@ export class Simulation {
       },
       onRoadsRemoved: () => {
         for (const s of this.systems) s.onRoadsRemoved?.();
+      },
+      onBuildingMoved: (id) => {
+        for (const s of this.systems) s.onBuildingMoved?.(id);
       },
       modifiers: this.modifiers,
       variantFor: (x, y) => hashString(`${this.seed}:${x}:${y}`)[0] & 0xffff,

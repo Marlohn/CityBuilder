@@ -13,6 +13,7 @@ export function mapView(world: World): MapView {
     roads: world.roads.slice(),
     zones: world.zones.slice(),
     trees: world.trees.slice(),
+    water: world.water.slice(),
     version: world.mapVersion,
   };
 }

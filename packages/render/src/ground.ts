@@ -53,7 +53,17 @@ export class GroundLayer {
         let g = 160 + noise * 16;
         let b = 80 + noise * 8;
         let border = false;
-        if (map.roads[i]) {
+        if (map.water?.[i]) {
+          // Água: azul, um pouco mais escuro perto da margem (dá sensação de profundidade).
+          const edge =
+            (tx > 0 && !map.water[i - 1]) ||
+            (tx < map.width - 1 && !map.water[i + 1]) ||
+            (ty > 0 && !map.water[i - map.width]) ||
+            (ty < map.height - 1 && !map.water[i + map.width]);
+          r = edge ? 95 : 60 + noise * 8;
+          g = edge ? 150 : 120 + noise * 10;
+          b = edge ? 190 : 185 + noise * 10;
+        } else if (map.roads[i]) {
           r = g = b = 105;
         } else if (occupied[i]) {
           r = 170;

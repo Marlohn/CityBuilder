@@ -52,6 +52,9 @@ window.addEventListener("keydown", (e) => {
     tools.cancel();
     store.set({ tool: "inspect", selectedBuilding: null, selectedPerson: null });
   }
+  // I = abre/fecha o painel lateral (fora de campos de texto).
+  if (e.key.toLowerCase() === "i" && (e.target as HTMLElement)?.tagName !== "INPUT")
+    store.set({ panelOpen: !store.get().panelOpen });
 });
 
 client.onError = (message) => store.set({ error: `Erro: ${message}` });

@@ -52,6 +52,16 @@ export const GameConfigSchema = z.object({
     startingRoad: z
       .object({ enabled: z.boolean(), kind: z.enum(["street", "avenue"]), length: intPos })
       .default({ enabled: false, kind: "avenue", length: 1 }),
+    water: z
+      .object({
+        enabled: z.boolean(),
+        riverWidth: intPos,
+        /** Faixa (fração da largura do mapa) onde o rio entra pelo norte. */
+        riverX: z.tuple([prob, prob]),
+        lakes: z.number().int().min(0),
+        lakeRadius: z.tuple([intPos, intPos]),
+      })
+      .default({ enabled: false, riverWidth: 5, riverX: [0.8, 0.9], lakes: 0, lakeRadius: [4, 8] }),
   }),
   time: z.object({
     minutesPerTick: z.number().int().min(1).max(60),
@@ -134,6 +144,7 @@ export const GameConfigSchema = z.object({
       minimumWage: pos,
     }),
     costOfLivingShare: prob,
+    serviceMoveCostShare: prob.default(0.3),
   }),
   traffic: z.object({
     cars: z.object({
@@ -174,6 +185,27 @@ export const GameConfigSchema = z.object({
     budgets: z.object({ nodesExpandedPerTick: intPos, personsUpdatedPerTick: intPos }),
     timingWindow: intPos,
   }),
+  utilities: z
+    .object({
+      enabled: z.boolean(),
+      /** Pessoas por casa/apartamento (para calcular quanto um prédio consome). */
+      personsPerHome: pos,
+      /** Cada emprego (comércio, indústria, serviço) conta como esta fração de uma pessoa. */
+      personsPerJob: nonneg,
+      /** Rede da região que chega pela estrada de acesso (pessoas equivalentes). */
+      regionalWater: nonneg,
+      regionalPower: nonneg,
+      /** A cada quantos ticks recalcula quem tem água e luz. */
+      everyTicks: intPos,
+    })
+    .default({
+      enabled: false,
+      personsPerHome: 2.79,
+      personsPerJob: 0.5,
+      regionalWater: 1e9,
+      regionalPower: 1e9,
+      everyTicks: 60,
+    }),
   director: z
     .object({
       enabled: z.boolean(),
@@ -204,7 +236,11 @@ const BuildingType = z
     id: z.string(),
     label: z.string(),
     zone: z.enum(["residential_low", "residential_high", "commercial", "industrial"]).optional(),
-    service: z.enum(["school", "health"]).optional(),
+    service: z.enum(["school", "health", "water", "power"]).optional(),
+    /** Água e luz: quantas pessoas (equivalentes) o prédio abastece. */
+    serves: z.number().int().min(0).default(0),
+    /** Precisa ficar a até N quadradinhos de rio ou lago (captação de água). 0 = em qualquer lugar. */
+    nearWater: z.number().int().min(0).default(0),
     w: intPos,
     h: intPos,
     homes: z.number().int().min(0).default(0),

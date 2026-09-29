@@ -9,6 +9,8 @@ import { PIECE_MODEL, roadPieceFor } from "./roads";
 const HALF_PI = Math.PI / 2;
 /** Metros por andar (pé-direito típico + laje). */
 const FLOOR_METERS = 3;
+/** Tipo de objeto que é pessoa a pé (mesmo valor do motor, contrato VehiclesView). */
+const PEDESTRIAN_TYPE = 100;
 
 export interface BuildingVisual {
   id: string;
@@ -31,7 +33,7 @@ export class RoadLayer {
   constructor(private lib: ModelLibrary) {}
 
   static models(): string[] {
-    return [...Object.values(PIECE_MODEL), "roads/light-square"];
+    return [...Object.values(PIECE_MODEL), "roads/light-square", "proc/median"];
   }
 
   update(map: MapView) {
@@ -50,6 +52,11 @@ export class RoadLayer {
         if (x > 0 && roads[i - 1]) mask |= 8;
         const { piece, quarterTurns } = roadPieceFor(mask);
         this.batches.get(PIECE_MODEL[piece]).push(x + 0.5, 0.005, y + 0.5, quarterTurns * HALF_PI, 1, 1, 1);
+        // Avenida: canteiro central com meio-fio nas retas (4 faixas separadas, DNIT IPR-740).
+        if (kind === 2 && piece === "straight") {
+          const alongX = (mask & 10) === 10;
+          this.batches.get("proc/median").push(x + 0.5, 0.006, y + 0.5, alongX ? HALF_PI : 0, 1, 1, 1);
+        }
         // Avenidas ganham postes de luz a cada dois quadradinhos (retas).
         if (kind === 2 && piece === "straight" && (x + y) % 2 === 0) {
           const alongX = (mask & 10) === 10;
@@ -79,6 +86,14 @@ export class BuildingLayer {
 
   static models(visuals: BuildingVisual[]): string[] {
     return [...visuals.flatMap((v) => v.models), "proc/construction"];
+  }
+
+  /** Altura desenhada do prédio (em quadradinhos), usada no clique. Mesma conta do desenho. */
+  heightOf(b: BuildingView): number {
+    const vis = this.visuals.get(b.type);
+    const floors = vis?.floors ?? 1;
+    if (b.state === 0) return Math.max(0.6, floors * 0.5) * Math.min(b.w, b.h);
+    return Math.max(0.3, (floors * FLOOR_METERS + 2) / this.tileMeters);
   }
 
   update(list: BuildingView[]) {
@@ -156,16 +171,29 @@ export class VehicleLayer {
     private tileMeters: number,
   ) {}
 
+  static readonly PEOPLE = ["proc/person-a", "proc/person-b", "proc/person-c", "proc/person-d"];
+
+  static models(): string[] {
+    return [...VehicleLayer.MODELS, ...VehicleLayer.PEOPLE];
+  }
+
   update(v: VehiclesView) {
     this.batches.resetAll();
-    for (const m of VehicleLayer.MODELS) this.batches.get(m);
+    for (const m of VehicleLayer.models()) this.batches.get(m);
     // Carro de passeio ~4,5 m; o modelo tem 2,55 unidades de comprimento.
     const s = 4.5 / this.tileMeters / 2.55;
+    // Pessoa ~1,7 m (um pouco maior na tela para dar para ver de longe).
+    const ps = 2.4 / this.tileMeters;
     for (let k = 0; k < v.count; k++) {
       const x = v.data[k * 4]!;
       const y = v.data[k * 4 + 1]!;
       const angle = v.data[k * 4 + 2]!;
       const type = v.data[k * 4 + 3]! | 0;
+      if (type >= PEDESTRIAN_TYPE) {
+        const model = VehicleLayer.PEOPLE[(type - PEDESTRIAN_TYPE) % VehicleLayer.PEOPLE.length]!;
+        this.batches.get(model).push(x, 0.02, y, angle, ps, ps, ps);
+        continue;
+      }
       const model = VehicleLayer.MODELS[type % VehicleLayer.MODELS.length]!;
       this.batches.get(model).push(x, 0.02, y, angle, s, s, s);
     }

@@ -89,6 +89,11 @@ export function HelpPanel() {
           melhor o espaço.
         </li>
         <li>
+          <b>Água e luz:</b> a estrada de acesso traz um pouco de água e luz da região (dá para uma cidade
+          pequena). Depois construa poço artesiano ou estação de tratamento (perto do rio ou lago) e
+          subestação. As redes seguem as ruas: prédio sem água ou luz não recebe moradores.
+        </li>
+        <li>
           <b>Serviços:</b> escola e UBS precisam encostar numa via. Crianças precisam de escola a até 2 km.
         </li>
         <li>
@@ -98,8 +103,9 @@ export function HelpPanel() {
       </ul>
       <h3>Câmera</h3>
       <ul>
-        <li>W A S D ou setas: mover · botão direito arrastando: mover</li>
-        <li>Roda do mouse: zoom · Q / E: girar 90°</li>
+        <li>W A S D ou setas: mover · botão direito arrastando: agarrar e arrastar o mapa</li>
+        <li>Q / E (segurando) ou botão do meio arrastando: girar · Home / End: inclinar</li>
+        <li>Roda do mouse ou Z / X: zoom</li>
       </ul>
       <h3>Tempo</h3>
       <p>Cada dia do jogo representa um ano de vida. Na velocidade 1x, um dia dura 2 minutos.</p>

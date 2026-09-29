@@ -29,6 +29,22 @@ interface PendingTrip {
 
 const MODELS = 4;
 
+/** Viagem que acabou de começar (só para a tela desenhar; a simulação não lê isto). */
+export interface TripStart {
+  kind: "car" | "walk";
+  /** Carro (kind "car") ou pessoa (kind "walk"). */
+  id: number;
+  model: number;
+  /** Rota de carro (quadradinhos). */
+  tiles?: Int32Array;
+  /** Início e fim a pé (quadradinhos de via). */
+  from?: number;
+  to?: number;
+}
+
+/** Quantas viagens recentes guardar para a tela (a tela lê a cada quadro). */
+const TRIP_LOG_MAX = 20000;
+
 export class TrafficSystem implements System {
   readonly name = "traffic";
   readonly vehicles = new Vehicles();
@@ -47,6 +63,9 @@ export class TrafficSystem implements System {
   private capacity: Float32Array;
   private capacityVersion = -1;
   private lastDay = -1;
+  /** Viagens começadas (para a tela). `tripSeq` conta todas desde o começo do jogo. */
+  readonly tripLog: TripStart[] = [];
+  tripSeq = 0;
 
   constructor(private city: City) {
     const sim = city.sim;
@@ -282,10 +301,17 @@ export class TrafficSystem implements System {
       city.year.transitRefusals++;
       if (city.rng.market.chance(0.05)) city.log(EV.unmet, p, UNMET.transit);
     }
+    if (meters <= walkMax) this.logTrip({ kind: "walk", id: p, model: p % 4, from, to });
     const minutes =
       (meters / 1000 / kmh) * 60 +
       (job === OUTSIDE_JOB ? sim.config.population.outsideJobs.extraCommuteMinutes : 0);
     this.scheduleArrival(p, minutes, toWork);
+  }
+
+  private logTrip(t: TripStart) {
+    this.tripLog.push(t);
+    this.tripSeq++;
+    if (this.tripLog.length > TRIP_LOG_MAX) this.tripLog.splice(0, this.tripLog.length - TRIP_LOG_MAX / 2);
   }
 
   private scheduleArrival(p: number, minutes: number, toWork: boolean) {
@@ -341,6 +367,7 @@ export class TrafficSystem implements System {
     veh.destBuilding[v] = t.dest;
     veh.moving.add(v);
     city.sim.perf.count("tripsStarted");
+    this.logTrip({ kind: "car", id: v, model: veh.model[v]!, tiles: route.tiles });
     if (t.toWork) city.pop.commuteMinutes[t.person] = Math.min(65535, Math.round(minutes));
     const drive = veh.arriveTick[v]! - clock.tick;
     this.vehicleArrivals[(clock.tickOfDay + drive) % clock.ticksPerDay]!.push(v);
@@ -447,7 +474,16 @@ export class TrafficSystem implements System {
    * Posições dos carros dentro do retângulo (para a tela): os que estão andando e os estacionados
    * (na frente do prédio onde estão parados, ou na rua). Só leitura; usa Math.atan2 porque é só visual.
    */
-  positions(rect: { x0: number; y0: number; x1: number; y1: number }, subTick = 0): Float32Array {
+  /**
+   * Carros para a tela: estacionados e em movimento. `hidden` = carros que a tela já está desenhando
+   * por conta própria (viagem visual); `movingToo` = false para não desenhar os que estão andando.
+   */
+  positions(
+    rect: { x0: number; y0: number; x1: number; y1: number },
+    subTick = 0,
+    hidden?: (v: number) => boolean,
+    movingToo = true,
+  ): Float32Array {
     const veh = this.vehicles;
     const world = this.city.sim.world;
     const bs = this.city.sim.buildings;
@@ -457,7 +493,7 @@ export class TrafficSystem implements System {
     // Estacionados.
     const slot = new Map<number, number>();
     for (let v = 0; v < veh.count && out.length < 4 * 30000; v++) {
-      if (veh.state[v] !== VSTATE.parked) continue;
+      if (veh.state[v] !== VSTATE.parked || hidden?.(v)) continue;
       const b = veh.parkedAt[v]!;
       const access = b >= 0 ? bs.access[b]! : veh.streetTile[v]!;
       if (access < 0) continue;
@@ -486,7 +522,7 @@ export class TrafficSystem implements System {
       }
       if (inRect(x, y)) out.push(x, y, angle, veh.model[v]!);
     }
-    for (let i = 0; i < veh.moving.size && out.length < 4 * 20000; i++) {
+    for (let i = 0; movingToo && i < veh.moving.size && out.length < 4 * 20000; i++) {
       const v = veh.moving.at(i);
       const tiles = veh.routes[v];
       const cum = veh.routeCum[v];

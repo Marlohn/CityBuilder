@@ -62,6 +62,12 @@ export class RoadNetwork {
     return c >= 0 ? (this.edgeTileOfComponent.get(c) ?? -1) : -1;
   }
 
+  /** Componentes (malhas de ruas) ligados à borda do mapa, em ordem. */
+  componentsWithExit(): number[] {
+    this.refresh();
+    return [...this.edgeTileOfComponent.keys()].sort((a, b) => a - b);
+  }
+
   hasOutsideConnection(): boolean {
     this.refresh();
     return this.edgeTileOfComponent.size > 0;

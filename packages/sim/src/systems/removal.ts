@@ -25,6 +25,26 @@ export class RemovalSystem implements System {
     this.checkAccess = true;
   }
 
+  /** Serviço mudou de lugar: quem ficou longe demais (mesmo limite de quando se matriculou) procura outro. */
+  onBuildingMoved(id: number) {
+    const city = this.city;
+    const { pop, sim } = city;
+    const access = sim.buildings.access[id]!;
+    const maxSchool = sim.config.education.maxDistanceMeters;
+    const maxClinic = sim.config.health.maxDistanceMeters;
+    for (let p = 0; p < pop.count; p++) {
+      if (pop.status[p] !== PSTATUS.alive) continue;
+      const atSchool = pop.school[p] === id;
+      const atClinic = pop.clinic[p] === id;
+      if (!atSchool && !atClinic) continue;
+      const home = city.homeAccess(p);
+      const far = (max: number) => home < 0 || sim.world.manhattanMeters(home, access) > max;
+      if (atSchool && far(maxSchool)) unenroll(city, p);
+      if (atClinic && far(maxClinic)) unregisterClinic(city, p);
+    }
+    city.markets.updateAll(id);
+  }
+
   tick() {
     if (this.checkAccess) {
       this.checkAccess = false;

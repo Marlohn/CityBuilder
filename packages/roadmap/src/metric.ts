@@ -21,6 +21,16 @@ function num(s: string): number {
   return v;
 }
 
+/**
+ * Métrica de teste: "teste <arquivo>" (ex.: "teste tests/e2e/camera.spec.ts"). Para itens de tela e
+ * ferramenta, que não têm número no relatório: conta como resolvido quando o teste existe (o CI garante
+ * que ele passa, senão nada entra na main).
+ */
+export function testPath(expr: string): string | null {
+  const m = /^teste:?\s+(\S+)$/i.exec(expr.trim());
+  return m ? m[1]! : null;
+}
+
 export function parseMetric(expr: string): (v: number) => boolean {
   const e = expr.trim();
   const between = /^(\S+)\s+entre\s+(\S+)\s+e\s+(\S+)$/i.exec(e);
@@ -51,7 +61,16 @@ export function metricId(expr: string): string {
 }
 
 /** Confere a métrica contra os números medidos. Métrica desconhecida = não passou (value null). */
-export function checkMetric(expr: string, metrics: Record<string, number>): MetricCheck {
+export function checkMetric(
+  expr: string,
+  metrics: Record<string, number>,
+  testExists: (path: string) => boolean = () => false,
+): MetricCheck {
+  const path = testPath(expr);
+  if (path) {
+    const ok = testExists(path);
+    return { id: path, ok, value: ok ? 1 : 0, expected: expr.trim() };
+  }
   const id = metricId(expr);
   const test = parseMetric(expr);
   const value = id in metrics ? metrics[id]! : null;
@@ -59,6 +78,7 @@ export function checkMetric(expr: string, metrics: Record<string, number>): Metr
 }
 
 export function isValidMetric(expr: string, known?: Record<string, number>): string | null {
+  if (testPath(expr)) return null;
   try {
     parseMetric(expr);
   } catch (e) {

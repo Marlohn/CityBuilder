@@ -37,6 +37,7 @@ export const ScenarioSchema = z.object({
       everyDays: z.number().positive(),
       district: z.number().int().min(10),
       highDensityShare: z.number().min(0).max(1),
+      utilityReserve: z.number().min(0),
     })
     .partial()
     .default({}),

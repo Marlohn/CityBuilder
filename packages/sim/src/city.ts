@@ -65,6 +65,11 @@ export class City {
   private searchCum: number[];
   /** Veículos da cidade (preenchido pelo trânsito; usado pelas verificações). */
   traffic: { vehicles: Vehicles } | null = null;
+  /** Água e luz (ligado em game.ts; ver systems/utilities.ts). */
+  utilities: {
+    demandOf(homes: number, jobs: number): number;
+    canSupply(access: number, demand: number, reserve?: boolean): boolean;
+  } | null = null;
   /** Quantas pessoas trabalham fora da cidade agora. */
   outsideWorkers = 0;
   /** Filas de quem está procurando algo (processadas aos poucos pelo sistema de "matching"). */

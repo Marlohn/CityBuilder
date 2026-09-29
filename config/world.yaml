@@ -15,3 +15,14 @@ world:
     kind: avenue
     # Sai da borda oeste, na linha do meio do mapa.
     length: 48
+  # Água no mapa: um rio que atravessa de norte a sul e alguns lagos (sorteados pela semente).
+  # Rios e represas abastecem as cidades onde vivem 85% da população urbana (Atlas Águas 2021, ANA).
+  # Tamanhos são valores de jogo. PENDENTE: fonte para largura típica de rio em cidade média.
+  water:
+    enabled: true
+    # Largura do rio em quadradinhos (5 x 16 m = 80 m).
+    riverWidth: 5
+    # O rio fica no leste do mapa, longe da estrada de acesso (oeste), deixando espaço para a cidade.
+    riverX: [0.8, 0.9]
+    lakes: 3
+    lakeRadius: [3, 7]

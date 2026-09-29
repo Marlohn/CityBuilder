@@ -15,6 +15,8 @@ export interface MapView {
   zones: Uint8Array;
   /** 1 = vegetação nativa. */
   trees: Uint8Array;
+  /** 1 = água (rio ou lago). */
+  water: Uint8Array;
   version: number;
 }
 
@@ -52,6 +54,9 @@ export interface UnmetDesireCounts {
   job: number;
   transit: number;
   parking: number;
+  /** Pessoas morando em prédio sem água / sem luz. */
+  water: number;
+  power: number;
 }
 
 export interface RealismItem {
@@ -90,6 +95,8 @@ export interface StatsView {
   demand: { residential: number; commercial: number; industrial: number };
   unmet: UnmetDesireCounts;
   vehiclesMoving: number;
+  /** Pessoas andando a pé agora (na tela). */
+  peopleWalking: number;
   cars: number;
   realism: RealismItem[];
   perf: PerfView;
@@ -141,7 +148,10 @@ export interface PersonListItem {
   status: string;
 }
 
-/** Carros visíveis: [x, y, ângulo, tipo] por veículo, em coordenadas de quadradinho. */
+/**
+ * Carros e pessoas visíveis: [x, y, ângulo, tipo] por objeto, em coordenadas de quadradinho.
+ * Tipo 0..99 = modelo de carro; 100 ou mais = pessoa a pé.
+ */
 export interface VehiclesView {
   data: Float32Array;
   count: number;

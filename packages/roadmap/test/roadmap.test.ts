@@ -65,6 +65,12 @@ describe("métrica de sucesso", () => {
     expect(checkMetric("realism.tfr entre 1,3 e 1,9", { "realism.tfr": 2 }).ok).toBe(false);
   });
 
+  it("métrica de teste (itens de tela): vale quando o arquivo de teste existe", () => {
+    expect(isValidMetric("teste tests/e2e/camera.spec.ts", { population: 1 })).toBeNull();
+    expect(checkMetric("teste tests/e2e/camera.spec.ts", {}, () => true).ok).toBe(true);
+    expect(checkMetric("teste tests/e2e/camera.spec.ts", {}, () => false).ok).toBe(false);
+  });
+
   it("métrica desconhecida não passa e é apontada", () => {
     expect(checkMetric("naoexiste < 1", {}).ok).toBe(false);
     expect(isValidMetric("naoexiste < 1", { population: 1 })).toMatch(/não existe/);
@@ -214,8 +220,10 @@ describe("sinais", () => {
     const s2 = signalsFromRun(run(), cfg, reference, services);
     expect(s1).toEqual(s2);
     expect(s1.filter((s) => s.urgent)).toEqual([]);
-    // Cidade real de qualquer tamanho tem água e esgoto: o jogo ainda não tem.
-    expect(s1.map((s) => s.id)).toContain("comparacao:saneamento");
+    // Cidade real de qualquer tamanho tem coleta de esgoto: o jogo ainda não tem.
+    expect(s1.map((s) => s.id)).toContain("comparacao:esgoto");
+    // Água e luz agora existem no jogo: não aparecem como falta.
+    expect(s1.map((s) => s.id)).not.toContain("comparacao:agua");
     const m = metricsOf(a);
     expect(m.population).toBeGreaterThan(0);
     expect(m.invariantViolations).toBe(0);

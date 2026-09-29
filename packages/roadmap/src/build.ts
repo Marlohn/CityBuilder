@@ -24,6 +24,7 @@ export function computeRoadmap(
   issues: IssueInput[],
   signals: SignalsFile | null,
   cfg: RoadmapConfig,
+  testExists?: (path: string) => boolean,
 ): Roadmap {
   const open = issues.filter((i) => i.state === "open");
   const items = issues.filter(isRoadmapItem).map(parseItem);
@@ -32,7 +33,7 @@ export function computeRoadmap(
     .map((item) => {
       if (!signals) return { item, check: null, error: "sem sinais medidos" };
       try {
-        return { item, check: checkMetric(item.metric, signals.metrics) };
+        return { item, check: checkMetric(item.metric, signals.metrics, testExists) };
       } catch (e) {
         return { item, check: null, error: (e as Error).message };
       }
