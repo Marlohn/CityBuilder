@@ -5,6 +5,8 @@
  * - Sem carro disponível: vai a pé (se perto) ou por outro meio (ônibus/aplicativo, abstrato) e isso conta
  *   como desejo não atendido de transporte.
  * - Fim do expediente: volta para casa pelo mesmo caminho.
+ * - Quem está matriculado na escola sai de manhã no horário do turno (config traffic.routine) e volta
+ *   depois de `schoolDurationMinutes` de aula. A volta é sempre para casa, do trabalho ou da escola.
  * - Congestionamento: função BPR (1964) com o volume do dia anterior em cada quadradinho, por hora.
  */
 import type { City } from "../city";
@@ -17,6 +19,9 @@ import { type Route, RouteService } from "../routing/routeService";
 import type { System } from "../sim";
 import { Vehicles, VSTATE } from "./vehicles";
 
+/** Motivo da viagem (vai em `PendingTrip.purpose` e em `pop.tripPurpose`). */
+export const TRIP = { none: 0, work: 1, school: 2 } as const;
+
 interface PendingTrip {
   person: number;
   vehicle: number;
@@ -24,7 +29,22 @@ interface PendingTrip {
   to: number;
   /** Prédio de destino (-2 = saída da cidade para emprego fora). */
   dest: number;
-  toWork: boolean;
+  /** Motivo da viagem (TRIP.work | TRIP.school). */
+  purpose: number;
+  /** true = ida (sai de casa), false = volta (volta para casa). */
+  toDest: boolean;
+}
+
+/** Viagem agendada num tick (saída ou volta): quem vai e por quê. */
+interface ScheduledTrip {
+  p: number;
+  purpose: number;
+}
+
+/** Chegada agendada: o sinal diz a direção (p = ida, -1-p = volta) e o motivo vai junto. */
+interface ScheduledArrival {
+  code: number;
+  purpose: number;
 }
 
 const MODELS = 4;
@@ -43,15 +63,15 @@ export interface TripStart {
 }
 
 /** Quantas viagens recentes guardar para a tela (a tela lê a cada quadro). */
-const TRIP_LOG_MAX = 20000;
+const TRIP_LOG_MAX = 80000;
 
 export class TrafficSystem implements System {
   readonly name = "traffic";
   readonly vehicles = new Vehicles();
   readonly routes: RouteService;
-  private departures: number[][];
-  private returns: number[][];
-  private arrivals: number[][];
+  private departures: ScheduledTrip[][];
+  private returns: ScheduledTrip[][];
+  private arrivals: ScheduledArrival[][];
   private vehicleArrivals: number[][];
   /** Viagens pedidas neste tick (junto com o pedido de rota, na mesma ordem). */
   private newTrips: PendingTrip[] = [];
@@ -107,7 +127,7 @@ export class TrafficSystem implements System {
   private jobEnding(p: number, job: number) {
     const city = this.city;
     const { pop } = city;
-    if (pop.tripState[p] !== 2) return;
+    if (pop.tripState[p] !== 2 || pop.tripPurpose[p] !== TRIP.work) return;
     const car = city.hh.car[pop.household[p]!] ?? -1;
     const veh = this.vehicles;
     const homeAccess = city.homeAccess(p);
@@ -125,7 +145,8 @@ export class TrafficSystem implements System {
         from,
         to: homeAccess,
         dest: city.homeBuilding(p),
-        toWork: false,
+        purpose: TRIP.work,
+        toDest: false,
       });
       this.routes.request(from, homeAccess);
       pop.tripState[p] = 3;
@@ -161,14 +182,14 @@ export class TrafficSystem implements System {
     for (let i = 0; i < varr.length; i++) this.vehicleArrive(varr[i]!);
     varr.length = 0;
     const arr = this.arrivals[tod]!;
-    for (let i = 0; i < arr.length; i++) this.arrive(arr[i]!);
+    for (let i = 0; i < arr.length; i++) this.arrive(arr[i]!.code, arr[i]!.purpose);
     arr.length = 0;
-    // 3. Saídas para o trabalho e voltas para casa.
+    // 3. Saídas para o trabalho/escola e voltas para casa.
     const dep = this.departures[tod]!;
-    for (let i = 0; i < dep.length; i++) this.leave(dep[i]!, true);
+    for (let i = 0; i < dep.length; i++) this.leave(dep[i]!.p, dep[i]!.purpose, true);
     dep.length = 0;
     const ret = this.returns[tod]!;
-    for (let i = 0; i < ret.length; i++) this.leave(ret[i]!, false);
+    for (let i = 0; i < ret.length; i++) this.leave(ret[i]!.p, ret[i]!.purpose, false);
     ret.length = 0;
     // 4. Resolve as rotas pedidas neste tick (aplicadas no próximo, na mesma ordem).
     this.resolved = this.routes.resolvePending();
@@ -177,7 +198,7 @@ export class TrafficSystem implements System {
     city.sim.perf.count("vehiclesMoving", 0);
   }
 
-  /** Começo do dia: agenda a saída de todos os trabalhadores e vira a página do volume de tráfego. */
+  /** Começo do dia: agenda a saída de todos (trabalho e escola) e vira a página do volume de tráfego. */
   private startDay() {
     const city = this.city;
     const { pop, sim } = city;
@@ -188,18 +209,28 @@ export class TrafficSystem implements System {
     const r = sim.config.traffic.routine;
     const tpd = sim.clock.ticksPerDay;
     const mpt = sim.config.time.minutesPerTick;
+    const schoolTick = Math.floor(r.schoolStartMinute / mpt) % tpd;
     for (let p = 0; p < pop.count; p++) {
-      if (pop.status[p] !== PSTATUS.alive || pop.job[p] === -1) continue;
-      if (pop.workStartMinute[p] === 0) {
-        // Horário de entrada estável por pessoa (sorteado a partir do id e da semente).
-        const h = hashString(`${sim.seed}:work:${p}`)[0];
-        pop.workStartMinute[p] =
-          r.workStartMinute[0] + (h % (r.workStartMinute[1] - r.workStartMinute[0] + 1));
+      if (pop.status[p] !== PSTATUS.alive) continue;
+      if (pop.job[p] !== -1) {
+        if (pop.workStartMinute[p] === 0) {
+          // Horário de entrada estável por pessoa (sorteado a partir do id e da semente).
+          const h = hashString(`${sim.seed}:work:${p}`)[0];
+          pop.workStartMinute[p] =
+            r.workStartMinute[0] + (h % (r.workStartMinute[1] - r.workStartMinute[0] + 1));
+        }
+        const leaveMin = pop.workStartMinute[p]! - Math.max(5, pop.commuteMinutes[p]!) - 5;
+        const t = Math.floor(Math.max(0, leaveMin) / mpt) % tpd;
+        pop.tripState[p] = 0;
+        pop.tripPurpose[p] = TRIP.none;
+        this.departures[t]!.push({ p, purpose: TRIP.work });
       }
-      const leaveMin = pop.workStartMinute[p]! - Math.max(5, pop.commuteMinutes[p]!) - 5;
-      const t = Math.floor(Math.max(0, leaveMin) / mpt) % tpd;
-      pop.tripState[p] = 0;
-      this.departures[t]!.push(p);
+      // Ida à escola no início do turno (a volta sai depois da aula, em `arrive`).
+      if (pop.school[p]! >= 0) {
+        pop.tripState[p] = 0;
+        pop.tripPurpose[p] = TRIP.none;
+        this.departures[schoolTick]!.push({ p, purpose: TRIP.school });
+      }
     }
   }
 
@@ -254,21 +285,32 @@ export class TrafficSystem implements System {
     veh.streetTile[v] = -1;
   }
 
-  /** A pessoa sai de casa (toWork) ou do trabalho. */
-  private leave(p: number, toWork: boolean) {
+  /** A pessoa sai de casa (toDest) ou volta do trabalho/escola. A volta é sempre para casa. */
+  private leave(p: number, purpose: number, toDest: boolean) {
     const city = this.city;
     const { pop, hh, sim } = city;
     if (pop.status[p] !== PSTATUS.alive) return;
-    const job = pop.job[p]!;
-    if (job === -1) return;
-    if (toWork && pop.tripState[p] !== 0) return;
-    if (!toWork && pop.tripState[p] !== 2) return;
+    // Uma viagem por pessoa por vez: a segunda saída da manhã não sai.
+    if (toDest && pop.tripState[p] !== 0) return;
+    if (!toDest && pop.tripState[p] !== 2) return;
     const homeAccess = city.homeAccess(p);
     if (homeAccess < 0) return;
-    const jobAccess = job === OUTSIDE_JOB ? sim.network.exitFor(homeAccess) : sim.buildings.access[job]!;
-    if (jobAccess < 0) return;
-    const from = toWork ? homeAccess : jobAccess;
-    const to = toWork ? jobAccess : homeAccess;
+    const isWork = purpose === TRIP.work;
+    // Prédio onde a pessoa está (volta) ou para onde vai (ida); fora da cidade só o emprego.
+    const away = isWork ? pop.job[p]! : pop.school[p]!;
+    if (away === -1) {
+      // Perdeu o destino no meio do dia: amanhece em casa.
+      if (!toDest) {
+        pop.tripState[p] = 0;
+        pop.tripPurpose[p] = TRIP.none;
+      }
+      return;
+    }
+    const awayAccess =
+      isWork && away === OUTSIDE_JOB ? sim.network.exitFor(homeAccess) : sim.buildings.access[away]!;
+    if (awayAccess < 0) return;
+    const from = toDest ? homeAccess : awayAccess;
+    const to = toDest ? awayAccess : homeAccess;
     const h = pop.household[p]!;
     const car = hh.car[h]!;
     const veh = this.vehicles;
@@ -277,35 +319,38 @@ export class TrafficSystem implements System {
       car >= 0 &&
       veh.state[car] === VSTATE.parked &&
       veh.driver[car] === -1 &&
-      (toWork ? veh.parkedAt[car] === home || veh.streetTile[car] === homeAccess : veh.driver[car] === -1);
+      (toDest ? veh.parkedAt[car] === home || veh.streetTile[car] === homeAccess : veh.driver[car] === -1);
     // De carro: só se o carro estiver onde a pessoa está (em casa de manhã; na volta, com o motorista).
     const drivesBack =
-      !toWork &&
+      !toDest &&
       car >= 0 &&
       veh.driver[car] === p &&
       veh.state[car] !== VSTATE.moving &&
       veh.state[car] !== VSTATE.gone;
-    if ((toWork && carHere) || drivesBack) {
+    if ((toDest && carHere) || drivesBack) {
       veh.driver[car] = p;
-      this.newTrips.push({ person: p, vehicle: car, from, to, dest: toWork ? job : home, toWork });
+      this.newTrips.push({ person: p, vehicle: car, from, to, dest: toDest ? away : home, purpose, toDest });
       this.routes.request(from, to);
-      pop.tripState[p] = toWork ? 1 : 3;
+      pop.tripState[p] = toDest ? 1 : 3;
+      pop.tripPurpose[p] = purpose;
       return;
     }
     // Sem carro: a pé (se perto) ou por outro meio. Tempo estimado; sem veículo na tela.
     const meters = sim.world.manhattanMeters(from, to);
-    const walkMax = sim.config.traffic.walking.maxWorkMeters;
+    const walkMax = isWork
+      ? sim.config.traffic.walking.maxWorkMeters
+      : sim.config.education.maxDistanceMeters;
     const kmh =
       meters <= walkMax ? sim.config.traffic.walking.speedKmh : sim.config.roads.avenue.speedKmh / 2;
-    if (meters > walkMax && toWork) {
+    if (isWork && toDest && meters > walkMax) {
       city.year.transitRefusals++;
       if (city.rng.market.chance(0.05)) city.log(EV.unmet, p, UNMET.transit);
     }
     if (meters <= walkMax) this.logTrip({ kind: "walk", id: p, model: p % 4, from, to });
     const minutes =
       (meters / 1000 / kmh) * 60 +
-      (job === OUTSIDE_JOB ? sim.config.population.outsideJobs.extraCommuteMinutes : 0);
-    this.scheduleArrival(p, minutes, toWork);
+      (isWork && away === OUTSIDE_JOB ? sim.config.population.outsideJobs.extraCommuteMinutes : 0);
+    this.scheduleArrival(p, minutes, purpose, toDest);
   }
 
   private logTrip(t: TripStart) {
@@ -314,13 +359,15 @@ export class TrafficSystem implements System {
     if (this.tripLog.length > TRIP_LOG_MAX) this.tripLog.splice(0, this.tripLog.length - TRIP_LOG_MAX / 2);
   }
 
-  private scheduleArrival(p: number, minutes: number, toWork: boolean) {
+  private scheduleArrival(p: number, minutes: number, purpose: number, toDest: boolean) {
     const clock = this.city.sim.clock;
     const ticks = clock.minutesToTicks(minutes);
     const at = (clock.tickOfDay + ticks) % clock.ticksPerDay;
-    this.city.pop.tripState[p] = toWork ? 1 : 3;
-    if (toWork) this.city.pop.commuteMinutes[p] = Math.min(65535, Math.round(minutes));
-    this.arrivals[at]!.push(toWork ? p : -1 - p);
+    this.city.pop.tripState[p] = toDest ? 1 : 3;
+    this.city.pop.tripPurpose[p] = purpose;
+    if (purpose === TRIP.work && toDest)
+      this.city.pop.commuteMinutes[p] = Math.min(65535, Math.round(minutes));
+    this.arrivals[at]!.push({ code: toDest ? p : -1 - p, purpose });
   }
 
   private applyResolved() {
@@ -338,11 +385,13 @@ export class TrafficSystem implements System {
       const veh = this.vehicles;
       if (!route || pop.status[t.person] !== PSTATUS.alive || veh.state[t.vehicle] === VSTATE.gone) {
         veh.driver[t.vehicle] = -1;
-        if (!route && t.toWork && pop.status[t.person] === PSTATUS.alive) {
+        if (!route && t.purpose === TRIP.work && pop.status[t.person] === PSTATUS.alive) {
           // Não existe caminho até o trabalho (via demolida): perde o emprego.
+          // Sem via até a escola: só volta para casa (não perde o emprego).
           fire(city, t.person, "sem caminho até o trabalho");
         }
         pop.tripState[t.person] = 0;
+        pop.tripPurpose[t.person] = TRIP.none;
         continue;
       }
       this.depart(t, route);
@@ -357,7 +406,9 @@ export class TrafficSystem implements System {
     this.unpark(v);
     const seconds = this.travelSeconds(route, clock.minuteOfDay);
     const extra =
-      t.dest === OUTSIDE_JOB && t.toWork ? city.config.population.outsideJobs.extraCommuteMinutes : 0;
+      t.dest === OUTSIDE_JOB && t.purpose === TRIP.work
+        ? city.config.population.outsideJobs.extraCommuteMinutes
+        : 0;
     const minutes = seconds / 60 + extra;
     veh.state[v] = VSTATE.moving;
     veh.routes[v] = route.tiles;
@@ -368,11 +419,12 @@ export class TrafficSystem implements System {
     veh.moving.add(v);
     city.sim.perf.count("tripsStarted");
     this.logTrip({ kind: "car", id: v, model: veh.model[v]!, tiles: route.tiles });
-    if (t.toWork) city.pop.commuteMinutes[t.person] = Math.min(65535, Math.round(minutes));
+    if (t.purpose === TRIP.work && t.toDest)
+      city.pop.commuteMinutes[t.person] = Math.min(65535, Math.round(minutes));
     const drive = veh.arriveTick[v]! - clock.tick;
     this.vehicleArrivals[(clock.tickOfDay + drive) % clock.ticksPerDay]!.push(v);
     const at = (clock.tickOfDay + drive + (extra > 0 ? clock.minutesToTicks(extra) : 0)) % clock.ticksPerDay;
-    this.arrivals[at]!.push(t.toWork ? t.person : -1 - t.person);
+    this.arrivals[at]!.push({ code: t.toDest ? t.person : -1 - t.person, purpose: t.purpose });
   }
 
   /** Prédio demolido: carros estacionados nele vão para a rua em frente. */
@@ -448,26 +500,35 @@ export class TrafficSystem implements System {
     }
   }
 
-  private arrive(code: number) {
+  private arrive(code: number, purpose: number) {
     const city = this.city;
-    const toWork = code >= 0;
-    const p = toWork ? code : -1 - code;
+    const toDest = code >= 0;
+    const p = toDest ? code : -1 - code;
     const { pop, hh } = city;
     if (pop.status[p] !== PSTATUS.alive) return;
     const car = hh.car[pop.household[p]!] ?? -1;
     const veh = this.vehicles;
-    if (!toWork && car >= 0 && veh.driver[car] === p) veh.driver[car] = -1;
-    if (pop.job[p] === -1 && toWork) {
+    if (!toDest && car >= 0 && veh.driver[car] === p) veh.driver[car] = -1;
+    const isWork = purpose === TRIP.work;
+    if (toDest && ((isWork && pop.job[p] === -1) || (!isWork && pop.school[p]! === -1))) {
+      // Perdeu o destino no caminho: volta para casa.
       pop.tripState[p] = 0;
+      pop.tripPurpose[p] = TRIP.none;
       return;
     }
-    if (toWork) {
+    if (toDest) {
       pop.tripState[p] = 2;
-      // Volta no fim do expediente.
+      // Volta no fim do expediente (ou da aula) pela mesma fila.
       const clock = city.sim.clock;
-      const dur = clock.minutesToTicks(city.config.traffic.routine.workDurationMinutes);
-      this.returns[(clock.tickOfDay + dur) % clock.ticksPerDay]!.push(p);
-    } else pop.tripState[p] = 0;
+      const duration = isWork
+        ? city.config.traffic.routine.workDurationMinutes
+        : city.config.traffic.routine.schoolDurationMinutes;
+      const dur = clock.minutesToTicks(duration);
+      this.returns[(clock.tickOfDay + dur) % clock.ticksPerDay]!.push({ p, purpose });
+    } else {
+      pop.tripState[p] = 0;
+      pop.tripPurpose[p] = TRIP.none;
+    }
   }
 
   /**

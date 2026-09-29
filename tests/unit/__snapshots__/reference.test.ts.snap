@@ -16,7 +16,7 @@ exports[`cidades de referência > cenário bairro-basico, 12 dias 1`] = `
     "divorces": 6,
     "marriages": 6,
     "migrantsTurnedAway": {},
-    "parkingMisses": 4,
+    "parkingMisses": 102,
     "transitRefusals": 0,
   },
   "money": 14343989,
