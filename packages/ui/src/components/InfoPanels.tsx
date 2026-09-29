@@ -80,6 +80,10 @@ export function HelpPanel() {
           <b>Vias:</b> escolha Rua ou Avenida e arraste no mapa (sempre em linha reta).
         </li>
         <li>
+          <b>Estrada de acesso:</b> a avenida na borda oeste liga a cidade ao resto do mundo. As famílias
+          chegam por ela, então toda rua nova precisa se ligar a ela, senão nada é construído ali.
+        </li>
+        <li>
           <b>Zonas:</b> arraste um retângulo encostado nas vias. Casas e prédios aparecem quando há demanda.
           Só dá para construir em lote com frente para a rua: quarteirões de 4 a 6 quadradinhos aproveitam
           melhor o espaço.

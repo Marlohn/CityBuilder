@@ -5,6 +5,7 @@
  *   npm run sim -- person <id> [--scenario=...] [--days=...]
  *   npm run sim -- replay <arquivo.json>
  *   npm run sim -- report --bot [--days=40] [--sandbox]   (prefeito automático)
+ *   npm run sim -- report ... --save=cidade.json          (grava um save que abre no navegador)
  *   npm run sim -- scenarios
  *   npm run sim -- director [--bot] [--days=30] [--recorded=respostas.json] [--record=respostas.json]
  *       IA diretora (opcional). Sem --recorded usa um LLM de verdade: DIRECTOR_BASE_URL, DIRECTOR_MODEL e
@@ -104,6 +105,10 @@ function main() {
     console.log(`${p.name} (#${p.id}) — ${p.age} anos — ${p.status} — ${p.education}`);
     for (const h of p.history) console.log(`  ${h.year}: ${h.text}`);
     return;
+  }
+  if (opts.save) {
+    writeFileSync(opts.save, JSON.stringify(makeReplay(game, overrides)));
+    console.error(`save gravado em ${opts.save} (abra no jogo com o botão 📂 Abrir)`);
   }
   if (opts.json) {
     const out = opts.json === "true" ? "out/report.json" : opts.json;

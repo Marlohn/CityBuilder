@@ -1,4 +1,4 @@
-# Ciclo de vida. Veja docs/PLANO.md seção 5.4 . A fonte de cada valor está no comentário logo acima dele.
+# Ciclo de vida. Veja docs/PLANO.md seção 5.4. A fonte de cada valor está no comentário logo acima dele.
 lifecycle:
   # Tábua de mortalidade por idade e sexo, calibrada para bater com os números oficiais do
   # IBGE 2023 (e0 = 73,1 H / 79,7 M; e60 = 20,7 / 24,0; e80 = 8,3 / 9,4; mortalidade infantil
