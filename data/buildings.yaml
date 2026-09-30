@@ -92,7 +92,7 @@ buildings:
     upkeepPerYear: 1200000
     constructionMonths: 12
     models: [proc/clinic]
-  # Água e luz. Consumo médio de água: 154 litros por pessoa por dia (SNIS/ANA, citado pela CNM:
+  # Água, luz e esgoto. Consumo médio de água: 154 litros por pessoa por dia (SNIS/ANA, citado pela CNM:
   # https://cnm.org.br/comunicacao/noticias/brasileiro-consome-em-media-154-litros-de-agua-por-dia-aponta-onu).
   # Poço tubular profundo: 40% das sedes urbanas são abastecidas só por água subterrânea (Atlas Águas 2021, ANA).
   - id: poco
@@ -147,3 +147,23 @@ buildings:
     upkeepPerYear: 1000000
     constructionMonths: 18
     models: [proc/substation]
+  # Estação de tratamento de esgoto: trata o esgoto coletado e despeja o efluente tratado no rio ou lago.
+  - id: ete
+    floors: 1
+    label: Estação de tratamento de esgoto
+    service: sewage
+    w: 3
+    h: 3
+    # PENDENTE: porte típico de ETE urbana. Usado 50.000 (mesma ordem da ETA de 100 L/s).
+    serves: 50000
+    # A ETE despeja o efluente tratado no rio/lago, como a ETA capta: precisa ficar a até 3 quadradinhos dele.
+    nearWater: 3
+    # PENDENTE: equipe de operação de ETE de porte médio.
+    jobs: 10
+    # PENDENTE: valor provisório na mesma ordem da ETA.
+    cost: 25000000
+    # PENDENTE: valor provisório na mesma ordem da ETA.
+    upkeepPerYear: 3000000
+    # PENDENTE: prazo de obra na mesma ordem da ETA.
+    constructionMonths: 24
+    models: [proc/eta]
