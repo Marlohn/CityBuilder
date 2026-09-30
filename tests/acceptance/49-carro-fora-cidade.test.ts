@@ -178,19 +178,33 @@ describe("carro que trabalha fora", () => {
     });
     const contarDentro = (dentro.traffic as unknown as TrafficComContagem).vehiclesOutside;
     expect(contarDentro!.call(dentro.traffic), "cidade sem trabalho fora nao pode ter carro fora").toBe(0);
-    // Quem trabalha quase todo fora tem de ter mais carro fora.
-    const muitoFora = cidade("carro-fora49", 20, {
-      population: { outsideJobs: { share: 1, minWorkers: 1 } },
+    // Quanto mais trabalhador fora, mais carro fora: mesma semente e mesma cidade, so muda o share.
+    const shares = [0.3, 0.5, 0.8];
+    const varredura = shares.map((share) => {
+      const g = cidade("carro-fora49", 20, {
+        population: { outsideJobs: { share, minWorkers: 0 } },
+      });
+      const contarG = (g.traffic as unknown as TrafficComContagem).vehiclesOutside;
+      let trabalhadores = 0;
+      for (let p = 0; p < g.city.pop.aliveCount; p++) {
+        if (g.city.pop.job[p] === TRABALHA_FORA) trabalhadores++;
+      }
+      const carros = contarG!.call(g.traffic);
+      return { share, trabalhadores, carros };
     });
-    const contarMuito = (muitoFora.traffic as unknown as TrafficComContagem).vehiclesOutside;
-    const muito = contarMuito!.call(muitoFora.traffic);
+    const textoVarredura = varredura
+      .map(
+        (r) => "share " + r.share + ": trabalhadores fora " + r.trabalhadores + ", carros fora " + r.carros,
+      )
+      .join(" | ");
     expect(
-      muito,
-      "cidade em que todo mundo trabalha fora tem de ter mais carros fora do que a cidade com poucos trabalhadores fora: " +
-        muito +
-        " contra " +
-        fora,
-    ).toBeGreaterThan(fora);
+      varredura[1]!.carros,
+      "carros fora tem de crescer quando cresce o trabalhador fora (" + textoVarredura + ")",
+    ).toBeGreaterThan(varredura[0]!.carros);
+    expect(
+      varredura[2]!.carros,
+      "carros fora tem de crescer quando cresce o trabalhador fora (" + textoVarredura + ")",
+    ).toBeGreaterThan(varredura[1]!.carros);
   }, 600000);
 
   it("o relatorio mostra a linha dos carros fora da cidade", () => {
