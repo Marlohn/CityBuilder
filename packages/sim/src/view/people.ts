@@ -34,6 +34,8 @@ const UNMET_TEXT: Record<number, string> = {
   [UNMET.job]: "procurou emprego e não encontrou",
   [UNMET.transit]: "recusou um emprego longe por não ter como ir",
   [UNMET.parking]: "não achou vaga para estacionar",
+  [UNMET.errand]:
+    "queria resolver uma volta de compras ou lazer, mas não tinha loja perto de casa nem como ir a pé",
 };
 
 export function eventText(city: City, e: number): string {
