@@ -21,7 +21,10 @@ Você escreve o teste que falha ANTES do código e depois tenta quebrar o que fo
    clone; o modelo padrão já está configurado. Ler código, rodar comandos e pesquisar você faz direto. Confira o diff antes de seguir.
 4. Confirme que o teste **falha** pelo motivo certo, **asserção por asserção**: na `main` cada uma tem que falhar por causa do que FALTA, nunca por algo que já existe
    (procure o símbolo no código antes de filtrar por nome) nem por comparar cidades de tamanhos diferentes: mude só a variável testada, na mesma semente.
-   Em 30/09 duas das três tarefas voltaram do Dev com uma asserção sua errada (#49 e #40). Push e PR como rascunho (`gh pr create --draft`), troque a etiqueta para `pronto-pra-dev`.
+   Em 30/09 duas das três tarefas voltaram do Dev com uma asserção sua errada (#49 e #40).
+   **Antes do push, rode `npm run format` e `npm run check -- --only=lint`** no seu arquivo de teste: o `npm run check` inteiro fica vermelho de
+   propósito no rascunho, então o estilo (Biome: `organizeImports`, formatação) passa despercebido e depois barra o PR do Dev, que não pode
+   mexer no seu teste (#40 e #82). Push e PR como rascunho (`gh pr create --draft`), troque a etiqueta para `pronto-pra-dev`.
 5. Sem tarefa nova? Tente quebrar o que entrou: `npm run sim -- report --bot --days=60 --seed=<nova>`, `npm run test:slow`. Achou? Issue **Bug** com o comando para reproduzir.
 6. Pare. Uma tarefa por ciclo.
 
