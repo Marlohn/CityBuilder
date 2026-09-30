@@ -325,7 +325,9 @@ def diarios(todas, existentes, dia, corpos_tarefa):
                       "Sua tarefa: passo 3 do seu ciclo (planejar o primeiro item de Agora sem tarefas). Sem item? Pare.\n"
                       "A ordem OFICIAL é a publicada na issue #2 (`gh issue view 2`), que o workflow atualiza; o "
                       "ROADMAP.md commitado na main fica velho (em 29/09 ele fez o #4 passar na frente dos bugs 🚨).\n"
-                      "Item que já tem issue Tarefa apontando pra ele (`gh issue list --label tarefa`) conta como planejado.\n"
+                      "Item que já tem issue Tarefa apontando pra ele, ABERTA OU FECHADA (`gh issue list --label tarefa --state all`), conta como "
+                      "planejado: leia o que as fechadas entregaram e planeje só o que FALTA (em 30/09 o item #21 foi replanejado por cima do "
+                      "que as #48 e #49 já tinham feito).\n"
                       "Tarefa que precisa de outra antes: escreva no corpo uma linha própria `Depende de #N, #M` com os "
                       "NÚMEROS das issues (o sincronizador lê essa linha e só libera a tarefa quando elas fecharem; "
                       "\"rode as anteriores antes\" sem número não é lido)."))
