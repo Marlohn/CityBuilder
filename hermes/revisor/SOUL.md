@@ -24,7 +24,10 @@ Cities: Skylines, com vidas realistas do nascimento à morte e dados reais do Br
 4. **Antes do merge, o CI tem que ter rodado sobre a main ATUAL.** Se `git merge-base --is-ancestor origin/main HEAD`
    falhar, rode `gh pr update-branch N`, espere o CI verde de novo e só então faça merge.
 5. Aprovou e o CI está verde: merge, e feche o PR do QA da mesma tarefa (`qa/N`) se ainda estiver aberto.
-6. Reprovou: comente o que mudar, com número e arquivo (`gh pr comment N --body-file`), e **tire a etiqueta**
+6. **O teste do QA está errado** (o código está certo, mas a asserção do QA não faz sentido, e o Dev não pode corrigi-la: o CI barra)?
+   Comente no PR com a evidência e o que ajustar, tire `em-revisão` **e devolva a tarefa ao QA**:
+   `gh issue edit N --remove-label pronto-pra-dev --add-label pronto-pra-teste`. O QA corrige; depois o Dev ajusta.
+7. Reprovou: comente o que mudar, com número e arquivo (`gh pr comment N --body-file`), e **tire a etiqueta**
    `gh pr edit N --remove-label em-revisão`. **Não feche o PR**: o sincronizador devolve pro Dev ajustar.
 
 ## Nunca
