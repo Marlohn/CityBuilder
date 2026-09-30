@@ -165,7 +165,9 @@ export const GameConfigSchema = z.object({
       tripsByHour: numericTable,
       schoolStartMinute: nonneg,
       schoolDurationMinutes: intPos,
+      schoolStartSpreadMinutes: nonneg,
     }),
+    tripLogMax: intPos,
   }),
   growth: z.object({
     initialResidentialDemand: nonneg,
