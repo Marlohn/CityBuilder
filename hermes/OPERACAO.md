@@ -98,7 +98,7 @@ Roda como cron `--no-agent` do perfil default, a cada 2 min. A cópia **em produ
 | PR aberto com `em-revisão` | `revisor`: no máximo **1 aberto por PR**, e 1 por commit (commit novo com a revisão ainda na fila: a aberta olha o PR como está) |
 | PR `dev/*` ou `fix/main-*` aberto **sem** `em-revisão` | `dev` ajusta o que a revisão pediu (até 3 por PR) |
 | issue `pronto-pra-dev` | `dev` (até 3 rodadas; espera `Depende de #N`; **um dev por arquivo**) |
-| issue `pronto-pra-teste` | `qa` (até 3 rodadas) |
+| issue `pronto-pra-teste` | `qa` (até 3 rodadas). **Prioridade +15 se o dev já tem PR aberto pra essa tarefa**: terminar antes de começar (o QA é um só, e o #79 esperava atrás de 3 tarefas novas) |
 | **3 rodadas gastas sem entrega** | `arquiteto` "quebrar a tarefa" (docs/PLANO.md 12) + comentário na issue |
 | menos de 3 tarefas **prontas para começar** (sem `Depende de #N` aberta) | `arquiteto` planeja (a chave muda com o estado, então não replaneja o nada). Tarefa que espera outra **não** conta: em 30/09 três tarefas do mesmo item enchiam a fila e seguravam os bugs urgentes independentes (#26, #27, #25) |
 | 1× por dia | `designer`; e `qa` caça bug, só se estiver sem fila |

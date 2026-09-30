@@ -112,6 +112,9 @@ s.tarefas(todas, [], {**esg, "arquiteto-quebrar-1": "done"}); cria()  # só uma 
 s.tarefas(todas, [], {**esg, "dev-issue-1-r3": "running"}); cria()  # rodada aberta: não quebra ainda
 s.gh = gh_issues(dev=[iss(30, etiquetas=("roadmap", "pronto-pra-dev"))])
 s.tarefas(todas, [], {}); cria()  # item do roadmap com a etiqueta errada: nunca vira cartão
+s.gh = gh_issues(qa=[iss(1), iss(2)])
+s.tarefas(todas, [pr(9, "aaaaaaa", "dev/2", corpo="Closes #2")], {})
+assert [(c[0], c[2]) for c in CRIADOS] == [("qa-issue-1-r1", 10), ("qa-issue-2-r1", 25)], CRIADOS; CRIADOS.clear()  # QA que destrava PR pronto passa na frente
 s.gh = gh_issues(qa=[iss(1)])
 s.tarefas(todas, [], {f"qa-issue-1-r{n}": "archived" for n in (1, 2, 3)}); cria("arquiteto-quebrar-1")  # arquivado também gasta rodada
 s.gh = real_gh; ESCRITOS.clear()

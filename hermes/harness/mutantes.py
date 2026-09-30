@@ -38,6 +38,8 @@ MUTANTES = {
         ('lista = [i for i in lista if any(lb["name"] == "tarefa" for lb in i["labels"])]', 'lista = lista'),
     "revisao repetida com a issue esperando o QA":
         ('if any(lb["name"] == "em-revisão" for lb in pr["labels"]) and no_qa:', 'if False:'),
+    "QA que destrava PR pronto nao passa na frente":
+        ('(15 if papel == "qa" and n in com_pr else 0)', '0'),
     "dependência não segura a tarefa":
         ('if dependencias(iss["body"]) & abertas:', 'if False:'),
     "mesmo arquivo não serializa dev":
