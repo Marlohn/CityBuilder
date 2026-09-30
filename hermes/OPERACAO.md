@@ -159,6 +159,22 @@ oficiais do Hermes com ele (`jev-approvals`, `jev-skill-router`, `jev-memory-sel
 
 ## Pendências e ideias
 
+### Próximos usos do jev (anotado em 30/09, pedido do dono: aplicar depois)
+
+Regra para todos: **gabarito antes de ligar** (casos reais com a resposta conhecida, controle negativo incluído), registro
+de cada decisão num `.jsonl` em `/opt/data/avaliacao/`, e se o jev falhar volta ao comportamento antigo.
+
+| # | Uso | Onde entra | Gabarito antes de ligar |
+|---|---|---|---|
+| 1 | **Escolher o modelo do dev pela dificuldade da tarefa** (`score` fácil/média/difícil → muse, ou outro modelo se a comparação mostrar vantagem) | `criar()` dos cartões `dev-issue`, passando `--model` | Só depois da comparação `hermes/harness/bakeoff.sh` mostrar diferença real entre modelos; classificar tarefas já entregues e conferir com o tempo e as rodadas que cada uma levou |
+| 2 | **Barrar item duplicado no roadmap** (`choice` entre os itens abertos + "nenhum") antes de o designer criar issue | cartão do designer ou o sincronizador comentando na issue nova | Pares conhecidos: um duplicado de verdade e um "parecido mas diferente"; tem que acertar os dois |
+| 3 | **Filtrar ideia contra `docs/VISAO.md`** (`noul` "está dentro da visão?") antes de o designer gastar pesquisa | issues com etiqueta `ideia` | Ideias já recusadas e já aceitas pelo designer como gabarito |
+| 4 | **Comando "perigoso" em trabalhador sem humano**: hoje é `deny` cego. Avaliar o plugin oficial `jev-approvals` (ou `approvals.mode: smart`) | config de aprovações dos perfis | Lista de comandos seguros e perigosos: nenhum perigoso pode passar |
+| 5 | Avaliar os plugins `jev-skill-router`, `jev-memory-selector` e `jev-cron-gate` | perfis | Medir tokens por chamada antes/depois; só liga se a qualidade não cair |
+| 6 | Prefeito automático alternativo no jogo (`choice` entre ações) | `packages/bots`, **só como opcional**: o motor tem que continuar determinístico e sem rede | Mesma semente, partidas com e sem jev, comparar o relatório |
+
+### Outras
+
 - Worktree por cartão (em vez de clone por perfil) para rodar 2+ devs/qa ao mesmo tempo. Hoje o limite é o desenho, não a RAM.
 - O mini PC tem 1 slot de RAM vazio (DDR4 SODIMM). Só vale depois do item acima.
 - Medir retrabalho e intervenções depois das mudanças de 30/09 (revisor separado, trava de arquivo, teste lento antes do PR).

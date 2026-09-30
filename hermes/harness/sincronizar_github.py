@@ -236,23 +236,36 @@ def zelar(lista):
                 print(f"zelador: {cid} travou por {causa}")
             except Exception as e:  # triagem é bônus; liberar o cartão é obrigação
                 print(f"zelador: triagem falhou em {cid}: {e}")
-            subprocess.run([HERMES, "kanban", "complete", cid, "--summary",
-                            "Zelador: bloqueado há mais de 1 h sem ninguém para destravar; fechado para liberar a "
-                            "próxima rodada (o motivo está nos eventos/diagnóstico deste cartão)."],
-                           capture_output=True, text=True, timeout=60)
-            print(f"zelador: liberei {cid}")
+            r = subprocess.run([HERMES, "kanban", "complete", cid, "--summary",
+                                "Zelador: bloqueado sem ninguém para destravar; fechado para liberar a próxima rodada "
+                                "(o motivo está nos eventos/diagnóstico deste cartão)."],
+                               capture_output=True, text=True, timeout=60)
+            if r.returncode != 0 or "cannot complete" in (r.stdout + r.stderr):
+                # contrato de PR ou estado terminal recusam o complete: arquiva pra não triar de novo a cada ciclo
+                subprocess.run([HERMES, "kanban", "archive", cid], capture_output=True, timeout=60)
+                print(f"zelador: {cid} não fechava ({(r.stdout + r.stderr).strip()[:80]}); arquivado")
+            else:
+                print(f"zelador: liberei {cid}")
             visto.pop(cid, None)
     visto = {k: v for k, v in visto.items() if k in bloqueados}
     json.dump(visto, open(ZELADOR, "w"))
 
 
-def main_vermelha(existentes):
+def main_vermelha(existentes, lista):
     """CI da main vermelho trava todo merge. Vira cartão do Dev na frente de tudo, um por commit da main.
 
     30/set: a main ficou vermelha (teste da #48 dependia da versão do Node) e o loop parou: o Revisor
     reprovava tudo com razão e ninguém tinha tarefa de consertar a main.
     """
     sha = json.loads(gh("api", f"repos/{REPO}/commits/main"))["sha"]
+    # Cartão de conserto de um commit velho da main que nem começou já não serve (30/set: o #52 consertou o
+    # 802a78f enquanto o cartão dele esperava). Rodando, segue: o agente vê a main nova.
+    for c in lista:
+        t = c.get("title") or ""
+        if (t.startswith("[main-vermelha-") and not t.startswith(f"[main-vermelha-{sha[:7]}]")
+                and c.get("status") in ("ready", "todo")):
+            subprocess.run([HERMES, "kanban", "archive", c["id"]], capture_output=True, timeout=60)
+            print(f"conserto de main obsoleto arquivado: {t[:40]}")
     runs = json.loads(gh("api", f"repos/{REPO}/commits/{sha}/check-runs"))["check_runs"]
     falhas = [r for r in runs if r.get("conclusion") == "failure" and r["name"] != "testes de aceitação protegidos"]
     if not falhas:
@@ -312,7 +325,7 @@ def main():
     cartoes_atuais = cartoes()
     zelar(cartoes_atuais)
 
-    main_vermelha(existentes)
+    main_vermelha(existentes, cartoes_atuais)
 
     prs_abertos = json.loads(gh("pr", "list", "-R", REPO, "--state", "open", "--json",
                                 "number,title,body,labels,headRefName,headRefOid,url", "--limit", "50"))
@@ -336,7 +349,10 @@ def main():
                 criar(chave, f"Revisar PR #{pr['number']}: {pr['title']}", "revisor",
                       f"Revise o PR #{pr['number']} ({pr['url']}). Aprovou e o CI está verde? Faça o merge.\n"
                       + aviso_ci(pr) + REPROVOU,
-                      contrato=pr["url"] if protegida else "local-only", prioridade=30)
+                      # Sem contrato de PR: ele só deixa fechar o cartão com o PR verde, e revisão que
+                      # REPROVA nunca fecharia (30/set: cartão do #56 travou e o zelador girou em laço).
+                      # A trava de verdade é a proteção da main (ruleset com checks obrigatórios).
+                      contrato="local-only", prioridade=30)
         if not em_revisao and pr["headRefName"].startswith(("dev/", "fix/main-")):
             # PR do Dev fora de revisão = o Arquiteto pediu mudanças (tirou a etiqueta). Volta pro Dev,
             # uma rodada por commit, no máximo 3; depois disso o Arquiteto quebra a tarefa (PLANO 12).
