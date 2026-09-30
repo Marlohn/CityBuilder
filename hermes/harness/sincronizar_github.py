@@ -202,7 +202,7 @@ def main_vermelha(existentes):
               "pra ficar verde: se o teste estiver errado, explique no PR com número.", prioridade=40)
 
 
-def revisoes(prs, existentes):
+def revisoes(prs, existentes, esperando_qa=frozenset()):
     """PR em revisão -> cartão do revisor (1 aberto por PR, 1 por commit). Sem etiqueta -> o Dev ajusta (até 3)."""
     for pr in prs:
         n, sha = pr["number"], pr["headRefOid"][:7]
@@ -213,6 +213,9 @@ def revisoes(prs, existentes):
                 criar(chave, f"Revisar PR #{n}: {pr['title']}", "revisor",
                       f"Revise o PR #{n} ({pr['url']}). Aprovou e o CI está verde? Faça o merge.", prioridade=30)
         elif pr["headRefName"].startswith(("dev/", "fix/main-")):
+            # Issue de volta no QA (teste errado: o Dev não pode corrigir, o CI barra): o ajuste espera o QA (branch dev/N = issue N).
+            if re.fullmatch(r"dev/(\d+)", pr["headRefName"]) and int(pr["headRefName"][4:]) in esperando_qa:
+                continue
             # PR do Dev fora de revisão = a revisão pediu mudanças (tirou a etiqueta). Uma rodada por commit, no máximo 3.
             base = f"dev-ajuste-pr-{n}-"
             if (sum(k.startswith(base) for k in existentes) < MAX_RODADAS and base + sha not in existentes
@@ -220,7 +223,7 @@ def revisoes(prs, existentes):
                 criar(base + sha, f"Ajustar PR #{n} pedido na revisão: {pr['title']}", "dev",
                       f"A revisão pediu mudanças no PR #{n} ({pr['url']}). Leia o último comentário de revisão "
                       f"(`gh pr view {n} --comments`), ajuste no MESMO branch {pr['headRefName']} (conflito com a main: "
-                      "`git merge origin/main` e resolva), deixe `npm run check` verde, dê push e recoloque a etiqueta: "
+                      "`git merge origin/main` e resolva), deixe `npm run check` verde, dê push e recoloque a etiqueta (o QA corrigiu o teste? traga com `git merge origin/qa/<issue>`): "
                       f"`gh pr edit {n} --add-label em-revisão`.", prioridade=25)
 
 
@@ -357,7 +360,8 @@ def main():
                               "--json", "number,headRefName,mergedAt"))
     fechadas = fechar_tarefas_entregues(mesclados, todas)
     todas = [i for i in todas if i["number"] not in fechadas]
-    revisoes(prs, existentes)
+    esperando_qa = {i["number"] for i in todas if any(lb["name"] == "pronto-pra-teste" for lb in i["labels"])}
+    revisoes(prs, existentes, esperando_qa)
     fechar_prs_qa(prs, {i["number"] for i in todas})
     tarefas(todas, prs, existentes)
     corpos_tarefa = json.loads(gh("issue", "list", "-R", REPO, "--state", "open", "--label", "tarefa",

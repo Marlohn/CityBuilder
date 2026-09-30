@@ -31,7 +31,9 @@ MUTANTES = {
     "fecha tarefa de PR antigo":
         ('< dt.timedelta(hours=48)', '< dt.timedelta(days=9999)'),
     "PR do QA fecha a tarefa":
-        ('re.fullmatch(r"dev/(\d+)", pr["headRefName"])', 're.fullmatch(r"(?:dev|qa)/(\d+)", pr["headRefName"])'),
+        ('m = re.fullmatch(r"dev/(\d+)", pr["headRefName"])', 'm = re.fullmatch(r"(?:dev|qa)/(\d+)", pr["headRefName"])'),
+    "ajuste vai pro dev com a issue esperando o QA":
+        ('and int(pr["headRefName"][4:]) in esperando_qa', 'and False'),
     "dependência não segura a tarefa":
         ('if dependencias(iss["body"]) & abertas:', 'if False:'),
     "mesmo arquivo não serializa dev":
