@@ -34,16 +34,28 @@ GitHub (issues/etiquetas/PRs/CI) --lê a cada 2 min--> sincronizador (sem LLM)
 
 ## Papéis (perfis)
 
-| Perfil | Faz | Clone | Esforço do modelo |
-|---|---|---|---|
-| `designer` | 1 item de roadmap por dia, com pesquisa e fonte | `/opt/data/cb/designer` | medium |
-| `arquiteto` | **Só planeja**: quebra o próximo item da issue #2 em tarefas | `/opt/data/cb/arquiteto` | medium |
-| `revisor` | **Só revisa** PRs: CI verde + regras = merge, ou pede mudanças | `/opt/data/cb/revisor` | medium |
-| `qa` | Teste de aceitação que falha antes do código; caça bug quando está sem fila | `/opt/data/cb/qa` | low |
-| `dev` | Faz o teste passar (o código em si sai do OpenCode/muse) | `/opt/data/cb/dev` | low |
+| Perfil | Faz | Esforço | Ferramentas extras (além da base) | Skills |
+|---|---|---|---|---|
+| `designer` | 1 item de roadmap por dia, com pesquisa e fonte | medium | `web` | github, grounded-citations, blocked-page-recovery |
+| `arquiteto` | **Só planeja**: quebra o próximo item da issue #2 em tarefas | medium | `web` | github, codebase-inspection |
+| `revisor` | **Só revisa** PRs: CI verde sobre a main atual + regras = merge, ou pede mudanças | medium | — | github, systematic-debugging, codebase-inspection |
+| `qa` | Teste de aceitação que falha antes do código; caça bug quando está sem fila | low | — | github, opencode, test-driven-development, systematic-debugging |
+| `dev` | Faz o teste passar (o código sai do OpenCode/muse); conserta a main vermelha | low | — | github, opencode, test-driven-development, systematic-debugging, node-inspect-debugger |
 
+- **Base de ferramentas de todos:** `file, terminal, skills, todo, memory, session_search`, configurada em
+  `platform_toolsets.cli` de cada perfil. É daí que o despachante tira o `--toolsets` do trabalhador; as ferramentas do
+  kanban entram à parte. **Fora de propósito:** `browser` (Chromium pesado), `clarify` (não há humano pra responder),
+  `computer_use`, `cronjob` (agente criando agendamento), `delegation` (sub-agentes; o paralelismo é o kanban),
+  `image_gen`, `tts`, `vision`, `code_execution` e `connections`.
+- **Skills enxutas:** o índice de skills vai no prompt de sistema de TODA chamada (~3k tokens com as 58 genéricas).
+  Cada perfil tem o marcador `.no-bundled-skills` (`hermes skills opt-out --remove`), então o `update` não repõe.
+  As do papel foram copiadas de `/opt/hermes/skills/`. Skill que o agente cria sozinho (`skill_manage`) é permitida.
+- Reaplicar tudo isso: `hermes/harness/aplicar_perfis.py` (idempotente, faz backup).
 - Os perfis vêm das distribuições em `hermes/<papel>/`, instaladas com `--name <papel>` (sem prefixo `cb-`).
-  O `revisor` usa a distribuição do arquiteto. Cada perfil tem clone próprio, e por isso roda **1 cartão por vez**.
+  Cada perfil tem clone próprio, e por isso roda **1 cartão por vez**.
+- **Node 22 nos agentes** (`/opt/data/.local/node22`, primeiro no PATH): é a versão do CI. A imagem traz Node 26.
+- **O OpenCode só enxerga a pasta do projeto:** rodando sozinho, ele recusa ler arquivo fora dela (auto-reject).
+  Tudo que o agente precisa ler vai dentro do clone.
 - **Modelos:** o coordenador é `space-bunny-free` pelo OpenCode Zen, com a chave `public`. Quem escreve código é
   `opencode run` com `muse-spark-1.3-contributor-free`. Config em `/opt/data/opencode/opencode.json`.
 - Cada perfil tem HOME próprio (`/opt/data/profiles/<p>/home`) e PATH mínimo no terminal. O `.profile`/`.bashrc` de cada
@@ -63,7 +75,10 @@ Roda como cron `--no-agent` do perfil default, a cada 2 min. A cópia **em produ
 | issue `pronto-pra-teste` | `qa` (até 3 rodadas) |
 | menos de 3 tarefas abertas | `arquiteto` planeja (a chave muda com o estado, então não replaneja o nada) |
 | 1× por dia | `designer`; e `qa` caça bug, só se estiver sem fila |
-| cartão bloqueado | fechado na hora (zelador), para liberar a próxima rodada |
+| cartão bloqueado | o **jev** classifica o motivo (`triagem.jsonl`); tarefa grande demais perde a etiqueta e vira cartão "quebrar a tarefa" pro arquiteto; o resto é fechado na hora pra liberar a próxima rodada |
+| CI da `main` vermelho | cartão do `dev` com **prioridade 40** (a maior), 1 por commit da main |
+| PR rascunho `qa/N` com a tarefa N fechada | fechado com comentário |
+| PR `fix/main-*` sem `em-revisão` | volta pro `dev` ajustar, como os `dev/*` |
 
 **Regras embutidas, cada uma nasceu de uma falha real (a data está no comentário do código):**
 
@@ -99,6 +114,11 @@ Roda como cron `--no-agent` do perfil default, a cada 2 min. A cópia **em produ
 | Check "testes de aceitação protegidos" vermelho sem culpa | Comparava com o merge na `main` atual | PRs #47 e #56: compara com o commit do dev e ignora arquivo idêntico à `main` |
 | Agente diz "anexado" numa issue | A API do GitHub não anexa arquivo | O reprodutor vai num branch `qa/bug-*` |
 | Arquiteto seguiu prioridade errada | O `ROADMAP.md` commitado fica velho | A ordem oficial é a issue #2 (publicada pelo workflow) |
+| `main` vermelha com os dois PRs verdes | Merge com CI velho: o #54 foi mesclado com o CI de antes do #46 entrar | O revisor faz `gh pr update-branch` e espera o CI de novo se a `main` andou; `main` vermelha vira cartão |
+| "É a versão do Node" | Hipótese sem controle (falhava no 22 **e** no 26) | Sempre rode o controle antes de culpar o ambiente |
+| Dev mexe na trava do CI dentro do PR da tarefa | A trava vigia o próprio Dev | PR de tarefa que toca `.github/` é reprovado; CI muda em `fix/ci-*` |
+| Chamada ao jev dá 403 (Cloudflare 1010) | O User-Agent padrão do Python é barrado | User-Agent próprio (`citybuilder-sincronizador/1.0`) |
+| Modelo "grátis" recusa (`FreeTierError`) | Só `space-bunny` e `jev` atendem fora do cliente OpenCode, mesmo com a chave da conta | Os outros só pelo `opencode run -m opencode/<id>` |
 | Script "compila" mas quebra | `py_compile` não pega nome inexistente | `pyflakes` + **executar** um ciclo em modo simulação antes de publicar |
 
 ## Operar
@@ -128,6 +148,14 @@ cd /opt/data/avaliacao && python3 metricas.py --json metricas-$(date -u +%Y%m%dT
 A pergunta do dono: este modelo de loop serve pros outros projetos dele? Números em `hermes/harness/metricas.py`
 (kanban + state.db + GitHub) e diário em `hermes/avaliacao/DIARIO.md`. **A métrica que decide é intervenções do supervisor
 por dia**: o loop só vale se ela tender a zero. Atualize o diário a cada rodada, com número ou link do lado.
+
+## Jev (decisão estruturada, grátis)
+
+`POST https://opencode.ai/zen/v1/systemone` com `{"model":"jev-1.13-free","state":"<texto>","questions":{...}}`.
+Os tipos de pergunta são `noul` (sim/não com probabilidade), `choice` (múltipla escolha com probabilidades) e `score`
+(nota numa escala). Não gera texto. Usos em produção: a triagem do zelador (`sincronizar_github.py`, `triar`) e o motivo
+das reprovações nas métricas (`metricas.py`). Se o jev falhar, quem chama volta ao comportamento antigo. Existem plugins
+oficiais do Hermes com ele (`jev-approvals`, `jev-skill-router`, `jev-memory-selector`, `jev-cron-gate`), ainda não avaliados.
 
 ## Pendências e ideias
 

@@ -149,12 +149,69 @@ def criar(chave, titulo, papel, alvo, contrato="local-only", prioridade=0):
     print(f"novo cartão: [{chave}] -> {papel}")
 
 
-REPROVOU = ("Reprovou (ou o PR tem conflito com a main)? Comente o que mudar (`gh pr comment N --body-file`) e TIRE "
+REPROVOU = ("ANTES DO MERGE, o CI tem que ter rodado sobre a main ATUAL: se "
+            "`git merge-base --is-ancestor origin/main origin/<branch do PR>` falhar (a main andou), rode "
+            "`gh pr update-branch N`, espere o CI ficar verde DE NOVO e só então faça merge (30/set: o #54 foi "
+            "mesclado com CI de antes do #46 entrar; cada um verde sozinho, juntos quebraram a main).\n"
+            "Reprovou (ou o PR tem conflito com a main)? Comente o que mudar (`gh pr comment N --body-file`) e TIRE "
             "a etiqueta: `gh pr edit N --remove-label em-revisão`. NÃO feche o PR: o sincronizador manda o Dev "
             "ajustar (até 3 rodadas; depois quebre a tarefa em partes menores).\n")
 ZELADOR = "/opt/data/scripts/zelador.json"
 ZELADOR_MIN = 0  # 29/set: ninguém destrava cartão; esperar 1 h era só atraso (pedido do dono: nada de espera sem motivo)
 FILA_MINIMA = 3  # o Arquiteto planeja quando há menos que isso de tarefas abertas
+
+
+JEV_URL = "https://opencode.ai/zen/v1/systemone"
+# Sem User-Agent próprio o Cloudflare do Zen devolve 403/1010 para o urllib (medido 30/set).
+JEV_UA = "citybuilder-sincronizador/1.0"
+TRIAGEM_LOG = "/opt/data/avaliacao/triagem.jsonl"
+CAUSAS = {
+    "transitorio": "erro de rede, timeout do provedor, limite de taxa, servidor fora do ar; tentar de novo resolve",
+    "orcamento": "estourou o limite de passos/iterações ou de tempo: tarefa grande demais ou agente se perdeu",
+    "acesso": "falta permissão, token, arquivo, ou uma decisão humana de fora",
+    "erro_do_agente": "o agente errou: comando inválido, bloqueado pela segurança, travou em laço",
+}
+
+
+def jev(estado, perguntas):
+    """Decisão estruturada pelo jev (grátis, ~1 s). None se falhar: quem chama cai no comportamento antigo."""
+    import urllib.request
+    req = urllib.request.Request(JEV_URL, method="POST", data=json.dumps(
+        {"model": "jev-1.13-free", "state": estado[:6000], "questions": perguntas}).encode(),
+        headers={"Authorization": "Bearer public", "Content-Type": "application/json", "User-Agent": JEV_UA})
+    try:
+        return json.load(urllib.request.urlopen(req, timeout=30))["answers"]
+    except Exception as e:  # rede, 4xx/5xx, formato: nunca derruba o sincronizador
+        print(f"jev indisponível: {e}")
+        return None
+
+
+def triar(cid, titulo):
+    """Classifica por que o cartão travou. Tarefa grande demais não volta pro mesmo agente: vai pro Arquiteto quebrar.
+
+    Antes (29/set) o zelador fechava tudo igual e a issue ganhava outra rodada idêntica, que estourava de novo.
+    """
+    texto = subprocess.run([HERMES, "kanban", "show", cid], capture_output=True, text=True, timeout=60).stdout
+    texto = "\n".join(l for l in texto.splitlines() if "heartbeat" not in l)
+    r = jev(f"{titulo}\n{texto[-3000:]}", {"causa": {"type": "choice", "criteria": CAUSAS,
+                                                     "instructions": "Por que este cartão de um agente de IA travou?"}})
+    causa = r["causa"]["choice"] if r else None
+    conf = r["causa"].get("confidence") if r else None
+    with open(TRIAGEM_LOG, "a") as f:
+        f.write(json.dumps({"quando": dt.datetime.now(BRT).isoformat(timespec="minutes"), "cartao": cid,
+                            "titulo": titulo[:90], "causa": causa, "confianca": conf}, ensure_ascii=False) + "\n")
+    m = re.match(r"^\[(dev|qa)-issue-(\d+)-", titulo)
+    if causa == "orcamento" and (conf or 0) >= 0.8 and m:
+        n = m.group(2)
+        # tira a etiqueta para não nascer outra rodada igual; o Arquiteto quebra e reetiqueta as partes
+        subprocess.run([GH, "issue", "edit", n, "-R", REPO, "--remove-label", "pronto-pra-dev",
+                        "--remove-label", "pronto-pra-teste"], capture_output=True, timeout=60)
+        criar(f"arquiteto-quebrar-{n}", f"Quebrar a tarefa #{n} (travou por tamanho)", "arquiteto",
+              f"A tarefa #{n} travou por ESTOURAR passos/tempo no cartão {cid} ({titulo[:60]}). Não é erro "
+              "passageiro: é grande demais pra um ciclo. Quebre em Tarefas menores (máx. ~3 arquivos cada, com "
+              f"`Depende de #N` quando precisar), etiquete a primeira `pronto-pra-teste` e comente na #{n} o que "
+              "virou o quê (feche-a se foi toda substituída).", prioridade=15)
+    return causa
 
 
 def zelar(lista):
@@ -173,6 +230,12 @@ def zelar(lista):
     for cid in bloqueados:
         desde = visto.setdefault(cid, agora)
         if agora - desde >= ZELADOR_MIN * 60:
+            titulo = next((c.get("title") or "" for c in lista if c["id"] == cid), "")
+            try:
+                causa = triar(cid, titulo)
+                print(f"zelador: {cid} travou por {causa}")
+            except Exception as e:  # triagem é bônus; liberar o cartão é obrigação
+                print(f"zelador: triagem falhou em {cid}: {e}")
             subprocess.run([HERMES, "kanban", "complete", cid, "--summary",
                             "Zelador: bloqueado há mais de 1 h sem ninguém para destravar; fechado para liberar a "
                             "próxima rodada (o motivo está nos eventos/diagnóstico deste cartão)."],
@@ -181,6 +244,28 @@ def zelar(lista):
             visto.pop(cid, None)
     visto = {k: v for k, v in visto.items() if k in bloqueados}
     json.dump(visto, open(ZELADOR, "w"))
+
+
+def main_vermelha(existentes):
+    """CI da main vermelho trava todo merge. Vira cartão do Dev na frente de tudo, um por commit da main.
+
+    30/set: a main ficou vermelha (teste da #48 dependia da versão do Node) e o loop parou: o Revisor
+    reprovava tudo com razão e ninguém tinha tarefa de consertar a main.
+    """
+    sha = json.loads(gh("api", f"repos/{REPO}/commits/main"))["sha"]
+    runs = json.loads(gh("api", f"repos/{REPO}/commits/{sha}/check-runs"))["check_runs"]
+    falhas = [r for r in runs if r.get("conclusion") == "failure" and r["name"] != "testes de aceitação protegidos"]
+    if not falhas:
+        return
+    chave = f"main-vermelha-{sha[:7]}"
+    if chave in existentes:
+        return
+    lista = "\n".join(f"- {r['name']}: {r['html_url']}" for r in falhas)
+    criar(chave, f"Consertar a main: CI vermelho em {sha[:7]}", "dev",
+          f"O CI da main está VERMELHO no commit {sha[:7]} e isso trava todo merge:\n{lista}\n"
+          "Leia o log (`gh run view <id> --log-failed`), reproduza local (o seu Node é o mesmo do CI) e conserte a "
+          "CAUSA num PR `fix/main-<assunto>` a partir da main, etiqueta em-revisão. Não apague nem afrouxe teste "
+          "pra ficar verde: se o teste estiver errado, explique no PR com número.", prioridade=40)
 
 
 def aviso_ci(pr):
@@ -227,6 +312,8 @@ def main():
     cartoes_atuais = cartoes()
     zelar(cartoes_atuais)
 
+    main_vermelha(existentes)
+
     prs_abertos = json.loads(gh("pr", "list", "-R", REPO, "--state", "open", "--json",
                                 "number,title,body,labels,headRefName,headRefOid,url", "--limit", "50"))
     # Issue com PR aberto que a fecha já está com alguém (29/set: a #38 seguia 'pronto-pra-dev' com o PR #43 em revisão).
@@ -250,7 +337,7 @@ def main():
                       f"Revise o PR #{pr['number']} ({pr['url']}). Aprovou e o CI está verde? Faça o merge.\n"
                       + aviso_ci(pr) + REPROVOU,
                       contrato=pr["url"] if protegida else "local-only", prioridade=30)
-        if not em_revisao and pr["headRefName"].startswith("dev/"):
+        if not em_revisao and pr["headRefName"].startswith(("dev/", "fix/main-")):
             # PR do Dev fora de revisão = o Arquiteto pediu mudanças (tirou a etiqueta). Volta pro Dev,
             # uma rodada por commit, no máximo 3; depois disso o Arquiteto quebra a tarefa (PLANO 12).
             base = f"dev-ajuste-pr-{pr['number']}-"
@@ -265,6 +352,15 @@ def main():
     todas = json.loads(gh("issue", "list", "-R", REPO, "--state", "open",
                           "--json", "number,labels", "--limit", "300"))
     abertas = {i["number"] for i in todas}
+    # PR rascunho do QA (qa/N) de tarefa já fechada fica aberto e vermelho pra sempre (30/set: #44 da #37,
+    # entregue no #46). A regra do repo é fechar o PR do QA quando o do Dev entra: faz aqui, sem LLM.
+    for pr in prs_abertos:
+        m = re.fullmatch(r"qa/(\d+)", pr["headRefName"])
+        if m and int(m.group(1)) not in abertas:
+            subprocess.run([GH, "pr", "close", str(pr["number"]), "-R", REPO, "--comment",
+                            f"Fechado pelo sincronizador: a tarefa #{m.group(1)} já foi entregue (issue fechada). "
+                            "O teste deste PR entrou na main junto com o PR do Dev."], capture_output=True, timeout=60)
+            print(f"PR do QA #{pr['number']} fechado (tarefa #{m.group(1)} entregue)")
     # PLANO 12.2: bug passa na frente de tudo. Tarefa de item com etiqueta bug ganha prioridade.
     bugs = {i["number"] for i in todas if any(l["name"] == "bug" for l in i["labels"])}
     for etiqueta, papel, prio in (("pronto-pra-dev", "dev", 20), ("pronto-pra-teste", "qa", 10)):

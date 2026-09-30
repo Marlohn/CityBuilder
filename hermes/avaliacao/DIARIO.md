@@ -102,3 +102,60 @@ ou link do lado.
 **Promissor na qualidade, imaturo na autonomia.** O trabalho dos agentes é bom o bastante pra valer a pena. O gargalo é
 encanamento (ordem, retrabalho, travas), e encanamento se conserta uma vez e serve pra todo projeto. Ainda **não** dá pra
 dizer "funciona sem supervisão": falta passar um dia inteiro com ~0 intervenções.
+
+---
+
+## Rodada 1 (30/09 00:15Z → 01:40Z)
+
+### Mudanças de harness (cada uma ataca um gargalo da rodada 0)
+
+- **Perfil `revisor`**, que só revisa; o arquiteto passa a só planejar. Estreou certo: reprovou o #52 pela regra de CI.
+- **Trava de arquivo:** o sincronizador não libera 2 devs no mesmo arquivo. A 1ª versão tinha falso positivo, porque
+  contava os arquivos que a tarefa manda "NÃO mexer". Agora lê só a lista numerada.
+- **Teste lento antes do PR,** quando o dev mexe em `packages/sim`.
+- **Revisão obsoleta arquivada** quando chega commit novo.
+- **Governança:** o dev editou a trava do CI dentro do PR da tarefa. A lógica estava certa (4 cenários de gabarito),
+  mas foi extraída pro PR #56, e PR de tarefa que mexe em `.github/` agora é reprovado.
+- **`main` vermelha vira cartão prioridade 40.** A causa real foi **merge com CI velho** (#54 mesclado com o CI de
+  antes do #46). A hipótese "diferença de Node" era falsa, e o controle no Node 26 derrubou. Regra nova: o revisor faz
+  `gh pr update-branch` e espera o CI de novo se a `main` andou.
+- **Node 22 nos agentes** (a imagem trazia Node 26; o CI usa 22). Não era a causa, mas paridade com o CI é obrigatória.
+- **PR do QA fechado sozinho** quando a tarefa fecha (o #44 ficou esquecido).
+
+### Perfis revisados (docs oficiais do Hermes)
+
+| Achado | Antes | Depois |
+|---|---|---|
+| Skills | 58 genéricas em todos (Apple, vídeo, música…); o índice vai no prompt de toda chamada | 2 a 5 por papel |
+| Ferramentas | 17 iguais em todos, incluindo `computer_use`, `cronjob`, `clarify`, `delegation`, `browser` | base + `web` só pra quem pesquisa |
+| SOUL do revisor | copiado do arquiteto ("você é o Arquiteto") | SOUL próprio de revisão |
+| SOUL do arquiteto | mandava revisar PR, seguir o `ROADMAP.md` velho e esperar aprovação do dono | só planeja, issue #2, sem aprovação |
+
+### Jev (estudo à parte)
+
+- **É o único modelo grátis, além do space-bunny, que responde fora do OpenCode.** Endpoint `/zen/v1/systemone`,
+  ~1 s, custo zero. O Cloudflare barra o User-Agent padrão do Python (erro 1010): use um UA próprio.
+- **Gabarito com revisões reais:** motivo da reprovação e aprovou/reprovou deram 9/9, estáveis. Na triagem de cartão
+  travado, acertou o caso real + 3 sintéticos. Os sintéticos fui eu que escrevi; a validação real sai do `triagem.jsonl`.
+- **Em produção:** triagem do zelador (tarefa grande → arquiteto quebra) e motivos de reprovação nas métricas.
+- **Existem plugins oficiais:** `jev-approvals`, `jev-skill-router`, `jev-memory-selector` e `jev-cron-gate`. Candidatos.
+
+### Modelos grátis (contra o documento de pesquisa do dono)
+
+- **Chamada direta à API** (o que o Hermes faz): com a chave `public` **e com a chave da conta**, todos devolvem
+  `FreeTierError`, menos o `space-bunny` e o `jev`. A recomendação do documento ("Hermes + Zen + API key") não vale hoje.
+- **Pelo OpenCode:** respondem muse, mimo-2.6, nemotron-ultra, space-bunny, longcat e big-pickle.
+  O `ling` estava com o endpoint fora do ar e o `lightning` respondeu vazio.
+- **Comparação com gabarito (#38):** a 1ª rodada foi inválida. O OpenCode sozinho recusa ler arquivo fora do projeto,
+  e a tarefa estava em `/tmp`. Refeita com a tarefa dentro do worktree; o resultado vem na rodada 2.
+
+### Números da rodada (métricas com jev)
+
+- 11 revisões classificadas: 5 aprovadas, 6 reprovadas (desempenho 2, regra 2, conflito 1, CI no PR 1).
+- Desempenho e conflito somam metade das reprovações, e são exatamente as duas causas atacadas nesta rodada.
+- Pico de processos com 3 agentes + comparação de modelos: 2890 MB de 3072. Limite baixado pra 2 enquanto a
+  comparação roda.
+
+### Intervenções do supervisor nesta rodada: ~12
+
+A maioria virou regra no sincronizador. Continua alto: a métrica que decide ainda não caiu.

@@ -39,6 +39,54 @@ def horas(seg):
     return round(seg / 3600, 2)
 
 
+CACHE = "/opt/data/avaliacao/jev-cache.json"
+MOTIVOS = {
+    "desempenho": "regressão de performance, teste lento, orçamento de busca estourado",
+    "conflito": "conflito de merge com a main, branch desatualizado",
+    "ci_no_pr": "o PR de tarefa mexe em arquivos de CI (.github/workflows)",
+    "teste": "teste de aceitação falhando ou alterado",
+    "escopo": "mexeu em arquivos fora da tarefa ou fez mais do que pedido",
+    "regra": "violou regra do projeto (fonte, config, Math.random, camadas)",
+}
+
+
+def motivos_reprovacao(numeros):
+    """Conta revisões aprovadas/reprovadas e o motivo, lendo os comentários de revisão com o jev.
+
+    Gabarito em 30/set: 9 de 9 certas (4 motivos + 5 aprova/reprova) nas revisões dos PRs #43/#46/#52/#54.
+    Cache por id de comentário: cada comentário é classificado uma vez só.
+    """
+    import urllib.request
+    try:
+        cache = json.load(open(CACHE))
+    except (OSError, ValueError):
+        cache = {}
+    perguntas = {"aprovou": {"type": "noul", "instructions": "Esta revisão APROVA o PR (pode fazer merge)?"},
+                 "motivo": {"type": "choice", "criteria": MOTIVOS,
+                            "instructions": "Se reprova, qual é o MOTIVO PRINCIPAL?"}}
+    cont = collections.Counter()
+    for n in numeros:
+        for c in gh("api", f"repos/{REPO}/issues/{n}/comments", "--paginate"):
+            b = c["body"]
+            if not re.search(r"(?i)revis[aã]o|aprovad|reprovad", b[:400]):
+                continue
+            k = str(c["id"])
+            if k not in cache:
+                req = urllib.request.Request("https://opencode.ai/zen/v1/systemone", method="POST",
+                    data=json.dumps({"model": "jev-1.13-free", "state": b[:6000], "questions": perguntas}).encode(),
+                    headers={"Authorization": "Bearer public", "Content-Type": "application/json",
+                             "User-Agent": "citybuilder-metricas/1.0"})
+                try:
+                    a = json.load(urllib.request.urlopen(req, timeout=30))["answers"]
+                except Exception:
+                    continue
+                cache[k] = {"aprovou": a["aprovou"]["noul"] >= 0.5, "motivo": a["motivo"]["choice"]}
+            v = cache[k]
+            cont["aprovadas" if v["aprovou"] else "reprovadas:" + v["motivo"]] += 1
+    json.dump(cache, open(CACHE, "w"))
+    return dict(cont)
+
+
 def main():
     agora = dt.datetime.now(dt.timezone.utc).timestamp()
     k = sqlite3.connect("/opt/data/kanban.db")
@@ -133,6 +181,7 @@ def main():
         "revisoes_por_pr": dict(sorted(revisoes.items())),
         "rodadas_de_revisao_mediana": med(list(revisoes.values())),
     }
+    entregas["reprovacoes"] = motivos_reprovacao([p["number"] for p in prs])
     saida = {"coletado": dt.datetime.now(dt.timezone.utc).isoformat(timespec="minutes"),
              "entregas": entregas, "cartoes": cartoes, "ocupacao_pct_do_tempo": ocupacao, "modelo": modelo}
     if "--json" in sys.argv:
