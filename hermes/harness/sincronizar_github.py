@@ -13,6 +13,7 @@ cartão (created_by=sincronizador, com o resumo) ou um comentário no PR/issue. 
   CI da main vermelho                         -> dev conserta, na frente de tudo (1 por vez)
   cartão bloqueado                            -> fechado na hora, com o motivo, para liberar a próxima rodada
   PR qa/N de tarefa já entregue               -> fechado
+  PR dev/N mesclado, tarefa N ainda aberta    -> issue fechada (o GitHub nem sempre fecha)
   1x por dia                                  -> designer; qa caça bug (se está sem fila)
 
 Sem GH_TOKEN, sai calado. Stdout vazio = nada a entregar (é o que o cron espera). Cada cartão leva a chave no
@@ -31,7 +32,7 @@ REPO = "Marlohn/CityBuilder"
 HERMES = "/opt/hermes/.venv/bin/hermes"
 GH = "/opt/data/.local/bin/gh"
 MAX_RODADAS = 3  # docs/PLANO.md 12: falhou 3 vezes, volta pro arquiteto quebrar
-FILA_MINIMA = 3  # o arquiteto planeja quando há menos que isso de tarefas abertas
+FILA_MINIMA = 3  # o arquiteto planeja quando há menos que isso de tarefas PRONTAS PARA COMEÇAR (sem dependência aberta)
 BRT = dt.timezone(dt.timedelta(hours=-3))
 TERMINAIS = ("done", "archived")
 
@@ -235,6 +236,26 @@ def fechar_prs_qa(prs, abertas):
             print(f"PR do QA fechado: #{pr['number']}")
 
 
+def fechar_tarefas_entregues(mesclados, todas, agora=None):
+    """PR `dev/N` mesclado e a tarefa N segue aberta: o GitHub não a fechou (30/09: o #68 dizia "Closes #39" e o GitHub
+    devolveu closingIssuesReferences vazio; a #39 ganharia outra rodada de dev inútil). O comentário na issue é o rastro.
+    Só PR mesclado nas últimas 48 h, para não fechar de novo tarefa que alguém reabriu de propósito."""
+    agora = agora or dt.datetime.now(dt.timezone.utc)
+    tarefas_abertas = {i["number"] for i in todas if any(lb["name"] == "tarefa" for lb in i["labels"])}
+    fechadas = set()
+    for pr in mesclados:
+        m = re.fullmatch(r"dev/(\d+)", pr["headRefName"])
+        recente = agora - dt.datetime.fromisoformat(pr["mergedAt"].replace("Z", "+00:00")) < dt.timedelta(hours=48)
+        if m and int(m.group(1)) in tarefas_abertas and recente:
+            n = m.group(1)
+            gh_escrever("issue", "close", n, "-R", REPO, "--comment",
+                        f"Fechada pelo sincronizador: o PR #{pr['number']} (`dev/{n}`) foi mesclado, mas o GitHub não fechou a "
+                        "issue. Sem isto ela ganharia outra rodada de dev.")
+            print(f"tarefa entregue fechada: #{n} (PR #{pr['number']})")
+            fechadas.add(int(n))
+    return fechadas
+
+
 def tarefas(todas, prs, existentes):
     """Issue pronta -> cartão do Dev/QA. Três rodadas sem entrega -> o Arquiteto quebra a tarefa."""
     abertas = {i["number"] for i in todas}
@@ -282,16 +303,20 @@ def tarefas(todas, prs, existentes):
                                   f"Arquiteto para quebrá-la (cartão arquiteto-quebrar-{n}).")
 
 
-def diarios(todas, existentes, dia):
-    """Planejar por EVENTO (a fila de tarefas está acabando), não por relógio: a chave muda quando muda o conjunto de
-    tarefas/itens abertos, então não replaneja o nada. Os dois ciclos diários são decisão de produto."""
+def diarios(todas, existentes, dia, corpos_tarefa):
+    """Planejar por EVENTO (a fila de tarefas prontas está acabando), não por relógio: a chave muda quando muda o conjunto
+    de tarefas/itens abertos, então não replaneja o nada. Tarefa que espera outra (`Depende de #N` aberta) NÃO conta como
+    fila: em 30/09 três tarefas do mesmo item, duas esperando a primeira, enchiam a fila e seguravam bugs urgentes
+    independentes. Os dois ciclos diários são decisão de produto."""
     def tem(i, nome):
         return any(lb["name"] == nome for lb in i["labels"])
 
     tarefas_abertas = sorted(i["number"] for i in todas if tem(i, "tarefa"))
     itens = sorted(i["number"] for i in todas if tem(i, "roadmap"))
     fixos = []
-    if len(tarefas_abertas) < FILA_MINIMA:
+    abertas = {i["number"] for i in todas}
+    prontas = [t["number"] for t in corpos_tarefa if not dependencias(t["body"]) & abertas]
+    if len(prontas) < FILA_MINIMA:
         estado = hashlib.sha1(json.dumps([tarefas_abertas, itens]).encode()).hexdigest()[:8]
         fixos.append((f"arquiteto-plano-{estado}", "Planejar o próximo item do ROADMAP", "arquiteto",
                       "Sua tarefa: passo 3 do seu ciclo (planejar o primeiro item de Agora sem tarefas). Sem item? Pare.\n"
@@ -328,10 +353,16 @@ def main():
     prs = json.loads(gh("pr", "list", "-R", REPO, "--state", "open", "--json",
                         "number,title,body,labels,headRefName,headRefOid,url", "--limit", "50"))
     todas = json.loads(gh("issue", "list", "-R", REPO, "--state", "open", "--json", "number,labels", "--limit", "300"))
+    mesclados = json.loads(gh("pr", "list", "-R", REPO, "--state", "merged", "--limit", "20",
+                              "--json", "number,headRefName,mergedAt"))
+    fechadas = fechar_tarefas_entregues(mesclados, todas)
+    todas = [i for i in todas if i["number"] not in fechadas]
     revisoes(prs, existentes)
     fechar_prs_qa(prs, {i["number"] for i in todas})
     tarefas(todas, prs, existentes)
-    diarios(todas, existentes, dia)
+    corpos_tarefa = json.loads(gh("issue", "list", "-R", REPO, "--state", "open", "--label", "tarefa",
+                                  "--json", "number,body", "--limit", "100"))
+    diarios(todas, existentes, dia, corpos_tarefa)
 
 
 if __name__ == "__main__":

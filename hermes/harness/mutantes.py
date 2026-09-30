@@ -26,6 +26,12 @@ MUTANTES = {
         (' and r["name"] != "testes de aceitação protegidos"]', ']'),
     "rascunho do QA esconde a tarefa do dev":
         ('for pr in prs if not pr["headRefName"].startswith("qa/") for n in', 'for pr in prs for n in'),
+    "tarefa presa conta como fila cheia":
+        ('if len(prontas) < FILA_MINIMA:', 'if len(tarefas_abertas) < FILA_MINIMA:'),
+    "fecha tarefa de PR antigo":
+        ('< dt.timedelta(hours=48)', '< dt.timedelta(days=9999)'),
+    "PR do QA fecha a tarefa":
+        ('re.fullmatch(r"dev/(\d+)", pr["headRefName"])', 're.fullmatch(r"(?:dev|qa)/(\d+)", pr["headRefName"])'),
     "dependência não segura a tarefa":
         ('if dependencias(iss["body"]) & abertas:', 'if False:'),
     "mesmo arquivo não serializa dev":
