@@ -55,7 +55,11 @@ export class LifecycleSystem implements System {
     let q = table[Math.min(lived, table.length - 1)] ?? 1;
     if (pop.clinic[p]! < 0) q *= config.health.uncoveredMortalityMultiplier;
     if (rng.chance(q)) {
-      this.demo.death(sex, lived);
+      // O denominador da mortalidade infantil só conta nascidos na cidade: o primeiro
+      // evento diz se a pessoa nasceu aqui (EV.born) ou chegou de fora (EV.arrived).
+      const first = city.events.of(p)[0];
+      const bornInCity = first !== undefined && city.events.type[first] === EV.born;
+      this.demo.death(sex, lived, bornInCity);
       die(city, p);
       return;
     }
