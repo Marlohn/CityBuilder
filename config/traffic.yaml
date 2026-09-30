@@ -35,8 +35,20 @@ traffic:
     minMinutes: 60
     # Proporção de viagens por motivo. Pesquisa Origem-Destino 2017 da RMSP (Metrô, seção 3.3.9):
     # trabalho 18,5 mi (44%), educação 14,7 mi (35%), outros 8,8 mi (~21%).
+    # As chaves shopping/health/leisure são a divisão do "other" entre as voltas novas (somam 1).
     # PENDENTE: a divisão de "outros" entre compras, saúde e lazer não tem fonte pública na OD.
-    shareByPurpose: { work: 0.44, education: 0.35, other: 0.21 }
+    shareByPurpose: { work: 0.44, education: 0.35, other: 0.21, shopping: 0.4, health: 0.3, leisure: 0.3 }
+    # Janela da volta de compras/saúde/lazer (minutos do dia, das 8h às 19h). A hora exata pesa
+    # pela curva tripsByHour, igual à entrada no trabalho. PENDENTE: distribuição dentro da janela.
+    errandStartMinute: [480, 1140]
+    # Tempo de permanência no destino da volta (minutos). PENDENTE: sem fonte de tempo médio de
+    # permanência em loja ou UBS; valores de jogo.
+    errandStayMinutes: { shopping: 30, health: 60, leisure: 90 }
+    # Distância máxima para resolver a volta a pé (metros). PENDENTE: valor de jogo, mesmo limite
+    # da caminhada utilitária (maxWorkMeters).
+    errandWalkMeters: 2300
+    # Candidatos sorteados na busca do comércio/UBS mais próximo. PENDENTE: valor de jogo.
+    errandCandidates: 40
     # Pesos por hora do dia das viagens. Pesquisa Origem-Destino 2017 da RMSP (Metrô, seção 3.3.11
     # "Flutuação horária"): três picos (manhã, meio-dia e fim da tarde). PENDENTE: os pesos são a
     # curva de três picos da OD 2017 lida de forma qualitativa, não a tabela numérica original
