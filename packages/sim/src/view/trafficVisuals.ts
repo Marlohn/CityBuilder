@@ -7,19 +7,12 @@
  * numa velocidade que dá para ver. Nada é inventado: só aparece quem de fato saiu.
  */
 import type { Game } from "../game";
-import { OUTSIDE_JOB } from "../people/population";
 import { Pathfinder, tileCostDs } from "../routing/pathfinder";
 import type { TripStart } from "../traffic/trafficSystem";
 import { VSTATE } from "../traffic/vehicles";
 
 /** Tipo usado na tela para pessoas a pé (carros usam 0..N). */
 export const PEDESTRIAN_TYPE = 100;
-
-/**
- * Folga da folga de ponto flutuante ao fechar uma viagem na tela. Nao e regra de jogo: e o erro de
- * arredondamento de somar 1/12 s de relogio visual por quadro.
- */
-const SLACK = 1e-9;
 
 export interface TrafficVisualOptions {
   /** Velocidade na tela (quadradinhos por segundo real). */
@@ -57,6 +50,10 @@ export class TrafficVisuals {
   private walkPaths = new Map<number, Int32Array | null>();
   private pathfinder: Pathfinder | null = null;
   private carsOnScreen = new Set<number>();
+  /** Segundos visuais por tick do motor (estimado a cada advance). */
+  private secondsPerTick = 1 / 12;
+  private prevVisClock: number | null = null;
+  private prevSimTick: number | null = null;
 
   constructor(
     private game: Game,
@@ -71,50 +68,40 @@ export class TrafficVisuals {
    */
   advance(realSeconds: number, speed: number) {
     if (speed > 0) this.clock += realSeconds * speed;
+    // Estima quanto vale 1 tick em segundos visuais (para a viagem durar até o motor estacionar).
+    const simTick = this.game.sim.clock.tick;
+    if (speed > 0 && this.prevVisClock !== null && this.prevSimTick !== null) {
+      const dClock = this.clock - this.prevVisClock;
+      const dTick = simTick - this.prevSimTick;
+      if (dClock > 0 && dTick > 0) this.secondsPerTick = dClock / dTick;
+    }
+    this.prevVisClock = this.clock;
+    this.prevSimTick = simTick;
     this.consume();
     const now = this.clock;
-    // Fim inclusivo (<=) com folga de ponto flutuante: a viagem que termina neste quadro ainda e
-    // desenhada nele (positions() trava o carro no ultimo quadradinho). Sem isso o carro com
-    // emprego fora, cuja duracao e o tempo real ate o motor chegar, sumiria no proprio quadro da
-    // chegada: a soma do relogio visual (1/12 s por quadro) passa do duration por ~1e-17.
-    this.active = this.active.filter((t) => now - t.start <= t.duration * (1 + SLACK));
+    this.active = this.active.filter((t) => now - t.start < t.duration);
     this.carsOnScreen.clear();
     for (const t of this.active) if (t.kind === "car") this.carsOnScreen.add(t.id);
     // O log de viagens do motor é aparado (splice) e pode perder o começo da viagem.
-    // A tela reconcilia os parados para nunca deixar carro andando invisível.
+    // A tela reconcilia com a rota real para nunca deixar carro andando invisível.
     const vehs = this.game.traffic.vehicles;
+    const missing: VisualTrip[] = [];
+    const missingIds = new Set<number>();
     for (let i = 0; i < vehs.moving.size; i++) {
       const v = vehs.moving.at(i)!;
       if (this.carsOnScreen.has(v)) continue;
-      const route = vehs.routes[v];
-      if (!route || route.length < 1) continue;
-      const outside = this.outsideVisualDuration(v);
-      if (outside !== null) {
-        // Carro para fora sem viagem na tela (log aparado): desenha a rota real ate a saida,
-        // com a duracao ate o arriveTick, para nao sumir no meio do caminho.
-        let tiles: Int32Array = route;
-        if (tiles.length === 1) tiles = Int32Array.from([tiles[0]!, tiles[0]!]);
-        this.active.push({
-          kind: "car",
-          id: v,
-          model: vehs.model[v]!,
-          tiles,
-          start: this.clock,
-          duration: outside,
-        });
-        this.carsOnScreen.add(v);
-        continue;
+      const trip = this.reconciledCarTrip(v);
+      if (!trip) continue;
+      missing.push(trip);
+      missingIds.add(v);
+    }
+    if (missing.length > 0) {
+      // Troca a viagem antiga do mesmo carro (igual ao start).
+      this.active = this.active.filter((a) => !(a.kind === "car" && missingIds.has(a.id)));
+      for (const trip of missing) {
+        this.active.push(trip);
+        this.carsOnScreen.add(trip.id);
       }
-      const last = route[route.length - 1]!;
-      this.active.push({
-        kind: "car",
-        id: v,
-        model: vehs.model[v]!,
-        tiles: Int32Array.of(last, last),
-        start: this.clock,
-        duration: this.opts.maxSeconds,
-      });
-      this.carsOnScreen.add(v);
     }
   }
 
@@ -140,27 +127,59 @@ export class TrafficVisuals {
     const first = Math.max(0, log.length - newCount);
     for (let i = first; i < log.length; i++) this.start(log[i]!);
     if (this.active.length > this.opts.maxActive) {
-      // Viagem cortada vira viagem parada no último quadradinho com a duração restante, porque o corte não pode tirar o carro de cena.
+      // Corte não pode tirar o carro de cena: redesenha com a rota real até estacionar.
       const cut = this.active.splice(0, this.active.length - this.opts.maxActive);
-      const now = this.clock;
       const states = this.game.traffic.vehicles.state;
       for (const old of cut) {
         if (old.kind !== "car") continue;
         if (old.id < 0 || old.id >= states.length) continue;
         if (states[old.id] !== VSTATE.moving) continue;
-        const left = old.duration - (now - old.start);
-        if (left <= 0) continue;
-        const last = old.tiles[old.tiles.length - 1]!;
-        this.active.push({
-          kind: "car",
-          id: old.id,
-          model: old.model,
-          tiles: Int32Array.from([last, last]),
-          start: now,
-          duration: left,
-        });
+        const trip = this.reconciledCarTrip(old.id);
+        if (!trip) continue;
+        // Troca a viagem antiga do mesmo carro (igual ao start).
+        this.active = this.active.filter((a) => !(a.kind === "car" && a.id === old.id));
+        this.active.push(trip);
       }
     }
+  }
+
+  /**
+   * Viagem visual refeita da rota real (para carro sem viagem na tela).
+   * Começa no ponto do motor para não pular para o fim antes da hora.
+   */
+  private reconciledCarTrip(v: number): VisualTrip | null {
+    const vehs = this.game.traffic.vehicles;
+    const route = vehs.routes[v];
+    if (!route || route.length < 1) return null;
+    const tickNow = this.game.sim.clock.tick;
+    const depart = vehs.departTick[v]!;
+    const arrive = vehs.arriveTick[v]!;
+    const model = vehs.model[v]!;
+    // Já passou da hora de chegar: estaciona no fim para não esperar para sempre.
+    if (tickNow >= arrive) {
+      const tiles =
+        route.length >= 2
+          ? Int32Array.of(route[route.length - 2]!, route[route.length - 1]!)
+          : Int32Array.of(route[0]!, route[0]!);
+      return { kind: "car", id: v, model, tiles, start: this.clock, duration: this.opts.maxSeconds };
+    }
+    let tiles: Int32Array = route;
+    if (tiles.length < 2) {
+      // Rota curta: repete o quadradinho.
+      tiles = Int32Array.from([tiles[0]!, tiles[0]!]);
+    }
+    const span = Math.max(1, arrive - depart);
+    let f0 = (tickNow - depart) / span;
+    if (f0 < 0) f0 = 0;
+    if (f0 > 1) f0 = 1;
+    // Margem para a tela nunca acabar antes do motor (ficar para trás pode).
+    const SAFETY = 1.25;
+    const raw = (arrive - tickNow) * this.secondsPerTick * SAFETY;
+    const duration = raw > 0 ? raw : this.opts.maxSeconds;
+    // Começa de trás para cair no ponto onde o motor já está.
+    let start = this.clock - f0 * duration;
+    if (start > this.clock) start = this.clock;
+    return { kind: "car", id: v, model, tiles, start, duration };
   }
 
   private start(t: TripStart) {
@@ -172,38 +191,9 @@ export class TrafficVisuals {
     }
     if (tiles.length < 2) return;
     const speed = t.kind === "car" ? this.opts.carTilesPerSecond : this.opts.walkTilesPerSecond;
-    let duration = Math.min(this.opts.maxSeconds, tiles.length / speed);
-    if (t.kind === "car") {
-      // Carro com emprego fora: a viagem do motor dura 1-2 ticks e a tela em 6 s faria o carro
-      // sumir no meio do caminho. A duracao passa a ser o tempo real ate o arriveTick, sem o
-      // teto de maxSeconds. Se ja passou do arriveTick, mantem o comportamento atual.
-      const outside = this.outsideVisualDuration(t.id);
-      if (outside !== null) duration = outside;
-    }
+    const duration = Math.min(this.opts.maxSeconds, tiles.length / speed);
     if (t.kind === "car") this.active = this.active.filter((a) => !(a.kind === "car" && a.id === t.id));
     this.active.push({ kind: t.kind, id: t.id, model: t.model, tiles, start: this.clock, duration });
-  }
-
-  /**
-   * Duracao visual para carro com emprego fora (segundos de tela) ou null para manter o atual.
-   * E o tempo real ate o motor estacionar, sem o teto de maxSeconds: os ticks que faltam ate a
-   * chegada observada, convertidos para segundos de tela pelo relogio
-   * (ticksPorDia / segundosReaisPorDia), sem literal fixo e sem numero de regra novo.
-   * O +1 e necessario porque o relogio incrementa depois dos sistemas (sim.ts stepOnce): o
-   * departTick e gravado antes do incremento, entao entre o tickAtual (pos-step) e a chegada
-   * observada (pos-step do arriveTick) ha arriveTick - tickAtual + 1 quadros. Sem ele, viagem de
-   * 1 tick teria duracao 0 e a de 2 ticks expiraria um quadro antes da chegada (avance 0).
-   * Se o arriveTick ja passou (carro deveria ter chegado), devolve null.
-   */
-  private outsideVisualDuration(v: number): number | null {
-    const vehs = this.game.traffic.vehicles;
-    if (v < 0 || v >= vehs.count) return null;
-    if (vehs.destBuilding[v] !== OUTSIDE_JOB) return null;
-    const left = vehs.arriveTick[v]! - this.game.sim.clock.tick;
-    if (left < 0) return null;
-    const ticksPerSecond = this.game.sim.clock.ticksPerDay / this.game.sim.config.time.realSecondsPerDayAt1x;
-    if (!(ticksPerSecond > 0)) return null;
-    return (left + 1) / ticksPerSecond;
   }
 
   /** Caminho a pé pelas vias (calçada), guardado para as próximas viagens iguais. */
