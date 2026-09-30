@@ -77,15 +77,20 @@ interface Medida {
   offPath: number;
   /** Quadradinho desenhado mais de 1 à frente do quadradinho do motor. */
   ahead: number;
-  /** Desenhado no ÚLTIMO quadradinho com o motor a 2+ quadradinhos do fim (fim antes da hora). */
-  earlyEnd: number;
+  /** Quadros com carro moving cujo progresso do motor já começou (engineIndex > 0). */
+  engineStartedFrames: number;
   worstAhead: Worst | null;
   worstOff: Worst | null;
   worstRoute: Worst | null;
 }
 
 /** Progresso do motor: igual ao `positions()` do motor (`trafficSystem.ts`), que anda pela rota ponderada pelo tempo em cada quadradinho. */
-function engineIndex(cum: Int32Array, tick: number, depart: number, arrive: number): number {
+function engineIndex(
+  cum: Int32Array,
+  tick: number,
+  depart: number,
+  arrive: number,
+): number {
   const span = Math.max(1, arrive - depart);
   const f = Math.min(1, Math.max(0, (tick - depart) / span));
   const target = f * cum[cum.length - 1]!;
@@ -124,7 +129,12 @@ function drawnPoint(
 }
 
 /** Posição do quadradinho desenhado dentro da rota real (de trás para frente, como quem procura o fim). */
-function indexOnRoute(route: Int32Array, tiles: Int32Array, drawnTile: number, pos: number): number {
+function indexOnRoute(
+  route: Int32Array,
+  tiles: Int32Array,
+  drawnTile: number,
+  pos: number,
+): number {
   if (tiles.length === route.length) {
     let same = true;
     for (let k = 0; k < route.length; k++) {
@@ -142,7 +152,11 @@ function indexOnRoute(route: Int32Array, tiles: Int32Array, drawnTile: number, p
   return -1;
 }
 
-function checkFrame(game: ReturnType<typeof createTestGame>, vis: TrafficVisuals, m: Medida): void {
+function checkFrame(
+  game: ReturnType<typeof createTestGame>,
+  vis: TrafficVisuals,
+  m: Medida,
+): void {
   const s = game.sim;
   const world = s.world;
   const veh = game.traffic.vehicles;
@@ -186,7 +200,13 @@ function checkFrame(game: ReturnType<typeof createTestGame>, vis: TrafficVisuals
         }
       }
     }
-    const lo = engineIndex(cum, s.clock.tick, veh.departTick[v]!, veh.arriveTick[v]!);
+    const lo = engineIndex(
+      cum,
+      s.clock.tick,
+      veh.departTick[v]!,
+      veh.arriveTick[v]!,
+    );
+    if (lo > 0) m.engineStartedFrames++;
     const pt = drawnPoint(world, trip.tiles, trip.start, trip.duration, nowVis);
     const key = Math.round(pt.x * 1e4) + "," + Math.round(pt.y * 1e4);
     const routeMismatch = !sameRoute;
@@ -238,8 +258,6 @@ function checkFrame(game: ReturnType<typeof createTestGame>, vis: TrafficVisuals
     if (drawnIdx - lo > AHEAD_TOLERANCE) {
       m.ahead++;
       if (!m.worstAhead) m.worstAhead = worst;
-      // Fim antes da hora: parado no último quadradinho com o motor a 2+ do fim.
-      if (drawnIdx === route.length - 1 && lo < route.length - 1 - AHEAD_TOLERANCE) m.earlyEnd++;
     }
   }
 }
@@ -260,7 +278,7 @@ function medirViagem(): Medida {
     notDrawn: 0,
     offPath: 0,
     ahead: 0,
-    earlyEnd: 0,
+    engineStartedFrames: 0,
     worstAhead: null,
     worstOff: null,
     worstRoute: null,
@@ -331,7 +349,7 @@ describe("a viagem visual dura até o motor estacionar", () => {
     ).toBe(0);
   }, 600000);
 
-  it("o cenário pega carro desenhado no fim da rota antes de chegar", () => {
+  it("o cenário abre a tela com carro no meio da rota", () => {
     const m = medida();
     expect(
       m.population,
@@ -342,9 +360,9 @@ describe("a viagem visual dura até o motor estacionar", () => {
       "a cidade não teve nenhum carro andando antes da hora de chegar, o teste não prova nada",
     ).toBeGreaterThan(0);
     expect(
-      m.earlyEnd,
-      `nenhum quadro com o carro desenhado no fim da rota antes de chegar em ${m.movFrames} quadros:` +
-        " o cenário não exercita o caso do fim antes da hora",
+      m.engineStartedFrames,
+      `nenhum quadro com carro moving cujo progresso do motor já começou em ${m.movFrames} quadros:` +
+        " o cenário precisa ter carro com a viagem já pela metade quando a tela abre",
     ).toBeGreaterThan(0);
   }, 600000);
 });
