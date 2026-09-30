@@ -31,6 +31,10 @@ export function reportText(game: Game): string {
   lines.push(
     `Ano passado: ${n(city.lastYear.births)} nascimentos, ${n(city.lastYear.deaths)} mortes, ${n(city.lastYear.arrivals)} chegadas, ${n(city.lastYear.departures)} saídas, ${n(city.lastYear.marriages)} casamentos, ${n(city.lastYear.divorces)} divórcios`,
   );
+  const ly = city.lastYear;
+  lines.push(
+    `Viagens de ontem: trabalho ${n(ly.tripsWork)} · escola ${n(ly.tripsSchool)} · compras ${n(ly.tripsShopping)} · saúde ${n(ly.tripsHealth)} · lazer ${n(ly.tripsLeisure)} (a pé ${n(ly.tripsWalk)})`,
+  );
   const turned = Object.entries(city.lastYear.migrantsTurnedAway);
   if (turned.length > 0)
     lines.push(
