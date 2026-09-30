@@ -180,14 +180,36 @@ export class TrafficVisuals {
       tiles = Int32Array.from([tiles[0]!, tiles[0]!]);
     }
     const span = Math.max(1, arrive - depart);
-    let f0 = (tickNow - depart) / span;
-    if (f0 < 0) f0 = 0;
-    if (f0 > 1) f0 = 1;
+    const cum = vehs.routeCum[v];
+    // Ponto do motor (mesma conta do positions() do motor): a tela começa daqui,
+    // nunca à frente (linear × ponderado podia adiantar 1+ quadradinho em rota mista).
+    let lo = 0;
+    if (cum && cum.length === tiles.length && cum[cum.length - 1]! > 0) {
+      const f = Math.min(1, Math.max(0, (tickNow - depart) / span));
+      const target = f * cum[cum.length - 1]!;
+      let a = 0;
+      let b = cum.length - 1;
+      while (a < b) {
+        const mid = (a + b + 1) >> 1;
+        if (cum[mid]! <= target) a = mid;
+        else b = mid - 1;
+      }
+      lo = a;
+    } else {
+      let f0 = (tickNow - depart) / span;
+      if (f0 < 0) f0 = 0;
+      if (f0 > 1) f0 = 1;
+      lo = Math.min(tiles.length - 1, Math.floor(f0 * (tiles.length - 1)));
+    }
     // Margem para a tela nunca acabar antes do motor (ficar para trás pode).
     const SAFETY = 1.25;
     const raw = (arrive - tickNow) * this.secondsPerTick * SAFETY;
-    const duration = raw > 0 ? raw : this.opts.maxSeconds;
+    // Piso: a tela leva pelo menos o tempo da rota inteira na velocidade de tela,
+    // e pelo menos o que falta até o motor estacionar (com folga).
+    const full = (tiles.length - 1) / this.opts.carTilesPerSecond;
+    const duration = raw > full ? raw : full;
     // Começa de trás para cair no ponto onde o motor já está.
+    const f0 = tiles.length > 1 ? lo / (tiles.length - 1) : 0;
     let start = this.clock - f0 * duration;
     if (start > this.clock) start = this.clock;
     return { kind: "car", id: v, model, tiles, start, duration };
