@@ -57,6 +57,8 @@ s.revisoes([pr(10, "aaaaaaa", "fix/main-x")], {}); cria("dev-ajuste-pr-10-aaaaaa
 s.revisoes([pr(10, "aaaaaaa", "qa/1")], {}); cria()  # PR do QA sem etiqueta não vai pro dev
 s.revisoes([pr(10, "aaaaaaa", "dev/1")], {"dev-ajuste-pr-10-bbbbbbb": "ready"}); cria()  # já tem um aberto
 s.revisoes([pr(10, "ccccccc", "dev/1")], {f"dev-ajuste-pr-10-{c}": "done" for c in "xyz"}); cria()  # 3 ajustes: acabou
+s.revisoes([pr(10, "aaaaaaa", "dev/10")], {}, {10}); cria()  # issue 10 esperando o QA corrigir o teste: sem ajuste do dev
+s.revisoes([pr(10, "aaaaaaa", "dev/10")], {}, {11}); cria("dev-ajuste-pr-10-aaaaaaa")  # outra issue esperando: não afeta
 print("revisões/ajustes: ok")
 
 # ---- main vermelha ----------------------------------------------------------------------------------------------
