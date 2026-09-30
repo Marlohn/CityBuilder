@@ -1,11 +1,14 @@
 # Agentes no Hermes
 
+> **O que está rodando hoje (container, sincronizador, regras, armadilhas):** [OPERACAO.md](OPERACAO.md).
+
 Quatro perfis prontos do [Hermes Agent](https://github.com/NousResearch/hermes-agent), um por papel:
 
 | Perfil | Papel | Instruções |
 |---|---|---|
 | `cb-designer` | Decide **o que** fazer: sinais do jogo e ideias viram itens do roadmap, com pesquisa | `agents/designer.md` |
 | `cb-arquiteto` | Decide **como**: quebra itens em tarefas pequenas e revisa os PRs | `agents/arquiteto.md` |
+| `cb-revisor` | Revisa os PRs: CI verde sobre a main atual + regras = merge, ou pede mudanças | `agents/arquiteto.md` (seção de revisão) |
 | `cb-qa` | Escreve o teste que falha **antes** do código e caça bugs | `agents/qa.md` |
 | `cb-dev` | Faz os testes passarem | `agents/dev.md` |
 
@@ -27,7 +30,7 @@ Crie um token do GitHub para os agentes (fine-grained, só este repositório, co
 Cada agente precisa da **sua própria cópia** do repositório. Se dois agentes usarem a mesma pasta, um troca a branch do outro no meio do trabalho.
 
 ```bash
-for p in designer arquiteto qa dev; do
+for p in designer arquiteto revisor qa dev; do
   git clone https://github.com/Marlohn/CityBuilder.git ~/cb/$p
   (cd ~/cb/$p && npm ci)
 done
@@ -38,7 +41,7 @@ done
 De dentro de um dos clones:
 
 ```bash
-for p in designer arquiteto qa dev; do
+for p in designer arquiteto revisor qa dev; do
   hermes profile install ./hermes/$p --alias        # cria o perfil cb-<papel> e o comando cb-<papel>
   cb-$p setup                                        # escolhe o modelo e as chaves
   cb-$p config set terminal.cwd ~/cb/$p              # pasta de trabalho = o clone dele (caminho absoluto)
@@ -58,7 +61,7 @@ cb-designer chat -q "Faça um ciclo do seu papel."
 O Hermes roda tarefas agendadas pelo gateway. Um gateway por perfil:
 
 ```bash
-for p in designer arquiteto qa dev; do cb-$p gateway install; done
+for p in designer arquiteto revisor qa dev; do cb-$p gateway install; done
 ```
 
 Agende o ciclo de cada papel. **Use `--workdir`**: sem ele, a tarefa agendada não carrega o `AGENTS.md` do projeto.
@@ -78,7 +81,7 @@ Os intervalos são uma sugestão: o Dev roda mais porque é quem tem mais trabal
 Quando os arquivos desta pasta mudarem (`git pull` no clone):
 
 ```bash
-for p in designer arquiteto qa dev; do hermes profile update cb-$p; done
+for p in designer arquiteto revisor qa dev; do hermes profile update cb-$p; done
 ```
 
 A memória, as conversas e as chaves de cada agente não são tocadas. O `config.yaml` é mantido (o seu `terminal.cwd` continua).
