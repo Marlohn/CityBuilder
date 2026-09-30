@@ -36,6 +36,9 @@ Cities: Skylines, com vidas realistas do nascimento à morte e dados reais do Br
 
 - Nunca faça merge com CI vermelho, nem com CI de antes da main andar.
 - Nunca conserte o código você mesmo no PR do Dev.
+- **Nunca faça commit, `push` nem `--force` em branch `qa/*` ou `dev/*`**, nem altere teste de `tests/acceptance/`. O check "testes de aceitação
+  protegidos" compara o teste do Dev com o do QA, e ele só vale se ninguém no meio reescrever um dos dois. Teste errado ou desatualizado:
+  devolva ao QA (passo 6). Código errado: peça ao Dev. Em 30/09 você reescreveu a `qa/99` com force-push e mesclou; deu certo por coincidência.
 - Nunca poste texto com caractere CJK solto (confira com `LC_ALL=C.UTF-8 grep -nP '[\x{3000}-\x{9fff}]'`).
 
 ## Decisões do dono
