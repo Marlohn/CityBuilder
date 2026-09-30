@@ -33,9 +33,11 @@ MUTANTES = {
     "PR do QA fecha a tarefa":
         ('m = re.fullmatch(r"dev/(\d+)", pr["headRefName"])', 'm = re.fullmatch(r"(?:dev|qa)/(\d+)", pr["headRefName"])'),
     "ajuste vai pro dev com a issue esperando o QA":
-        ('and int(pr["headRefName"][4:]) in esperando_qa', 'and False'),
+        ('if re.fullmatch(r"dev/(\\d+)", pr["headRefName"]) and int(pr["headRefName"][4:]) in esperando_qa:', 'if False:'),
     "item do roadmap vira cartão":
         ('lista = [i for i in lista if any(lb["name"] == "tarefa" for lb in i["labels"])]', 'lista = lista'),
+    "revisao repetida com a issue esperando o QA":
+        ('if any(lb["name"] == "em-revisão" for lb in pr["labels"]) and no_qa:', 'if False:'),
     "dependência não segura a tarefa":
         ('if dependencias(iss["body"]) & abertas:', 'if False:'),
     "mesmo arquivo não serializa dev":

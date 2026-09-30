@@ -206,6 +206,11 @@ def revisoes(prs, existentes, esperando_qa=frozenset()):
     """PR em revisão -> cartão do revisor (1 aberto por PR, 1 por commit). Sem etiqueta -> o Dev ajusta (até 3)."""
     for pr in prs:
         n, sha = pr["number"], pr["headRefOid"][:7]
+        # Issue de volta no QA (teste errado): o Dev recoloca `em-revisão` no PR, mas revisar de novo só repete a devolução
+        # (30/09: #49 e #40, ~15 min de revisor cada). O PR volta à fila quando a tarefa voltar a `pronto-pra-dev`.
+        no_qa = re.fullmatch(r"dev/(\d+)", pr["headRefName"]) and int(pr["headRefName"][4:]) in esperando_qa
+        if any(lb["name"] == "em-revisão" for lb in pr["labels"]) and no_qa:
+            continue
         if any(lb["name"] == "em-revisão" for lb in pr["labels"]):
             chave = f"revisar-pr-{n}-{sha}"
             # Commit novo com a revisão anterior ainda na fila: não cria outra, a que está aberta olha o PR como está.
