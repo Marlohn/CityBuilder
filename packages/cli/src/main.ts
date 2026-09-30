@@ -24,23 +24,12 @@ import {
   reportText,
   statsView,
 } from "@city/sim";
+import { parseArgs, reproduceCommand } from "./command";
 import { listScenarios, loadConfigAndData, loadScenario } from "./files";
 import { runGame, runGameDirected } from "./run";
 
-function args() {
-  const pos: string[] = [];
-  const opts: Record<string, string> = {};
-  for (const a of process.argv.slice(2)) {
-    if (a.startsWith("--")) {
-      const [k, v] = a.slice(2).split("=");
-      opts[k!] = v ?? "true";
-    } else pos.push(a);
-  }
-  return { pos, opts };
-}
-
 function main() {
-  const { pos, opts } = args();
+  const { pos, opts } = parseArgs(process.argv.slice(2));
   const cmd = pos[0] ?? "report";
   if (cmd === "scenarios") {
     console.log(listScenarios().join("\n"));
@@ -116,7 +105,7 @@ function main() {
   }
   console.log(reportText(game));
   console.log(
-    `\n(simulado em ${elapsed.toFixed(1)} s reais; reproduzir: npm run sim -- report${opts.scenario ? ` --scenario=${opts.scenario}` : ""} --seed=${seed} --days=${days})`,
+    `\n(simulado em ${elapsed.toFixed(1)} s reais; reproduzir: ${reproduceCommand(opts, seed, days)})`,
   );
 }
 
