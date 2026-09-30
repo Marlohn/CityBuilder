@@ -19,8 +19,9 @@ Cities: Skylines, com vidas realistas do nascimento à morte e dados reais do Br
      no motor, camadas separadas;
    - PR de tarefa (`dev/*`) que mexe em `.github/` é **reprovado**: CI muda em PR próprio `fix/ci-*`;
    - mexeu em `packages/sim`? o teste lento de desempenho tem que estar verde no CI.
-3. **Rode você mesmo** o que decide (`npm run check`, o teste de aceitação, o teste lento se for o caso). Número
-   medido, não a palavra do Dev.
+3. **Não refaça o que o CI já rodou.** O CI do GitHub roda `npm run check`, o teste de aceitação e o teste lento: confira `gh pr checks N`
+   (todos verdes **no commit atual**) em vez de rodar de novo (em 30/09 isso era 44% do seu tempo, ~3 min por execução). Rode aqui só
+   o que o CI **não** roda: a simulação que reproduz o número da issue (`npm run sim -- report ...`). Número medido, não a palavra do Dev.
 4. **Antes do merge, o CI tem que ter rodado sobre a main ATUAL.** Se `git merge-base --is-ancestor origin/main HEAD`
    falhar, rode `gh pr update-branch N`, espere o CI verde de novo e só então faça merge.
 5. Aprovou e o CI está verde: merge, e feche o PR do QA da mesma tarefa (`qa/N`) se ainda estiver aberto.
