@@ -79,9 +79,20 @@ jobs:
           if git fetch origin "qa/${ISSUE}" 2>/dev/null; then BASE="origin/qa/${ISSUE}"; fi
           echo "Comparando com ${BASE}"
           CHANGED=$(git diff --name-only "${BASE}...${HEAD_SHA}" | grep -E '^tests/acceptance/' || true)
-          if [ -n "$CHANGED" ]; then
+          # O Dev pode trazer arquivos de teste que ja estao na main (merge da main na branch dele).
+          # Isso nao e alteracao do Dev: e o mesmo arquivo, byte a byte, que ja passou pela revisao.
+          # So conta como violacao o que o Dev mudou de verdade em relacao a main.
+          VIOLACOES=""
+          for f in $CHANGED; do
+            if git diff --quiet "origin/${{ github.base_ref }}" "${HEAD_SHA}" -- "$f"; then
+              echo "Ignorado (identico a main, veio no merge): $f"
+            else
+              VIOLACOES="${VIOLACOES} $f"
+            fi
+          done
+          if [ -n "$VIOLACOES" ]; then
             echo "O Dev alterou testes de aceitação do QA:"
-            echo "$CHANGED"
+            echo "$VIOLACOES"
             echo "Peça ao QA para ajustar o teste em outra branch (qa/...)."
             exit 1
           fi
