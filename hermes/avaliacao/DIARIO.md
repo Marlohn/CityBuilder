@@ -261,3 +261,21 @@ melhorias de arquitetura por iniciativa do supervisor, não socorro. O número q
 Melhorou onde importa: a autonomia foi **provada** num caso (`main` vermelha) e o sistema ficou menor. Mas o bug de 9 h mostra o
 risco real de rodar sem supervisor: **falha silenciosa**, o loop parado sem ninguém saber. Antes de dar por concluído, falta
 um aviso de "loop ocioso com tarefa pronta". Comparação de modelos: resultados abaixo quando terminarem.
+
+### Comparação de modelos para escrever código (30/09, tarefa #38, 9 testes de aceitação, via `opencode run`)
+
+Uma tarefa por modelo: é indício, não prova. Todos sem mexer no teste. Bruto em `/opt/data/avaliacao/bakeoff2.jsonl`.
+
+| Modelo | Tempo | Aceitação | `npm run check` | Linhas / arquivos |
+|---|---|---|---|---|
+| big-pickle | 167 s | 9/9 | **vermelho** | 119 / 2 |
+| space-bunny | 303 s | 9/9 | verde | 84 / 3 |
+| nemotron-3-ultra | 439 s | 9/9 | verde | 71 / 1 |
+| muse (o atual do dev/qa) | 539 s | 9/9 | verde | 101 / 2 |
+| longcat-2.5-preview | 699 s | 9/9 | verde | 107 / 2 |
+| mimo-v2.6-flash | 1380 s | 9/9 | verde | 98 / 3 |
+| nemotron-3.5-lightning | estourou 1500 s | 6/9 | vermelho | 47 / 1 |
+
+- Cinco modelos entregam o mesmo resultado; o muse não é o mais rápido. `space-bunny` (303 s) e `nemotron-3-ultra` (439 s, o menor diff)
+  foram melhores que ele nesta tarefa. `big-pickle` é rápido mas deixa o `check` vermelho; `lightning` não serve.
+- Não troquei o modelo do dev: falta uma 2ª tarefa (a #49 tem teste pronto) para ver se a ordem se mantém. Candidato: `bakeoff.sh` com `nemotron-3-ultra` e `space-bunny`.
