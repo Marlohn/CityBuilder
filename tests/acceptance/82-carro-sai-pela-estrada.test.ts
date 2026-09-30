@@ -10,7 +10,7 @@
  * praticamente a viagem inteira na tela - ele some so depois de passar a borda. E a tela nunca
  * tira de cena um carro que o motor ainda diz que esta andando.
  */
-import { TrafficVisuals, statsView } from "@city/sim";
+import { statsView, TrafficVisuals } from "@city/sim";
 import { describe, expect, it } from "vitest";
 import { createTestGame } from "../helpers";
 
@@ -76,10 +76,7 @@ function cidade(seed = "carro-sai82") {
  * Roda a tela ligada por `dias` e devolve as chegadas de carro com emprego fora: no quadro em que o
  * motor larga o carro na estrada de saida, o quanto da viagem visual ja estava desenhado.
  */
-function chegadasNaBorda(
-  game: ReturnType<typeof createTestGame>,
-  dias: number,
-): Chegada[] {
+function chegadasNaBorda(game: ReturnType<typeof createTestGame>, dias: number): Chegada[] {
   const vis = new TrafficVisuals(game);
   const veh = game.traffic.vehicles;
   const s = game.sim;
@@ -139,10 +136,7 @@ describe("carro com emprego fora sai pela estrada ate a borda", () => {
     ).toBeGreaterThan(0);
     const atrasados = chegadas.filter((c) => c.avance < 0.9);
     const resumo = chegadas
-      .map(
-        (c) =>
-          `carro ${c.carro} (motorista ${c.pessoa}) ${(c.avance * 100).toFixed(1)}%`,
-      )
+      .map((c) => `carro ${c.carro} (motorista ${c.pessoa}) ${(c.avance * 100).toFixed(1)}%`)
       .join(", ");
     expect(
       atrasados.length,
@@ -174,10 +168,9 @@ describe("carro com emprego fora sai pela estrada ate a borda", () => {
         if (!vis.isCarOnScreen(v)) invisiveis++;
       }
     }
-    expect(
-      andando,
-      "a cidade nao produziu carro andando para fora, o teste nao prova nada",
-    ).toBeGreaterThan(0);
+    expect(andando, "a cidade nao produziu carro andando para fora, o teste nao prova nada").toBeGreaterThan(
+      0,
+    );
     expect(
       invisiveis,
       "carro com emprego fora andando no motor e invisivel na tela: " +
@@ -194,10 +187,7 @@ describe("carro com emprego fora sai pela estrada ate a borda", () => {
     const esperado = statsView(comTela).population;
     const semTela = cidade();
     semTela.sim.step(2 * semTela.sim.clock.ticksPerDay);
-    expect(
-      statsView(semTela).population,
-      "a tela nao pode mudar a populacao do motor",
-    ).toBe(esperado);
+    expect(statsView(semTela).population, "a tela nao pode mudar a populacao do motor").toBe(esperado);
   }, 600000);
 });
 
@@ -205,7 +195,6 @@ describe("carro com emprego fora sai pela estrada ate a borda", () => {
 function trabalhadoresFora(game: ReturnType<typeof createTestGame>): number {
   const pop = game.city.pop;
   let n = 0;
-  for (let p = 0; p < pop.aliveCount; p++)
-    if (pop.job[p] === TRABALHA_FORA) n++;
+  for (let p = 0; p < pop.aliveCount; p++) if (pop.job[p] === TRABALHA_FORA) n++;
   return n;
 }
