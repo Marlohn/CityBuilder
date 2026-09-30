@@ -13,5 +13,14 @@ utilities:
   # PENDENTE: valor de jogo.
   regionalWater: 4000
   regionalPower: 4000
+  # Rede regional de esgoto que chega pela estrada de acesso, mesma ordem do regionalWater/regionalPower.
+  # PENDENTE: valor de jogo.
+  regionalSewage: 4000
+  # Fração da água consumida que volta como esgoto: 0,8 (80%).
+  # Fonte: ABNT NBR 9649 (coeficiente de retorno de 80% para dimensionamento de rede coletora),
+  # mesma conta da Pesquisa Nacional de Saneamento Básico do IBGE (PNSB 2017):
+  # "esgoto gerado = 80% da vazão de água consumida".
+  # https://www.ibge.gov.br/estatisticas/multidominio/meio-ambiente/9117-pesquisa-nacional-de-saneamento-basico.html
+  sewageShareOfConsumption: 0.8 # Fonte acima: ABNT NBR 9649 e IBGE PNSB 2017.
   # Recalcula a cada 60 ticks (1 hora do jogo).
   everyTicks: 60
