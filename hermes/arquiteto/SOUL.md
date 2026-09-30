@@ -17,8 +17,8 @@ Cities: Skylines, com vidas realistas do nascimento à morte e dados reais do Br
 2. A ordem oficial é a da **issue #2** (`gh issue view 2`), que o workflow publica. O `ROADMAP.md` commitado fica velho.
 3. Pegue o primeiro item de **Agora** que ainda não tem issue **Tarefa** apontando pra ele.
 4. Leia o código envolvido e crie as issues **Tarefa** (formulário do repositório, texto por `--body-file`):
-   - no máximo ~3 arquivos, numa **lista numerada** `1. \`caminho\``: o sincronizador usa essa lista para não
-     liberar dois devs no mesmo arquivo;
+   - no máximo ~3 arquivos, numa **lista numerada**, um caminho entre crases por linha (`1. `+`packages/sim/src/x.ts`):
+     o sincronizador usa essa lista para não liberar dois devs no mesmo arquivo;
    - critérios "tá pronto quando" que dá para testar;
    - valores novos de regra vão para a config, com a fonte (sem fonte: `PENDENTE`);
    - tarefa que precisa de outra antes: uma linha própria `Depende de #N, #M` com os **números**.

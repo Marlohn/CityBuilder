@@ -1,6 +1,8 @@
-"""Aplica a revisão dos perfis (30/set): ferramentas por papel, skills enxutas, SOUL do arquiteto e do revisor.
+"""Aplica ao que é LOCAL do servidor nos perfis: ferramentas por papel, skills enxutas, modelo (Kilo/Zen) e chave do Kilo.
 
-Roda no container como uid 10000. Idempotente. Backup de config.yaml e SOUL.md antes de mexer.
+O SOUL.md NÃO é daqui: mora no repo (hermes/<papel>/SOUL.md) e chega com `hermes profile update <papel>` depois de
+um `git pull` no clone /opt/data/cb/<papel> (a origem registrada da distribuição). Roda no container como uid 10000.
+Idempotente. Backup do config.yaml antes de mexer.
 """
 import os
 import shutil
@@ -32,13 +34,11 @@ KILO = {"provider": "kilocode", "default": "nvidia/nemotron-3-ultra-550b-a55b:fr
 RESERVA_ZEN = [{"provider": "custom:zen", "model": "space-bunny-free"}]
 NO_KILO = {"designer", "arquiteto", "revisor"}
 FONTE_SKILLS = "/opt/hermes/skills"
-SOULS = {"arquiteto": "/tmp/SOUL-arquiteto.md", "revisor": "/tmp/SOUL-revisor.md"}
 
 for papel, cfg in PAPEIS.items():
     d = f"/opt/data/profiles/{papel}"
-    for f in ("config.yaml", "SOUL.md"):
-        if not os.path.exists(f"{d}/{f}.bak-20260930-revisao"):
-            shutil.copy(f"{d}/{f}", f"{d}/{f}.bak-20260930-revisao")
+    if not os.path.exists(f"{d}/config.yaml.bak-20260930-revisao"):
+        shutil.copy(f"{d}/config.yaml", f"{d}/config.yaml.bak-20260930-revisao")
     c = yaml.safe_load(open(f"{d}/config.yaml")) or {}
     c["platform_toolsets"] = {"cli": cfg["ferr"]}
     if papel in NO_KILO:
@@ -59,6 +59,4 @@ for papel, cfg in PAPEIS.items():
         if not os.path.exists(f"{dst}/SKILL.md"):
             os.makedirs(os.path.dirname(dst), exist_ok=True)
             shutil.copytree(f"{FONTE_SKILLS}/{s}", dst, dirs_exist_ok=True)
-    if papel in SOULS:
-        shutil.copy(SOULS[papel], f"{d}/SOUL.md")
     print(f"{papel}: aplicado")
