@@ -7,3 +7,7 @@ terminal:
 agent:
   # Limite de passos por conversa. Um ciclo do papel cabe folgado aqui.
   max_turns: 150
+# Ferramentas do papel (revisão de 30/09): o despachante do kanban usa esta lista no --toolsets do trabalhador.
+# Fora de propósito: browser, clarify, computer_use, cronjob, delegation, image_gen, tts, vision. Ver hermes/OPERACAO.md.
+platform_toolsets:
+  cli: [file, terminal, skills, todo, memory, session_search, web]

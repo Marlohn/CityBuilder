@@ -36,6 +36,7 @@ export const UNMET = {
   job: 5,
   transit: 6,
   parking: 7,
+  errand: 8,
 } as const;
 
 export class EventLog {

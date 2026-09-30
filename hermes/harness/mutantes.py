@@ -1,0 +1,55 @@
+"""Reintroduz defeitos no sincronizador e confere que o teste fica vermelho. Uso: py -3 mutantes.py"""
+import os
+import subprocess
+import sys
+import tempfile
+
+AQUI = os.path.dirname(os.path.abspath(__file__))
+ORIGINAL = open(f"{AQUI}/sincronizar_github.py", encoding="utf-8").read()
+
+MUTANTES = {
+    "arquivado deixa de contar como cartão existente":
+        ('        k = t[1:t.index("]")]\n', '        k = t[1:t.index("]")]\n        if c.get("status") == "archived":\n            continue\n'),
+    "revisão cria 2º cartão aberto pro mesmo PR":
+        ('if chave not in existentes and not aberto(existentes, f"revisar-pr-{n}-"):', 'if chave not in existentes:'),
+    "3 rodadas gastas não chamam o arquiteto":
+        ('elif esgotada(existentes, base) and', 'elif False and esgotada(existentes, base) and'),
+    "zelador esquece o motivo do bloqueio":
+        ("f\"Motivo: {motivo_bloqueio(c['id'])}\"", '"Motivo: -"'),
+    "main vermelha cria conserto novo com outro aberto":
+        ('if not falhas or aberto(existentes, "main-vermelha-"):', 'if not falhas:'),
+    "rodada arquivada é tratada como aberta":
+        ('        if st not in TERMINAIS:\n            return None\n    return None\n\n\ndef esgotada', '        if st != "done":\n            return None\n    return None\n\n\ndef esgotada'),
+    "fecha PR do QA de tarefa ainda aberta":
+        ('if m and int(m.group(1)) not in abertas:', 'if m and int(m.group(1)) in abertas:'),
+    "protegido conta como main vermelha":
+        (' and r["name"] != "testes de aceitação protegidos"]', ']'),
+    "rascunho do QA esconde a tarefa do dev":
+        ('for pr in prs if not pr["headRefName"].startswith("qa/") for n in', 'for pr in prs for n in'),
+    "tarefa presa conta como fila cheia":
+        ('if len(prontas) < FILA_MINIMA:', 'if len(tarefas_abertas) < FILA_MINIMA:'),
+    "fecha tarefa de PR antigo":
+        ('< dt.timedelta(hours=48)', '< dt.timedelta(days=9999)'),
+    "PR do QA fecha a tarefa":
+        ('re.fullmatch(r"dev/(\d+)", pr["headRefName"])', 're.fullmatch(r"(?:dev|qa)/(\d+)", pr["headRefName"])'),
+    "dependência não segura a tarefa":
+        ('if dependencias(iss["body"]) & abertas:', 'if False:'),
+    "mesmo arquivo não serializa dev":
+        ('if papel == "dev" and n not in ativos and arquivos(iss["body"]) & ocupados:', 'if False:'),
+}
+
+falhou = 0
+for nome, (velho, novo) in MUTANTES.items():
+    if ORIGINAL.count(velho) != 1:
+        print(f"MUTANTE INVÁLIDO (trecho não achado ou repetido): {nome}")
+        falhou += 1
+        continue
+    with tempfile.NamedTemporaryFile("w", suffix=".py", delete=False, encoding="utf-8") as f:
+        f.write(ORIGINAL.replace(velho, novo))
+    r = subprocess.run([sys.executable, f"{AQUI}/testar_sinc.py", f.name, "--sem-rede"], capture_output=True, text=True,
+                       encoding="utf-8", env={**os.environ, "PYTHONIOENCODING": "utf-8"})
+    os.unlink(f.name)
+    pegou = r.returncode != 0
+    print(("PEGOU   " if pegou else "ESCAPOU ") + nome)
+    falhou += 0 if pegou else 1
+sys.exit(1 if falhou else 0)
