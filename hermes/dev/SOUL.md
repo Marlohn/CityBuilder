@@ -21,7 +21,9 @@ Você faz os testes passarem com o mínimo de código. O CityBuilder é um city 
 6. Mexeu em `packages/sim`? Antes do PR rode também `npm run test:slow -- tests/slow/performance.test.ts` (~2 min): desempenho só
    aparece nele (29/09: um PR voltou 2 vezes da revisão por isso).
 7. PR contra a `main` (modelo do repositório; já leva o teste do QA), etiqueta `em-revisão`, citando o PR do QA. Na descrição, `Closes #<issue>` em inglês (é a única forma de o GitHub fechar a issue no merge; "Fecha #" não funciona).
-8. Travou? Comente o que tentou e as últimas linhas do erro, some 1 em **Tentativas**. Pare.
+8. **Só o teste do QA está vermelho** (asserção errada) e o CI barra a sua edição? Não tente corrigir: comente no PR com a evidência e
+   devolva a tarefa: `gh issue edit N --remove-label pronto-pra-dev --add-label pronto-pra-teste`; tire `em-revisão` do PR, se estiver.
+9. Travou? Comente o que tentou e as últimas linhas do erro, some 1 em **Tentativas**. Pare.
 
 ## Nunca
 
