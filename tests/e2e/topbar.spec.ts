@@ -281,3 +281,96 @@ test("utilidades desligadas", async ({ page }) => {
     })
     .toContain("sem limite");
 });
+
+function blockedWarning(page: import("@playwright/test").Page) {
+  return page.locator(".topbar .blocked");
+}
+
+async function runGame(page: import("@playwright/test").Page) {
+  await page.locator('.topbar .speeds button[title="Velocidade 1x (1 dia = 2 min)"]').click();
+}
+
+async function pauseGame(page: import("@playwright/test").Page) {
+  await page.locator('.topbar .speeds button[title="Pausar"]').click();
+}
+
+async function injectBlocked(
+  page: import("@playwright/test").Page,
+  blockedByWater: number,
+  blockedByPower: number,
+) {
+  await lockStats(page, {
+    stats: { construction: { blockedByWater, blockedByPower } },
+  });
+}
+
+test("shows blocked-construction warning when water network is full", async ({ page }) => {
+  await openGame(page, "topbar");
+  await closePanel(page);
+  await runGame(page);
+  await injectBlocked(page, 3, 0);
+  await expect(
+    blockedWarning(page),
+    "aviso de obras paradas deveria aparecer com a rede de água estourada",
+  ).toBeVisible();
+});
+
+test("blocked warning names the missing utility", async ({ page }) => {
+  await openGame(page, "topbar");
+  await closePanel(page);
+  await runGame(page);
+  await injectBlocked(page, 2, 0);
+  await expect(
+    blockedWarning(page),
+    "aviso de obras paradas por falta de água deveria aparecer",
+  ).toBeVisible();
+  await expect(blockedWarning(page), "aviso deveria mencionar água quando blockedByWater > 0").toContainText(
+    "água",
+    { ignoreCase: true },
+  );
+  await injectBlocked(page, 0, 4);
+  await expect(
+    blockedWarning(page),
+    "aviso de obras paradas por falta de luz deveria aparecer",
+  ).toBeVisible();
+  await expect(blockedWarning(page), "aviso deveria mencionar luz quando blockedByPower > 0").toContainText(
+    "luz",
+    { ignoreCase: true },
+  );
+  await injectBlocked(page, 1, 2);
+  await expect(blockedWarning(page), "aviso deveria continuar visível com água e luz faltando").toBeVisible();
+  await expect(blockedWarning(page), "aviso deveria mencionar água quando os dois faltam").toContainText(
+    "água",
+    { ignoreCase: true },
+  );
+  await expect(blockedWarning(page), "aviso deveria mencionar luz quando os dois faltam").toContainText(
+    "luz",
+    { ignoreCase: true },
+  );
+});
+
+test("hides blocked-construction warning when network has room", async ({ page }) => {
+  await openGame(page, "topbar");
+  await closePanel(page);
+  await runGame(page);
+  await injectBlocked(page, 0, 0);
+  await expect(
+    blockedWarning(page),
+    "aviso de obras paradas não deveria aparecer com a rede folgada",
+  ).toHaveCount(0);
+});
+
+test("pausing hides the blocked warning and resuming shows it again", async ({ page }) => {
+  await openGame(page, "topbar");
+  await closePanel(page);
+  await runGame(page);
+  await injectBlocked(page, 3, 0);
+  await expect(blockedWarning(page), "aviso deveria estar visível antes de pausar").toBeVisible();
+  await pauseGame(page);
+  await expect(blockedWarning(page), "aviso deveria sumir com o jogo pausado").toHaveCount(0);
+  await runGame(page);
+  await expect(
+    blockedWarning(page),
+    "aviso deveria voltar ao rodar com a rede ainda estourada",
+  ).toBeVisible();
+});
