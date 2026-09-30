@@ -12,7 +12,7 @@
  * (QA vermelho de propósito).
  */
 
-import { reportText, statsView, type Game } from "@city/sim";
+import { type Game, reportText, statsView } from "@city/sim";
 import { describe, expect, it } from "vitest";
 import { createTestGame } from "../helpers";
 
@@ -201,9 +201,7 @@ describe("issue #40: relatório mostra as viagens de ontem, por motivo", () => {
     // `game.ts`. Hoje `lastYear` só tem nascimentos/mortes/chegadas/saídas/
     // casamentos/divórcios (mais desejos não atendidos): nenhum valor de viagem.
     const lastYear = game.city.lastYear as unknown as Record<string, unknown>;
-    const motorValues = Object.values(lastYear).filter(
-      (v): v is number => typeof v === "number",
-    );
+    const motorValues = Object.values(lastYear).filter((v): v is number => typeof v === "number");
     for (const [label, value] of Object.entries(trips!)) {
       expect(
         motorValues.includes(value),
@@ -215,8 +213,18 @@ describe("issue #40: relatório mostra as viagens de ontem, por motivo", () => {
     // E não no contrato (`packages/contract/src/view.ts`, tipo StatsView) nem no
     // StatsView: a visão pronta para a tela não carrega contadores de viagem.
     const viewKeys = Object.keys(statsView(game));
-    const tripKeys = viewKeys.filter((k) =>
-      /trip|viag|trabalho|escola|compra|sa[uú]de|health|lazer|leisure|walk|a.?p[eé]/i.test(k),
+    const tripKeys = viewKeys.filter(
+      (k) =>
+        /^(?:trips|viagens?)/i.test(k) ||
+        [
+          "tripsWork",
+          "tripsSchool",
+          "tripsShopping",
+          "tripsHealth",
+          "tripsLeisure",
+          "tripsWalk",
+          "viagensOntem",
+        ].includes(k),
     );
     expect(
       tripKeys,
