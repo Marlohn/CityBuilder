@@ -10,6 +10,7 @@
  * - Congestionamento: função BPR (1964) com o volume do dia anterior em cada quadradinho, por hora.
  */
 import type { City } from "../city";
+import { growTo } from "../core/growable";
 import { hashString } from "../core/rng";
 import { fire } from "../people/actions";
 import { EV, UNMET } from "../people/events";
@@ -20,7 +21,7 @@ import type { System } from "../sim";
 import { Vehicles, VSTATE } from "./vehicles";
 
 /** Motivo da viagem (vai em `PendingTrip.purpose` e em `pop.tripPurpose`). */
-export const TRIP = { none: 0, work: 1, school: 2 } as const;
+export const TRIP = { none: 0, work: 1, school: 2, shopping: 3, health: 4, leisure: 5 } as const;
 
 interface PendingTrip {
   person: number;
@@ -80,6 +81,8 @@ export class TrafficSystem implements System {
   private capacity: Float32Array;
   private capacityVersion = -1;
   private lastDay = -1;
+  /** Destino da volta do dia por pessoa (prédio; -1 = sem volta). Local, cresce com a população. */
+  private errandDest = new Int32Array(0);
   /** Viagens começadas (para a tela). `tripSeq` conta todas desde o começo do jogo. */
   readonly tripLog: TripStart[] = [];
   tripSeq = 0;
@@ -156,6 +159,7 @@ export class TrafficSystem implements System {
     const h = city.pop.household[p]!;
     const car = h >= 0 ? city.hh.car[h]! : -1;
     const veh = this.vehicles;
+    this.clearErrand(p);
     if (car < 0 || veh.driver[car] !== p) return;
     veh.driver[car] = -1;
     if (veh.state[car] === VSTATE.moving) return; // termina a viagem e estaciona no destino
@@ -252,7 +256,87 @@ export class TrafficSystem implements System {
         const t = (Math.floor(r.schoolStartMinute / mpt) + (h % spread)) % tpd;
         this.departures[t]!.push({ p, purpose: TRIP.school });
       }
+      // Volta de compras/saúde/lazer: um motivo por dia para quem não tem trabalho nem
+      // aula no dia e tem casa (o destino é resolvido na hora da saída, em `leave`).
+      if (pop.job[p] === -1 && pop.school[p]! < 0 && city.homeBuilding(p) >= 0) {
+        const motive = this.pickErrandMotive(p);
+        if (motive !== TRIP.none) {
+          pop.tripState[p] = 0;
+          pop.tripPurpose[p] = TRIP.none;
+          const start = this.pickWorkStartMinute(
+            r.errandStartMinute[0],
+            r.errandStartMinute[1],
+            `${sim.seed}:errandstart:${p}`,
+          );
+          const t = Math.floor(Math.max(0, start) / mpt) % tpd;
+          this.departures[t]!.push({ p, purpose: motive });
+        }
+      }
     }
+  }
+
+  /** Garante espaço no destino da volta para a pessoa `p` (novas entradas valem -1 = sem volta). */
+  private ensureErrand(p: number) {
+    if (this.errandDest.length <= p) this.errandDest = growTo(this.errandDest, p + 1, -1);
+  }
+
+  /** Esquece o destino da volta da pessoa (quando ela volta ou termina a viagem). */
+  private clearErrand(p: number) {
+    this.ensureErrand(p);
+    this.errandDest[p] = -1;
+  }
+
+  /**
+   * Motivo da volta do dia (TRIP.shopping | TRIP.health | TRIP.leisure | TRIP.none).
+   * Estável por pessoa (semente + id): divide o "other" da OD 2017 pelas proporções da config.
+   */
+  private pickErrandMotive(p: number): number {
+    const s = this.city.sim.config.traffic.routine.shareByPurpose;
+    const shopping = s.shopping ?? 0;
+    const health = s.health ?? 0;
+    const leisure = s.leisure ?? 0;
+    const total = shopping + health + leisure;
+    if (total <= 0) return TRIP.none;
+    const u = (hashString(`${this.city.sim.seed}:errand:${p}`)[0]! >>> 0) / 4294967296;
+    if (u < shopping / total) return TRIP.shopping;
+    if (u < (shopping + health) / total) return TRIP.health;
+    return TRIP.leisure;
+  }
+
+  /**
+   * Destino da volta (prédio; -1 = nenhum). Saúde vai para a UBS da pessoa (se ainda estiver
+   * ativa) ou para a UBS ativa mais próxima; compras e lazer vão para o comércio ativo mais
+   * próximo (PENDENTE de praça: o catálogo não tem parque, então lazer vai para o comércio).
+   * Guarda o prédio resolvido para a volta saber de onde sair.
+   */
+  private resolveErrand(p: number, purpose: number, homeAccess: number): number {
+    const city = this.city;
+    const r = city.sim.config.traffic.routine;
+    this.ensureErrand(p);
+    let dest = -1;
+    if (purpose === TRIP.health) {
+      const own = city.pop.clinic[p]!;
+      if (own >= 0 && city.sim.buildings.isActive(own)) dest = own;
+      else {
+        const c = city.markets.findActiveNear(
+          city.rng.market,
+          homeAccess,
+          (tipo) => tipo.service === "health",
+          r.errandCandidates,
+        );
+        if (c) dest = c.building;
+      }
+    } else {
+      const c = city.markets.findActiveNear(
+        city.rng.market,
+        homeAccess,
+        (tipo) => tipo.zone === "commercial",
+        r.errandCandidates,
+      );
+      if (c) dest = c.building;
+    }
+    this.errandDest[p] = dest;
+    return dest;
   }
 
   /**
@@ -375,7 +459,7 @@ export class TrafficSystem implements System {
     veh.streetTile[v] = -1;
   }
 
-  /** A pessoa sai de casa (toDest) ou volta do trabalho/escola. A volta é sempre para casa. */
+  /** A pessoa sai de casa (toDest) ou volta do trabalho/escola/volta. A volta é sempre para casa. */
   private leave(p: number, purpose: number, toDest: boolean) {
     const city = this.city;
     const { pop, hh, sim } = city;
@@ -386,13 +470,48 @@ export class TrafficSystem implements System {
     const homeAccess = city.homeAccess(p);
     if (homeAccess < 0) return;
     const isWork = purpose === TRIP.work;
+    const isErrand = purpose === TRIP.shopping || purpose === TRIP.health || purpose === TRIP.leisure;
+    const r = sim.config.traffic.routine;
+    if (isErrand && toDest && (pop.job[p]! !== -1 || pop.school[p]! !== -1)) {
+      // Virou trabalhador/estudante no meio do dia: a volta agendada de manhã não sai.
+      this.clearErrand(p);
+      pop.tripState[p] = 0;
+      pop.tripPurpose[p] = TRIP.none;
+      return;
+    }
     // Prédio onde a pessoa está (volta) ou para onde vai (ida); fora da cidade só o emprego.
-    const away = isWork ? pop.job[p]! : pop.school[p]!;
-    if (away === -1) {
-      // Perdeu o destino no meio do dia: amanhece em casa.
-      if (!toDest) {
+    let away: number;
+    if (isWork) away = pop.job[p]!;
+    else if (isErrand && !toDest) {
+      // Volta da volta: só existe se a ida resolveu um destino (se a ida não saiu, não mexe em nada).
+      away = p < this.errandDest.length ? this.errandDest[p]! : -1;
+      if (away < 0) {
+        // Ida cancelada: não deixa resíduo (não fica preso fora de casa).
+        this.clearErrand(p);
         pop.tripState[p] = 0;
         pop.tripPurpose[p] = TRIP.none;
+        return;
+      }
+    } else if (isErrand) away = this.resolveErrand(p, purpose, homeAccess);
+    else away = pop.school[p]!;
+    // A volta para casa viaja com motivo "none": o destino dela é a casa (residência), não a
+    // loja/UBS, e a sonda de viagens por motivo só conta a ida e a permanência no destino.
+    // O destino guardado já foi lido acima e é esquecido agora que a volta começou.
+    let statePurpose = purpose;
+    if (isErrand && !toDest) {
+      this.clearErrand(p);
+      statePurpose = TRIP.none;
+    }
+    if (away === -1) {
+      if (!toDest) {
+        // Perdeu o destino no meio do dia: amanhece em casa.
+        pop.tripState[p] = 0;
+        pop.tripPurpose[p] = TRIP.none;
+      } else if (isErrand) {
+        // Nenhum destino para a volta (nem UBS nem comércio): fica em casa e registra.
+        pop.tripState[p] = 0;
+        pop.tripPurpose[p] = TRIP.none;
+        city.log(EV.unmet, p, UNMET.errand);
       }
       return;
     }
@@ -410,7 +529,7 @@ export class TrafficSystem implements System {
         meters <= walkMax ? sim.config.traffic.walking.speedKmh : sim.config.roads.avenue.speedKmh / 2;
       this.logTrip({ kind: "walk", id: p, model: p % 4, from, to });
       city.sim.perf.count("tripsStarted");
-      this.scheduleArrival(p, (meters / 1000 / kmh) * 60, purpose, toDest);
+      this.scheduleArrival(p, (meters / 1000 / kmh) * 60, statePurpose, toDest);
       return;
     }
     const h = pop.household[p]!;
@@ -431,28 +550,46 @@ export class TrafficSystem implements System {
       veh.state[car] !== VSTATE.gone;
     if ((toDest && carHere) || drivesBack) {
       veh.driver[car] = p;
-      this.newTrips.push({ person: p, vehicle: car, from, to, dest: toDest ? away : home, purpose, toDest });
+      this.newTrips.push({
+        person: p,
+        vehicle: car,
+        from,
+        to,
+        dest: toDest ? away : home,
+        purpose: statePurpose,
+        toDest,
+      });
       this.routes.request(from, to);
       pop.tripState[p] = toDest ? 1 : 3;
-      pop.tripPurpose[p] = purpose;
+      pop.tripPurpose[p] = statePurpose;
       return;
     }
     // Sem carro: a pé (se perto) ou por outro meio. Tempo estimado; sem veículo na tela.
     const meters = sim.world.manhattanMeters(from, to);
     const walkMax = isWork
       ? sim.config.traffic.walking.maxWorkMeters
-      : sim.config.education.maxDistanceMeters;
+      : isErrand
+        ? r.errandWalkMeters
+        : sim.config.education.maxDistanceMeters;
     const kmh =
       meters <= walkMax ? sim.config.traffic.walking.speedKmh : sim.config.roads.avenue.speedKmh / 2;
     if (isWork && toDest && meters > walkMax) {
       city.year.transitRefusals++;
       if (city.rng.market.chance(0.05)) city.log(EV.unmet, p, UNMET.transit);
     }
+    if (isErrand && toDest && meters > walkMax) {
+      // Sem carro e longe (o jogo ainda não tem ônibus): fica em casa e registra.
+      this.clearErrand(p);
+      pop.tripState[p] = 0;
+      pop.tripPurpose[p] = TRIP.none;
+      city.log(EV.unmet, p, UNMET.errand);
+      return;
+    }
     if (meters <= walkMax) this.logTrip({ kind: "walk", id: p, model: p % 4, from, to });
     const minutes =
       (meters / 1000 / kmh) * 60 +
       (isWork && away === OUTSIDE_JOB ? sim.config.population.outsideJobs.extraCommuteMinutes : 0);
-    this.scheduleArrival(p, minutes, purpose, toDest);
+    this.scheduleArrival(p, minutes, statePurpose, toDest);
   }
 
   private logTrip(t: TripStart) {
@@ -492,6 +629,9 @@ export class TrafficSystem implements System {
           // Não existe caminho até o trabalho (via demolida): perde o emprego.
           // Sem via até a escola: só volta para casa (não perde o emprego).
           fire(city, t.person, "sem caminho até o trabalho");
+        }
+        if (t.purpose === TRIP.shopping || t.purpose === TRIP.health || t.purpose === TRIP.leisure) {
+          this.clearErrand(t.person);
         }
         pop.tripState[t.person] = 0;
         pop.tripPurpose[t.person] = TRIP.none;
@@ -613,25 +753,45 @@ export class TrafficSystem implements System {
     const veh = this.vehicles;
     if (!toDest && car >= 0 && veh.driver[car] === p) veh.driver[car] = -1;
     const isWork = purpose === TRIP.work;
-    if (toDest && ((isWork && pop.job[p] === -1) || (!isWork && pop.school[p]! === -1))) {
+    const isErrand = purpose === TRIP.shopping || purpose === TRIP.health || purpose === TRIP.leisure;
+    if (toDest && ((isWork && pop.job[p] === -1) || (!isWork && !isErrand && pop.school[p]! === -1))) {
       // Perdeu o destino no caminho: volta para casa.
       pop.tripState[p] = 0;
       pop.tripPurpose[p] = TRIP.none;
       return;
     }
+    if (toDest && isErrand) {
+      // O destino da volta sumiu (demolido) no caminho: volta para casa sem problema.
+      const dest = p < this.errandDest.length ? this.errandDest[p]! : -1;
+      if (dest < 0 || !city.sim.buildings.isActive(dest)) {
+        this.clearErrand(p);
+        pop.tripState[p] = 0;
+        pop.tripPurpose[p] = TRIP.none;
+        return;
+      }
+    }
     if (toDest) {
       pop.tripState[p] = 2;
-      // Volta no fim do expediente (duração própria da pessoa) ou da aula.
+      // Volta no fim do expediente (duração própria da pessoa), da aula ou da volta.
       const clock = city.sim.clock;
       const r = city.config.traffic.routine;
+      const errandStay =
+        purpose === TRIP.shopping
+          ? r.errandStayMinutes.shopping
+          : purpose === TRIP.health
+            ? r.errandStayMinutes.health
+            : r.errandStayMinutes.leisure;
       const duration = isWork
         ? pop.workMinutes[p]! > 0
           ? pop.workMinutes[p]!
           : (r.workHoursWeekly.mean * 60) / r.workdaysPerWeek
-        : r.schoolDurationMinutes;
+        : isErrand
+          ? errandStay
+          : r.schoolDurationMinutes;
       const dur = clock.minutesToTicks(duration);
       this.returns[(clock.tickOfDay + dur) % clock.ticksPerDay]!.push({ p, purpose });
     } else {
+      if (isErrand) this.clearErrand(p);
       pop.tripState[p] = 0;
       pop.tripPurpose[p] = TRIP.none;
     }

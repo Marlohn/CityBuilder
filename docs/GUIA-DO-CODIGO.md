@@ -232,3 +232,4 @@ Mudou isto → atualize aquilo **no mesmo PR**:
 | Bug que pode acontecer de novo | uma linha na seção 6 |
 | Papel de agente ou fluxo no GitHub | `agents/<papel>.md` e `hermes/<papel>/SOUL.md` |
 | Algo que o jogador vê | `docs/MANUAL.md` |
+| Volta de compras/saúde/lazer (motivo do dia, destino e volta para casa) | `packages/sim/src/traffic/trafficSystem.ts` (monta a volta) e números em `config/traffic.yaml` (routine.errand*) |
