@@ -36,6 +36,8 @@ MUTANTES = {
         ('and int(pr["headRefName"][4:]) in esperando_qa', 'and False'),
     "item do roadmap vira cartão":
         ('lista = [i for i in lista if any(lb["name"] == "tarefa" for lb in i["labels"])]', 'lista = lista'),
+    "revisao repetida com a issue esperando o QA":
+        ('if any(lb["name"] == "em-revisão" for lb in pr["labels"]) and no_qa:', 'if False:'),
     "dependência não segura a tarefa":
         ('if dependencias(iss["body"]) & abertas:', 'if False:'),
     "mesmo arquivo não serializa dev":
