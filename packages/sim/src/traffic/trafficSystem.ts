@@ -529,6 +529,8 @@ export class TrafficSystem implements System {
         meters <= walkMax ? sim.config.traffic.walking.speedKmh : sim.config.roads.avenue.speedKmh / 2;
       this.logTrip({ kind: "walk", id: p, model: p % 4, from, to });
       city.sim.perf.count("tripsStarted");
+      // A criança saiu mesmo a pé: conta a viagem de escola de ontem.
+      city.countTrip(purpose, true);
       this.scheduleArrival(p, (meters / 1000 / kmh) * 60, statePurpose, toDest);
       return;
     }
@@ -589,6 +591,8 @@ export class TrafficSystem implements System {
     const minutes =
       (meters / 1000 / kmh) * 60 +
       (isWork && away === OUTSIDE_JOB ? sim.config.population.outsideJobs.extraCommuteMinutes : 0);
+    // A pessoa saiu mesmo (a pé ou de ônibus): conta a viagem de ontem (a volta do recado é `none` e o `countTrip` ignora).
+    city.countTrip(statePurpose, meters <= walkMax);
     this.scheduleArrival(p, minutes, statePurpose, toDest);
   }
 
@@ -662,6 +666,8 @@ export class TrafficSystem implements System {
     veh.moving.add(v);
     city.sim.perf.count("tripsStarted");
     this.logTrip({ kind: "car", id: v, model: veh.model[v]!, tiles: route.tiles });
+    // O carro saiu mesmo (rota resolvida): conta a viagem de ontem (a volta do recado é `none` e o `countTrip` ignora).
+    city.countTrip(t.purpose, false);
     if (t.purpose === TRIP.work && t.toDest)
       city.pop.commuteMinutes[t.person] = Math.min(65535, Math.round(minutes));
     const drive = veh.arriveTick[v]! - clock.tick;
