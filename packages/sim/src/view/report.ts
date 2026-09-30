@@ -27,6 +27,7 @@ export function reportText(game: Game): string {
   lines.push(
     `Trabalhando: ${n(s.employed)} (fora da cidade: ${n(city.outsideWorkers)}) · desempregados: ${n(s.unemployed)} · estudantes: ${n(s.students)} · aposentados: ${n(s.retired)} · crianças: ${n(s.children)}`,
   );
+  lines.push(`Na estrada de acesso, carros fora da cidade: ${n(game.traffic.vehiclesOutside())}`);
   lines.push(
     `Ano passado: ${n(city.lastYear.births)} nascimentos, ${n(city.lastYear.deaths)} mortes, ${n(city.lastYear.arrivals)} chegadas, ${n(city.lastYear.departures)} saídas, ${n(city.lastYear.marriages)} casamentos, ${n(city.lastYear.divorces)} divórcios`,
   );

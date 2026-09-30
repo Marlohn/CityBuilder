@@ -651,6 +651,9 @@ export class TrafficSystem implements System {
     const veh = this.vehicles;
     const v = t.vehicle;
     this.unpark(v);
+    // Enquanto viaja, o carro continua no quadradinho de onde saiu: a tela o mostra pela rota,
+    // mas ele nunca fica sem lugar no mapa (nem quando o ponto desenhado sai do retangulo da tela).
+    veh.streetTile[v] = route.tiles[0]!;
     const seconds = this.travelSeconds(route, clock.minuteOfDay);
     const extra =
       t.dest === OUTSIDE_JOB && t.purpose === TRIP.work
@@ -704,9 +707,14 @@ export class TrafficSystem implements System {
       return;
     }
     if (dest === OUTSIDE_JOB) {
+      // O carro fica parado na estrada de acesso, visível.
       veh.state[v] = VSTATE.outside;
       veh.routes[v] = null;
       veh.routeCum[v] = null;
+      const driver = veh.driver[v]!;
+      const home = driver >= 0 ? this.city.homeAccess(driver) : -1;
+      const exit = home >= 0 ? this.city.sim.network.exitFor(home) : -1;
+      veh.streetTile[v] = exit >= 0 ? exit : -1;
     } else this.park(v, dest);
   }
 
@@ -803,6 +811,14 @@ export class TrafficSystem implements System {
     }
   }
 
+  /** Quantos carros estão fora da cidade (só leitura). */
+  vehiclesOutside(): number {
+    const veh = this.vehicles;
+    let total = 0;
+    for (let v = 0; v < veh.count; v++) if (veh.state[v] === VSTATE.outside) total++;
+    return total;
+  }
+
   /**
    * Posições dos carros dentro do retângulo (para a tela): os que estão andando e os estacionados
    * (na frente do prédio onde estão parados, ou na rua). Só leitura; usa Math.atan2 porque é só visual.
@@ -826,8 +842,10 @@ export class TrafficSystem implements System {
     // Estacionados.
     const slot = new Map<number, number>();
     for (let v = 0; v < veh.count && out.length < 4 * 30000; v++) {
-      if (veh.state[v] !== VSTATE.parked || hidden?.(v)) continue;
-      const b = veh.parkedAt[v]!;
+      const st = veh.state[v]!;
+      if (st !== VSTATE.parked && st !== VSTATE.outside) continue;
+      if (hidden?.(v)) continue;
+      const b = st === VSTATE.parked ? veh.parkedAt[v]! : -1;
       const access = b >= 0 ? bs.access[b]! : veh.streetTile[v]!;
       if (access < 0) continue;
       const key = b >= 0 ? b : -1 - access;
