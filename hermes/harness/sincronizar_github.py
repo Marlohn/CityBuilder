@@ -427,8 +427,43 @@ def diario_github():
     json.dump(est, open(DIARIO_ESTADO, "w"))
 
 
+KILO_LIMITE_H = 200   # limite da conta do dono no Kilo (informado por ele em 30/09); o Kilo NÃO manda cabeçalho de uso
+KILO_AVISO = 170
+
+
+def uso_kilo():
+    """Conta as chamadas feitas pelo Kilo na última hora (sessões dos perfis) e avisa perto do limite, 1x por hora.
+
+    Passar do limite não trava ninguém (o fallback leva pro Zen), mas degrada o modelo dos papéis de raciocínio:
+    precisa aparecer no diário pra decidir se muda a divisão de papéis.
+    """
+    import glob
+    import sqlite3
+    desde = dt.datetime.now().timestamp() - 3600
+    total = 0
+    for db in glob.glob("/opt/data/profiles/*/state.db"):
+        try:
+            c = sqlite3.connect(f"file:{db}?mode=ro", uri=True, timeout=5)
+            total += c.execute("select coalesce(sum(api_call_count),0) from sessions where billing_base_url like "
+                               "'%kilo.ai%' and coalesce(last_activity_at, ended_at, started_at) >= ?",
+                               (desde,)).fetchone()[0]
+        except sqlite3.Error:
+            continue
+    hora = dt.datetime.now(BRT).strftime("%Y-%m-%dT%H")
+    marca = "/opt/data/avaliacao/kilo-avisado"
+    if total >= KILO_AVISO and (not os.path.exists(marca) or open(marca).read() != hora):
+        registrar("kilo_perto_do_limite", f"{total} chamadas na última hora", f"limite da conta {KILO_LIMITE_H}/h; "
+                  "passando disso o fallback leva pro Zen (space-bunny)", impacto=True)
+        open(marca, "w").write(hora)
+    return total
+
+
 def main():
-    freio_memoria()  # antes de tudo e sem depender do GitHub: protege a máquina mesmo sem token/rede
+    freio_memoria()
+    try:
+        uso_kilo()
+    except Exception as e:
+        print(f"contagem do Kilo falhou: {e}")  # antes de tudo e sem depender do GitHub: protege a máquina mesmo sem token/rede
     tk = token()
     if not tk:
         return

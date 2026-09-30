@@ -42,6 +42,18 @@ GitHub (issues/etiquetas/PRs/CI) --lê a cada 2 min--> sincronizador (sem LLM)
 | `qa` | Teste de aceitação que falha antes do código; caça bug quando está sem fila | low | — | github, opencode, test-driven-development, systematic-debugging |
 | `dev` | Faz o teste passar (o código sai do OpenCode/muse); conserta a main vermelha | low | — | github, opencode, test-driven-development, systematic-debugging, node-inspect-debugger |
 
+- **Modelo principal por papel (30/09):**
+  - **designer, arquiteto e revisor:** `nvidia/nemotron-3-ultra-550b-a55b:free` pelo **Kilo** (provedor nativo
+    `kilocode`, chave `KILOCODE_API_KEY` no `.env` do perfil, fonte `/opt/data/.kilo_key`), com fallback pro
+    `space-bunny-free` do Zen.
+  - **qa e dev:** `space-bunny-free` pelo Zen.
+  - **Por que essa divisão:** a conta Kilo tem **~200 req/h**. Medido: arquiteto ~105/h (com revisões antigas), revisor
+    ~29/h, designer 1 ciclo/dia; qa ~77/h e dev ~64/h não cabem junto.
+  - **Vigia do limite:** o Kilo não manda cabeçalho de uso. O sincronizador conta as chamadas da última hora
+    (`uso_kilo`) e registra impacto ao passar de 170.
+  - **Modelos grátis do Kilo** que responderam em 30/09: nemotron-3-ultra (1,3 s), cohere/north-mini-code (1,2 s),
+    ling-3.0-flash, dots-3-note, step-3.7-flash, laguna-s-2.1, space-bunny-alpha (23 s) e o roteador `kilo-auto/free`.
+    Fora do ar: nemotron-3-super, qwen3.8-27b, inkling-small (limite diário próprio).
 - **Base de ferramentas de todos:** `file, terminal, skills, todo, memory, session_search`, configurada em
   `platform_toolsets.cli` de cada perfil. É daí que o despachante tira o `--toolsets` do trabalhador; as ferramentas do
   kanban entram à parte. **Fora de propósito:** `browser` (Chromium pesado), `clarify` (não há humano pra responder),
