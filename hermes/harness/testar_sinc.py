@@ -92,8 +92,8 @@ def gh_issues(dev=(), qa=()):
     return _gh
 
 
-def iss(n, corpo="", titulo="t"):
-    return {"number": n, "title": titulo, "body": corpo}
+def iss(n, corpo="", titulo="t", etiquetas=("tarefa",)):
+    return {"number": n, "title": titulo, "body": corpo, "labels": [{"name": e} for e in etiquetas]}
 
 
 ARQ = "1. `packages/sim/src/a.ts`\n"
@@ -108,6 +108,8 @@ s.tarefas(todas, [], esg); cria("arquiteto-quebrar-1")
 assert any(a[:2] == ("issue", "comment") for a in ESCRITOS), "tem que comentar na issue (rastro)"; ESCRITOS.clear()
 s.tarefas(todas, [], {**esg, "arquiteto-quebrar-1": "done"}); cria()  # só uma vez
 s.tarefas(todas, [], {**esg, "dev-issue-1-r3": "running"}); cria()  # rodada aberta: não quebra ainda
+s.gh = gh_issues(dev=[iss(30, etiquetas=("roadmap", "pronto-pra-dev"))])
+s.tarefas(todas, [], {}); cria()  # item do roadmap com a etiqueta errada: nunca vira cartão
 s.gh = gh_issues(qa=[iss(1)])
 s.tarefas(todas, [], {f"qa-issue-1-r{n}": "archived" for n in (1, 2, 3)}); cria("arquiteto-quebrar-1")  # arquivado também gasta rodada
 s.gh = real_gh; ESCRITOS.clear()

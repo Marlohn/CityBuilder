@@ -268,7 +268,9 @@ def tarefas(todas, prs, existentes):
     bugs = {i["number"] for i in todas if any(lb["name"] == "bug" for lb in i["labels"])}  # PLANO 12.2: bug passa na frente
     for etiqueta, papel, prio in (("pronto-pra-dev", "dev", 20), ("pronto-pra-teste", "qa", 10)):
         lista = json.loads(gh("issue", "list", "-R", REPO, "--state", "open", "--label", etiqueta,
-                              "--json", "number,title,body", "--limit", "30"))
+                              "--json", "number,title,body,labels", "--limit", "30"))
+        # Só TAREFA vira cartão: em 30/09 o arquiteto pôs `pronto-pra-teste` no ITEM #21 e nasceu cartão de QA para o item inteiro.
+        lista = [i for i in lista if any(lb["name"] == "tarefa" for lb in i["labels"])]
         ativos, ocupados = set(), set()
         if papel == "dev":
             # Dois devs no mesmo arquivo = conflito garantido e uma rodada de revisão a mais (29/09: #36, #37 e #48 em
