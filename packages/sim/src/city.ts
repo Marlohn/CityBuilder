@@ -13,6 +13,8 @@ import type { Simulation } from "./sim";
 import type { Vehicles } from "./traffic/vehicles";
 
 /** Contadores do ano atual (zerados a cada dia do jogo, que = 1 ano). */
+// 1 dia do jogo = 1 ano de vida: `game.ts` vira `city.year` em `city.lastYear` no fim do ano,
+// então o relatório lê `city.lastYear` como "ontem".
 export interface YearCounters {
   births: number;
   deaths: number;
@@ -25,6 +27,14 @@ export interface YearCounters {
   /** Recusas de emprego por distância sem carro. */
   transitRefusals: number;
   parkingMisses: number;
+  /** Viagens de ontem por motivo (ida e volta contam; volta de recado é `none` e não conta). */
+  tripsWork: number;
+  tripsSchool: number;
+  tripsShopping: number;
+  tripsHealth: number;
+  tripsLeisure: number;
+  /** Viagens de ontem feitas a pé (parte das de cima). */
+  tripsWalk: number;
 }
 
 export function emptyYear(): YearCounters {
@@ -38,6 +48,12 @@ export function emptyYear(): YearCounters {
     migrantsTurnedAway: {},
     transitRefusals: 0,
     parkingMisses: 0,
+    tripsWork: 0,
+    tripsSchool: 0,
+    tripsShopping: 0,
+    tripsHealth: 0,
+    tripsLeisure: 0,
+    tripsWalk: 0,
   };
 }
 
@@ -148,6 +164,17 @@ export class City {
 
   log(type: number, p: number, a = -1, b = -1) {
     this.events.add(this.tick, type, p, a, b);
+  }
+
+  /** Conta uma viagem que realmente começou (motivos do `TRIP` em traffic/trafficSystem.ts, sem importar para não fechar ciclo: none=0, work=1, school=2, shopping=3, health=4, leisure=5; `none`, a volta do recado, não conta). */
+  countTrip(purpose: number, walk: boolean) {
+    if (purpose === 1) this.year.tripsWork++;
+    else if (purpose === 2) this.year.tripsSchool++;
+    else if (purpose === 3) this.year.tripsShopping++;
+    else if (purpose === 4) this.year.tripsHealth++;
+    else if (purpose === 5) this.year.tripsLeisure++;
+    else return;
+    if (walk) this.year.tripsWalk++;
   }
 
   /** Coloca a pessoa na lista de atualização anual (no tick do dia do aniversário). */
