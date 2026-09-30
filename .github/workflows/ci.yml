@@ -71,6 +71,7 @@ jobs:
           # Commit do Dev. HEAD aqui é o merge do PR na main ATUAL: com ele, teste que entrou na main
           # depois do qa/N nascer aparecia como "alterado pelo Dev" (falso positivo no PR #46).
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          MAIN_SHA: ${{ github.event.pull_request.base.sha }}
         run: |
           git fetch origin "${{ github.base_ref }}"
           # O Dev parte da branch do QA (qa/<issue>): compara com ela, para só contar o que o Dev mudou.
@@ -79,9 +80,21 @@ jobs:
           if git fetch origin "qa/${ISSUE}" 2>/dev/null; then BASE="origin/qa/${ISSUE}"; fi
           echo "Comparando com ${BASE}"
           CHANGED=$(git diff --name-only "${BASE}...${HEAD_SHA}" | grep -E '^tests/acceptance/' || true)
-          if [ -n "$CHANGED" ]; then
+          # O Dev fez merge da main na branch para resolver conflito (PR #52). O teste de aceitação
+          # que veio nesse merge NÃO foi alterado pelo Dev: está na main, byte a byte igual. Sem esta
+          # exceção, todo PR de dev que resolve conflito com a main reprovava aqui.
+          VIOLATIONS=""
+          for FILE in ${CHANGED}; do
+            if git cat-file -e "${MAIN_SHA}:${FILE}" 2>/dev/null \
+               && [ "$(git rev-parse "${HEAD_SHA}:${FILE}")" = "$(git rev-parse "${MAIN_SHA}:${FILE}")" ]; then
+              echo "Ignorado (veio da main, idêntico): ${FILE}"
+              continue
+            fi
+            VIOLATIONS="${VIOLATIONS}${FILE}"$'\n'
+          done
+          if [ -n "${VIOLATIONS}" ]; then
             echo "O Dev alterou testes de aceitação do QA:"
-            echo "$CHANGED"
+            printf "%s" "${VIOLATIONS}"
             echo "Peça ao QA para ajustar o teste em outra branch (qa/...)."
             exit 1
           fi
