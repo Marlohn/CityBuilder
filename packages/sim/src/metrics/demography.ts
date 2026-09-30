@@ -45,12 +45,14 @@ export class Demography {
     if (age >= 20) this.current.adults20plusYears++;
   }
 
-  death(sex: number, age: number) {
+  death(sex: number, age: number, bornInCity: boolean) {
     const a = Math.min(age, MAX_AGE - 1);
     this.current.deaths[sex as 0 | 1]![a]!++;
     // Quem morre também viveu parte do ano: conta meio ano de exposição.
     this.current.exposure[sex as 0 | 1]![a]! += 0.5;
-    if (age === 0) this.current.infantDeaths++;
+    // Só conta no placar de mortalidade infantil quem nasceu na cidade (o denominador
+    // `births` só inclui nascidos aqui; imigrante com idade 0 não entra).
+    if (age === 0 && bornInCity) this.current.infantDeaths++;
   }
 
   birth(motherAge: number) {
@@ -73,10 +75,12 @@ export class Demography {
     this.current = emptyYear();
   }
 
-  /** Soma dos anos da janela. */
+  /** Soma dos anos da janela (inclui o ano em curso). */
   window(): YearDemography {
     const s = emptyYear();
-    for (const y of this.history) {
+    // O ano corrente também conta: sem ele o numerador e o denominador da mortalidade
+    // infantil ficam desalinhados na virada do ano.
+    for (const y of [...this.history, this.current]) {
       for (const sex of [0, 1] as const) {
         for (let a = 0; a < MAX_AGE; a++) {
           s.deaths[sex][a]! += y.deaths[sex][a]!;
