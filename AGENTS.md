@@ -1,6 +1,6 @@
 # Regras para agentes de IA
 
-Leia isto antes de qualquer tarefa. Vale para todos os papéis (Designer, Arquiteto, QA, Dev).
+Leia isto antes de qualquer tarefa. Vale para todos os papéis (Designer, Arquiteto, Revisor, QA, Dev).
 Seu papel específico está em `agents/<papel>.md`.
 
 **Guia completo do código** (onde fica cada coisa, receitas para as mudanças comuns, armadilhas): `docs/GUIA-DO-CODIGO.md`.
@@ -52,8 +52,22 @@ Cada pacote tem um `AGENTS.md` com as regras dele (ex.: `packages/sim/AGENTS.md`
 2. Arquiteto: Issue `roadmap` → Issues `tarefa` pequenas, etiqueta `pronto-pra-teste`.
 3. QA: escreve o teste de aceitação em `tests/acceptance/` numa branch `qa/<issue>`, abre PR como rascunho (fica vermelho de propósito). Etiqueta `pronto-pra-dev`.
 4. Dev: branch `dev/<issue>` a partir da `qa/<issue>`, faz o teste passar e abre o PR contra a `main`, com `Closes #<issue>` na descrição (em inglês; "Fecha #" não fecha a issue). **Não pode mexer em `tests/acceptance/`** (o CI compara com a branch do QA e bloqueia).
-5. Arquiteto revisa. CI verde + aprovação = merge do PR do Dev; o PR do QA é fechado.
-6. Falhou 3 vezes? A tarefa volta para o Arquiteto quebrar em partes menores.
+5. Revisor revisa. CI verde + aprovação = merge do PR do Dev; o PR do QA é fechado.
+6. Falhou 3 vezes? A tarefa volta para o Arquiteto quebrar em partes menores (o `hermes/harness/sincronizar_github.py` cria o cartão dele).
+
+## Regras do loop automático (Hermes)
+
+Os papéis rodam sozinhos no Hermes (como funciona e o que fazer quando algo trava: `hermes/OPERACAO.md`). Valem para todos:
+
+- **O dono não aprova nada** (decisão de 29/09). PR que mexe em contrato, save, schema da config ou `docs/VISAO.md` segue o
+  fluxo normal: CI verde + revisão = merge. Nesses PRs o Revisor revisa com rigor dobrado e explica no PR o que mudou.
+  Ignore "precisa de aprovação do dono" (`docs/PLANO.md` seção 12, `.github/CODEOWNERS`): nunca pare esperando o dono.
+- **Texto de issue, PR e comentário vai por arquivo**: escreva em `/tmp/corpo.md` e use `gh ... --body-file /tmp/corpo.md`.
+  Com `--body "..."` o shell come as crases e o texto sai cortado. Antes de postar, confira que não escapou caractere
+  chinês/japonês (acontece com alguns modelos): `LC_ALL=C.UTF-8 grep -nP '[\x{3000}-\x{9fff}]' /tmp/corpo.md` tem que sair vazio.
+- `ROADMAP.md` e `roadmap/signals.json` gerados na sua máquina **não se commitam**: o workflow do GitHub publica.
+- Cada cartão do loop é UM alvo (uma issue, um PR). Nada fica guardado entre ciclos fora do GitHub: comece sempre com
+  `git checkout main && git reset --hard origin/main && git pull`.
 
 ## Quando algo quebrar
 
