@@ -288,11 +288,21 @@ export class AutoMayor {
     const pick = samples[this.rng.int(samples.length)]!;
     const px = w.xOf(pick);
     const py = w.yOf(pick);
-    // Já tem um igual (pronto ou em obra) a menos de ~1 km: espera ele ficar pronto.
+    // Prédio lotado não conta como "já tem serviço por perto": em obra espera ficar
+    // pronto (vai abrir vaga) e ativo só vale se ainda tem vaga livre; senão continua
+    // o loop para construir outro perto da demanda.
     const b = sim.buildings;
     for (let id = 0; id < b.count; id++) {
-      if (b.state[id]! > BSTATE.active || b.typeOf(id).id !== service) continue;
-      if (Math.abs(b.x[id]! - px) + Math.abs(b.y[id]! - py) < 60) return true;
+      if (b.typeOf(id).id !== service) continue;
+      if (Math.abs(b.x[id]! - px) + Math.abs(b.y[id]! - py) >= 60) continue;
+      // Em obra ainda vai abrir vaga: espera ele ficar pronto.
+      if (b.state[id]! < BSTATE.active) return true;
+      if (b.state[id]! > BSTATE.active) continue;
+      const hasVacancy =
+        service === "escola"
+          ? b.students[id]! < b.studentsCapacity(id)
+          : b.patients[id]! < b.patientsCapacity(id);
+      if (hasVacancy) return true;
     }
     return this.placeNear(service, px, py);
   }

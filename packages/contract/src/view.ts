@@ -94,6 +94,12 @@ export interface StatsView {
   vacantJobs: number;
   demand: { residential: number; commercial: number; industrial: number };
   unmet: UnmetDesireCounts;
+  /** Água e luz em pessoas equivalentes (mesma unidade de demandOf): quanto a cidade usa e quanto tem. */
+  utilities: {
+    enabled: boolean;
+    water: { capacity: number | null; used: number };
+    power: { capacity: number | null; used: number };
+  };
   vehiclesMoving: number;
   /** Pessoas andando a pé agora (na tela). */
   peopleWalking: number;
