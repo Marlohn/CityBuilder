@@ -57,6 +57,8 @@ s.revisoes([pr(10, "aaaaaaa", "fix/main-x")], {}); cria("dev-ajuste-pr-10-aaaaaa
 s.revisoes([pr(10, "aaaaaaa", "qa/1")], {}); cria()  # PR do QA sem etiqueta não vai pro dev
 s.revisoes([pr(10, "aaaaaaa", "dev/1")], {"dev-ajuste-pr-10-bbbbbbb": "ready"}); cria()  # já tem um aberto
 s.revisoes([pr(10, "ccccccc", "dev/1")], {f"dev-ajuste-pr-10-{c}": "done" for c in "xyz"}); cria()  # 3 ajustes: acabou
+s.revisoes([pr(10, "aaaaaaa", "dev/10", ["em-revisão"])], {}, {10}); cria()  # em revisão, mas a issue espera o QA: sem revisão repetida
+s.revisoes([pr(10, "aaaaaaa", "dev/10", ["em-revisão"])], {}, {11}); cria("revisar-pr-10-aaaaaaa")  # outra issue esperando: revisa normal
 s.revisoes([pr(10, "aaaaaaa", "dev/10")], {}, {10}); cria()  # issue 10 esperando o QA corrigir o teste: sem ajuste do dev
 s.revisoes([pr(10, "aaaaaaa", "dev/10")], {}, {11}); cria("dev-ajuste-pr-10-aaaaaaa")  # outra issue esperando: não afeta
 print("revisões/ajustes: ok")
@@ -92,8 +94,8 @@ def gh_issues(dev=(), qa=()):
     return _gh
 
 
-def iss(n, corpo="", titulo="t"):
-    return {"number": n, "title": titulo, "body": corpo}
+def iss(n, corpo="", titulo="t", etiquetas=("tarefa",)):
+    return {"number": n, "title": titulo, "body": corpo, "labels": [{"name": e} for e in etiquetas]}
 
 
 ARQ = "1. `packages/sim/src/a.ts`\n"
@@ -108,6 +110,11 @@ s.tarefas(todas, [], esg); cria("arquiteto-quebrar-1")
 assert any(a[:2] == ("issue", "comment") for a in ESCRITOS), "tem que comentar na issue (rastro)"; ESCRITOS.clear()
 s.tarefas(todas, [], {**esg, "arquiteto-quebrar-1": "done"}); cria()  # só uma vez
 s.tarefas(todas, [], {**esg, "dev-issue-1-r3": "running"}); cria()  # rodada aberta: não quebra ainda
+s.gh = gh_issues(dev=[iss(30, etiquetas=("roadmap", "pronto-pra-dev"))])
+s.tarefas(todas, [], {}); cria()  # item do roadmap com a etiqueta errada: nunca vira cartão
+s.gh = gh_issues(qa=[iss(1), iss(2)])
+s.tarefas(todas, [pr(9, "aaaaaaa", "dev/2", corpo="Closes #2")], {})
+assert [(c[0], c[2]) for c in CRIADOS] == [("qa-issue-1-r1", 10), ("qa-issue-2-r1", 25)], CRIADOS; CRIADOS.clear()  # QA que destrava PR pronto passa na frente
 s.gh = gh_issues(qa=[iss(1)])
 s.tarefas(todas, [], {f"qa-issue-1-r{n}": "archived" for n in (1, 2, 3)}); cria("arquiteto-quebrar-1")  # arquivado também gasta rodada
 s.gh = real_gh; ESCRITOS.clear()

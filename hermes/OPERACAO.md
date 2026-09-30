@@ -68,13 +68,15 @@ GitHub (issues/etiquetas/PRs/CI) --lê a cada 2 min--> sincronizador (sem LLM)
   As do papel foram copiadas de `/opt/hermes/skills/`. Skill que o agente cria sozinho (`skill_manage`) é permitida.
 - **Onde mora o quê.** O **comportamento** de cada papel (`SOUL.md`) mora no repo, em `hermes/<papel>/`, e chega ao perfil
   com `hermes profile update <papel> -y`: sobrescreve o SOUL e **preserva** config, `.env` e memória. A origem registrada
-  de cada perfil (`source:` em `/opt/data/profiles/<papel>/distribution.yaml`) tem que apontar pro clone do **próprio**
-  papel (`/opt/data/cb/<papel>/hermes/<papel>`): em 30/09 a do revisor apontava pro arquiteto e o `update` colou o SOUL
-  errado nele. O que é **local do servidor** (ferramentas, skills, modelo, chave do Kilo) é aplicado por
+  de cada perfil (`source:` em `/opt/data/profiles/<papel>/distribution.yaml`) é o **clone de distribuição**
+  `/opt/data/distribuicao/hermes/<papel>`, um clone só pra isso. **Nunca aponte pro clone de trabalho de um agente
+  (`/opt/data/cb/<papel>`) e nunca dê `reset`/`checkout` nele:** em 30/09 um deploy meu tirou o clone do dev de `dev/40` no meio
+  de um cartão (perdeu ~3 min de edição não commitada), e antes disso a origem do revisor apontava pro arquiteto e o `update`
+  colou o SOUL errado nele. O que é **local do servidor** (ferramentas, skills, modelo, chave do Kilo) é aplicado por
   `hermes/harness/aplicar_perfis.py` (idempotente, faz backup do config).
 - **Mudar o comportamento de um papel:** edite `hermes/<papel>/SOUL.md` (ou o `AGENTS.md`, que todos leem) num PR. Depois do
-  merge: `git pull` no clone do papel (os agentes já fazem isso no começo de cada cartão) e `hermes profile update <papel> -y`.
-  Confira com `diff /opt/data/profiles/<papel>/SOUL.md /opt/data/cb/<papel>/hermes/<papel>/SOUL.md` (tem que sair vazio).
+  merge: `git -C /opt/data/distribuicao pull` e `hermes profile update <papel> -y`. Confira com
+  `diff /opt/data/profiles/<papel>/SOUL.md /opt/data/distribuicao/hermes/<papel>/SOUL.md` (tem que sair vazio; o `saude.py` faz isso).
 - Os perfis vêm das distribuições em `hermes/<papel>/`, instaladas com `--name <papel>` (sem prefixo `cb-`).
   Cada perfil tem clone próprio, e por isso roda **1 cartão por vez**.
 - **Node 22 nos agentes** (`/opt/data/.local/node22`, primeiro no PATH): é a versão do CI. A imagem traz Node 26.
@@ -96,14 +98,15 @@ Roda como cron `--no-agent` do perfil default, a cada 2 min. A cópia **em produ
 | PR aberto com `em-revisão` | `revisor`: no máximo **1 aberto por PR**, e 1 por commit (commit novo com a revisão ainda na fila: a aberta olha o PR como está) |
 | PR `dev/*` ou `fix/main-*` aberto **sem** `em-revisão` | `dev` ajusta o que a revisão pediu (até 3 por PR) |
 | issue `pronto-pra-dev` | `dev` (até 3 rodadas; espera `Depende de #N`; **um dev por arquivo**) |
-| issue `pronto-pra-teste` | `qa` (até 3 rodadas) |
+| issue `pronto-pra-teste` | `qa` (até 3 rodadas). **Prioridade +15 se o dev já tem PR aberto pra essa tarefa**: terminar antes de começar (o QA é um só, e o #79 esperava atrás de 3 tarefas novas) |
 | **3 rodadas gastas sem entrega** | `arquiteto` "quebrar a tarefa" (docs/PLANO.md 12) + comentário na issue |
 | menos de 3 tarefas **prontas para começar** (sem `Depende de #N` aberta) | `arquiteto` planeja (a chave muda com o estado, então não replaneja o nada). Tarefa que espera outra **não** conta: em 30/09 três tarefas do mesmo item enchiam a fila e seguravam os bugs urgentes independentes (#26, #27, #25) |
 | 1× por dia | `designer`; e `qa` caça bug, só se estiver sem fila |
 | cartão bloqueado | **zelador**: fecha na hora, com o motivo do bloqueio no resumo (arquiva se o Hermes recusar), pra liberar a próxima rodada |
 | CI da `main` vermelho | `dev`, **prioridade 40** (a maior), um conserto aberto por vez, até 3 rodadas por commit; o cartão manda conferir se a `main` já está verde |
 | PR rascunho `qa/N` com a tarefa N fechada | fechado, com comentário no PR |
-| PR `dev/N` reprovado com a issue N de volta em `pronto-pra-teste` (teste do QA errado) | **sem** ajuste do dev: ele não pode mexer em `tests/acceptance/`. O revisor devolve a tarefa ao QA (regra no SOUL), o QA corrige no mesmo `qa/N` e volta pra `pronto-pra-dev`; aí o dev traz o teste com `git merge origin/qa/N`. Achado no PR #76 (30/09): não havia caminho pra isso |
+| PR `dev/N` reprovado com a issue N de volta em `pronto-pra-teste` (teste do QA errado) | **sem** ajuste do dev **e sem revisão nova** (o dev recolocava `em-revisão` e o revisor só repetia a devolução: #49 e #40, ~15 min cada): ele não pode mexer em `tests/acceptance/`. O revisor devolve a tarefa ao QA (regra no SOUL), o QA corrige no mesmo `qa/N` e volta pra `pronto-pra-dev`; aí o dev traz o teste com `git merge origin/qa/N`. Achado no PR #76 (30/09): não havia caminho pra isso |
+| issue `pronto-pra-dev`/`pronto-pra-teste` **sem** a etiqueta `tarefa` (um item do roadmap) | **nunca** vira cartão. Em 30/09 o arquiteto pôs a etiqueta no item #21 e nasceu cartão de QA pro item inteiro |
 | PR `dev/N` mesclado (últimas 48 h) e a tarefa N ainda aberta | issue fechada, com comentário: o GitHub nem sempre fecha (o #68 dizia `Closes #39` e `closingIssuesReferences` veio vazio; sem isso a #39 ganharia outra rodada de dev) |
 
 O arquivo tem ~340 linhas e **só faz isso**. Cada função com efeito tem gabarito em `testar_sinc.py`, e `mutantes.py`

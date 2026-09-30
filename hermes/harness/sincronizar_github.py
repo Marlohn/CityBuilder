@@ -206,6 +206,11 @@ def revisoes(prs, existentes, esperando_qa=frozenset()):
     """PR em revisão -> cartão do revisor (1 aberto por PR, 1 por commit). Sem etiqueta -> o Dev ajusta (até 3)."""
     for pr in prs:
         n, sha = pr["number"], pr["headRefOid"][:7]
+        # Issue de volta no QA (teste errado): o Dev recoloca `em-revisão` no PR, mas revisar de novo só repete a devolução
+        # (30/09: #49 e #40, ~15 min de revisor cada). O PR volta à fila quando a tarefa voltar a `pronto-pra-dev`.
+        no_qa = re.fullmatch(r"dev/(\d+)", pr["headRefName"]) and int(pr["headRefName"][4:]) in esperando_qa
+        if any(lb["name"] == "em-revisão" for lb in pr["labels"]) and no_qa:
+            continue
         if any(lb["name"] == "em-revisão" for lb in pr["labels"]):
             chave = f"revisar-pr-{n}-{sha}"
             # Commit novo com a revisão anterior ainda na fila: não cria outra, a que está aberta olha o PR como está.
@@ -268,7 +273,9 @@ def tarefas(todas, prs, existentes):
     bugs = {i["number"] for i in todas if any(lb["name"] == "bug" for lb in i["labels"])}  # PLANO 12.2: bug passa na frente
     for etiqueta, papel, prio in (("pronto-pra-dev", "dev", 20), ("pronto-pra-teste", "qa", 10)):
         lista = json.loads(gh("issue", "list", "-R", REPO, "--state", "open", "--label", etiqueta,
-                              "--json", "number,title,body", "--limit", "30"))
+                              "--json", "number,title,body,labels", "--limit", "30"))
+        # Só TAREFA vira cartão: em 30/09 o arquiteto pôs `pronto-pra-teste` no ITEM #21 e nasceu cartão de QA para o item inteiro.
+        lista = [i for i in lista if any(lb["name"] == "tarefa" for lb in i["labels"])]
         ativos, ocupados = set(), set()
         if papel == "dev":
             # Dois devs no mesmo arquivo = conflito garantido e uma rodada de revisão a mais (29/09: #36, #37 e #48 em
@@ -293,7 +300,10 @@ def tarefas(todas, prs, existentes):
                 if papel == "dev":
                     ocupados |= arquivos(iss["body"])
                 criar(chave, f"Issue #{n}: {iss['title']}", papel,
-                      f"Sua tarefa: issue #{n} (https://github.com/{REPO}/issues/{n}).", prioridade=prio + (5 if eh_bug else 0))
+                      f"Sua tarefa: issue #{n} (https://github.com/{REPO}/issues/{n}).",
+                      # Terminar antes de começar: QA de tarefa que já tem PR do dev pronto destrava esse PR (30/09: o #79 esperava
+                      # atrás de 3 tarefas novas, com o QA serializado). Passa na frente até de bug.
+                      prioridade=prio + (5 if eh_bug else 0) + (15 if papel == "qa" and n in com_pr else 0))
             elif esgotada(existentes, base) and f"arquiteto-quebrar-{n}" not in existentes:
                 criar(f"arquiteto-quebrar-{n}", f"Quebrar a tarefa #{n} ({MAX_RODADAS} rodadas sem entrega)", "arquiteto",
                       f"A tarefa #{n} gastou {MAX_RODADAS} rodadas de {papel} sem entregar. Não repita: leia o que cada "
