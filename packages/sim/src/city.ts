@@ -85,6 +85,7 @@ export class City {
   utilities: {
     demandOf(homes: number, jobs: number): number;
     canSupply(access: number, demand: number, reserve?: boolean): boolean;
+    spareAt(access: number, kind: "water" | "power"): number;
   } | null = null;
   /** Quantas pessoas trabalham fora da cidade agora. */
   outsideWorkers = 0;

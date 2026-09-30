@@ -80,6 +80,10 @@ export function statsView(game: Game, behind = false): StatsView {
     vehiclesMoving: game.traffic.vehicles.moving.size,
     peopleWalking: 0,
     cars: c.householdsWithCar,
+    construction: {
+      blockedByWater: game.growth.blockedByWater,
+      blockedByPower: game.growth.blockedByPower,
+    },
     realism: game.realism,
     perf: {
       msPerTick,

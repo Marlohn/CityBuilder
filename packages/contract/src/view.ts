@@ -104,6 +104,8 @@ export interface StatsView {
   /** Pessoas andando a pé agora (na tela). */
   peopleWalking: number;
   cars: number;
+  /** Obras barradas por falta de água/luz no último tick do growth (só informação). */
+  construction: { blockedByWater: number; blockedByPower: number };
   realism: RealismItem[];
   perf: PerfView;
 }
