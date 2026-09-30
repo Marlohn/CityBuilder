@@ -34,6 +34,8 @@ MUTANTES = {
         ('m = re.fullmatch(r"dev/(\d+)", pr["headRefName"])', 'm = re.fullmatch(r"(?:dev|qa)/(\d+)", pr["headRefName"])'),
     "ajuste vai pro dev com a issue esperando o QA":
         ('and int(pr["headRefName"][4:]) in esperando_qa', 'and False'),
+    "item do roadmap vira cartão":
+        ('lista = [i for i in lista if any(lb["name"] == "tarefa" for lb in i["labels"])]', 'lista = lista'),
     "dependência não segura a tarefa":
         ('if dependencias(iss["body"]) & abertas:', 'if False:'),
     "mesmo arquivo não serializa dev":

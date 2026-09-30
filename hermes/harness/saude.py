@@ -43,16 +43,16 @@ os.environ["PATH"] = "/opt/data/.local/bin:" + os.environ["PATH"]
 
 # 1. perfis: 5, SOUL igual ao do repo, origem registrada no clone do PRÓPRIO papel ------------------------------------
 for p in PAPEIS:
-    d, clone = f"/opt/data/profiles/{p}", f"/opt/data/cb/{p}/hermes/{p}"
+    d, clone = f"/opt/data/profiles/{p}", f"/opt/data/distribuicao/hermes/{p}"
     try:
         igual = open(f"{d}/SOUL.md").read() == open(f"{clone}/SOUL.md").read()
         fonte = re.search(r"^source:\s*(\S+)", open(f"{d}/distribution.yaml").read(), re.M).group(1)
     except OSError as e:
         ok(False, f"perfil {p}: arquivos", str(e))
         continue
-    ok(igual, f"perfil {p}: SOUL == repo (clone em {run('git', '-C', f'/opt/data/cb/{p}', 'log', '--oneline', '-1').stdout.strip()[:7]})",
-       "" if igual else f"diferente; rode: {HERMES} profile update {p} -y depois de git pull no clone")
-    ok(fonte == clone, f"perfil {p}: origem registrada é o próprio clone", fonte)
+    ok(igual, f"perfil {p}: SOUL == repo (distribuição em {run('git', '-C', '/opt/data/distribuicao', 'log', '--oneline', '-1').stdout.strip()[:7]})",
+       "" if igual else f"diferente; rode: git -C /opt/data/distribuicao pull && {HERMES} profile update {p} -y")
+    ok(fonte == clone, f"perfil {p}: origem registrada é o clone de distribuição (não o de trabalho do agente)", fonte)
 
 # 2. crons ---------------------------------------------------------------------------------------------------------------
 jobs = json.load(open("/opt/data/cron/jobs.json"))
