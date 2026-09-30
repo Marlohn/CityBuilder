@@ -7,12 +7,19 @@
  * numa velocidade que dá para ver. Nada é inventado: só aparece quem de fato saiu.
  */
 import type { Game } from "../game";
+import { OUTSIDE_JOB } from "../people/population";
 import { Pathfinder, tileCostDs } from "../routing/pathfinder";
 import type { TripStart } from "../traffic/trafficSystem";
 import { VSTATE } from "../traffic/vehicles";
 
 /** Tipo usado na tela para pessoas a pé (carros usam 0..N). */
 export const PEDESTRIAN_TYPE = 100;
+
+/**
+ * Folga de ponto flutuante ao fechar uma viagem na tela. Nao e regra de jogo: e o erro de
+ * arredondamento de somar 1/12 s de relogio visual por quadro.
+ */
+const SLACK = 1e-9;
 
 export interface TrafficVisualOptions {
   /** Velocidade na tela (quadradinhos por segundo real). */
@@ -79,7 +86,11 @@ export class TrafficVisuals {
     this.prevSimTick = simTick;
     this.consume();
     const now = this.clock;
-    this.active = this.active.filter((t) => now - t.start < t.duration);
+    // Fim inclusivo (<=) com folga de ponto flutuante: a viagem que termina neste quadro ainda e
+    // desenhada nele (positions() trava o carro no ultimo quadradinho). Sem isso o carro com
+    // emprego fora, cuja duracao e o tempo real ate o motor chegar, sumiria no proprio quadro da
+    // chegada: a soma do relogio visual (1/12 s por quadro) passa do duration por ~1e-17.
+    this.active = this.active.filter((t) => now - t.start <= t.duration * (1 + SLACK));
     this.carsOnScreen.clear();
     for (const t of this.active) if (t.kind === "car") this.carsOnScreen.add(t.id);
     // O log de viagens do motor é aparado (splice) e pode perder o começo da viagem.
@@ -169,14 +180,36 @@ export class TrafficVisuals {
       tiles = Int32Array.from([tiles[0]!, tiles[0]!]);
     }
     const span = Math.max(1, arrive - depart);
-    let f0 = (tickNow - depart) / span;
-    if (f0 < 0) f0 = 0;
-    if (f0 > 1) f0 = 1;
+    const cum = vehs.routeCum[v];
+    // Ponto do motor (mesma conta do positions() do motor): a tela começa daqui,
+    // nunca à frente (linear × ponderado podia adiantar 1+ quadradinho em rota mista).
+    let lo = 0;
+    if (cum && cum.length === tiles.length && cum[cum.length - 1]! > 0) {
+      const f = Math.min(1, Math.max(0, (tickNow - depart) / span));
+      const target = f * cum[cum.length - 1]!;
+      let a = 0;
+      let b = cum.length - 1;
+      while (a < b) {
+        const mid = (a + b + 1) >> 1;
+        if (cum[mid]! <= target) a = mid;
+        else b = mid - 1;
+      }
+      lo = a;
+    } else {
+      let f0 = (tickNow - depart) / span;
+      if (f0 < 0) f0 = 0;
+      if (f0 > 1) f0 = 1;
+      lo = Math.min(tiles.length - 1, Math.floor(f0 * (tiles.length - 1)));
+    }
     // Margem para a tela nunca acabar antes do motor (ficar para trás pode).
     const SAFETY = 1.25;
     const raw = (arrive - tickNow) * this.secondsPerTick * SAFETY;
-    const duration = raw > 0 ? raw : this.opts.maxSeconds;
+    // Piso: a tela leva pelo menos o tempo da rota inteira na velocidade de tela,
+    // e pelo menos o que falta até o motor estacionar (com folga).
+    const full = (tiles.length - 1) / this.opts.carTilesPerSecond;
+    const duration = raw > full ? raw : full;
     // Começa de trás para cair no ponto onde o motor já está.
+    const f0 = tiles.length > 1 ? lo / (tiles.length - 1) : 0;
     let start = this.clock - f0 * duration;
     if (start > this.clock) start = this.clock;
     return { kind: "car", id: v, model, tiles, start, duration };
@@ -191,9 +224,37 @@ export class TrafficVisuals {
     }
     if (tiles.length < 2) return;
     const speed = t.kind === "car" ? this.opts.carTilesPerSecond : this.opts.walkTilesPerSecond;
-    const duration = Math.min(this.opts.maxSeconds, tiles.length / speed);
+    let duration = Math.min(this.opts.maxSeconds, tiles.length / speed);
+    if (t.kind === "car") {
+      // Carro com emprego fora: a viagem do motor dura 1 ou 2 ticks e a tela em 6 s faria o carro
+      // sumir no meio do caminho. A duracao passa a ser o tempo de tela ate o arriveTick, sem o
+      // teto de maxSeconds. Se ja passou do arriveTick, mantem o comportamento atual.
+      const outside = this.outsideVisualDuration(t.id);
+      if (outside !== null) duration = outside;
+    }
     if (t.kind === "car") this.active = this.active.filter((a) => !(a.kind === "car" && a.id === t.id));
     this.active.push({ kind: t.kind, id: t.id, model: t.model, tiles, start: this.clock, duration });
+  }
+
+  /**
+   * Duracao visual (segundos de tela) para carro com emprego fora, ou null para manter a duracao
+   * normal. E o tempo de tela ate o motor estacionar o carro na estrada de saida, sem o teto de
+   * maxSeconds: os ticks que faltam ate a chegada, convertidos pelo relogio visual ja estimado
+   * (segundos de tela por tick do motor), sem literal fixo e sem numero de regra novo.
+   * O +1 e necessario porque o relogio incrementa depois dos sistemas (sim.ts stepOnce): o
+   * departTick e gravado antes do incremento, entao entre o tickAtual (pos-step) e a chegada
+   * observada (pos-step do arriveTick) ha arriveTick - tickAtual + 1 quadros. Sem ele, a viagem de
+   * 1 tick teria duracao 0 e a de 2 ticks expiraria um quadro antes da chegada (avance 0).
+   * Se o arriveTick ja passou (o carro deveria ter chegado), devolve null.
+   */
+  private outsideVisualDuration(v: number): number | null {
+    const vehs = this.game.traffic.vehicles;
+    if (v < 0 || v >= vehs.count) return null;
+    if (vehs.destBuilding[v] !== OUTSIDE_JOB) return null;
+    const left = vehs.arriveTick[v]! - this.game.sim.clock.tick;
+    if (left < 0) return null;
+    if (!(this.secondsPerTick > 0)) return null;
+    return (left + 1) * this.secondsPerTick;
   }
 
   /** Caminho a pé pelas vias (calçada), guardado para as próximas viagens iguais. */
