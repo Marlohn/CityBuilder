@@ -251,6 +251,47 @@ def zelar(lista):
     json.dump(visto, open(ZELADOR, "w"))
 
 
+FREIO_LOG = "/opt/data/avaliacao/freio.jsonl"
+FREIO_PCT = 0.85
+
+
+def freio_memoria():
+    """Encerra as sessões de chat do painel quando o container encosta no teto de memória.
+
+    30/09: 11 processos de chat do painel (tui_gateway, ~250 MB cada, um vivo havia 1 h) + 2 agentes
+    levaram o container a 2.910/3.072 MB; ele passou a reler o próprio código do disco (pressão 'full'
+    em 69%, load 30) e travou o mini PC da casa. Chat do painel é interface; o trabalho dos agentes vem
+    antes. Eles ignoram SIGTERM: é SIGKILL. Quem estava usando só reabre o chat.
+    """
+    import signal
+    try:
+        anon = next(int(l.split()[1]) for l in open("/sys/fs/cgroup/memory.stat") if l.startswith("anon "))
+        teto = int(open("/sys/fs/cgroup/memory.max").read().strip())
+    except (OSError, ValueError, StopIteration):
+        return  # sem cgroup v2 legível (ou teto "max"): nada a fazer
+    if anon < FREIO_PCT * teto:
+        return
+    alvos = []
+    for p in os.listdir("/proc"):
+        if not p.isdigit():
+            continue
+        try:
+            cmd = open(f"/proc/{p}/cmdline", "rb").read().replace(b"\0", b" ").decode(errors="replace")
+        except OSError:
+            continue
+        if "tui_gateway.entry" in cmd or "ui-tui/dist/entry.js" in cmd:
+            alvos.append(int(p))
+    for pid in alvos:
+        try:
+            os.kill(pid, signal.SIGKILL)
+        except OSError:
+            pass
+    with open(FREIO_LOG, "a") as f:
+        f.write(json.dumps({"quando": dt.datetime.now(BRT).isoformat(timespec="minutes"),
+                            "anon_mb": anon // 1048576, "teto_mb": teto // 1048576, "encerrados": len(alvos)}) + "\n")
+    print(f"freio de memória: {anon // 1048576}/{teto // 1048576} MB, {len(alvos)} sessões de chat do painel encerradas")
+
+
 def main_vermelha(existentes, lista):
     """CI da main vermelho trava todo merge. Vira cartão do Dev na frente de tudo, um por commit da main.
 
@@ -300,6 +341,7 @@ def gh_json(*args):
 
 
 def main():
+    freio_memoria()  # antes de tudo e sem depender do GitHub: protege a máquina mesmo sem token/rede
     tk = token()
     if not tk:
         return

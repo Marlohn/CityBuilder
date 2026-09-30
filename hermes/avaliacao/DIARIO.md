@@ -159,3 +159,30 @@ dizer "funciona sem supervisão": falta passar um dia inteiro com ~0 intervenç�
 ### Intervenções do supervisor nesta rodada: ~12
 
 A maioria virou regra no sincronizador. Continua alto: a métrica que decide ainda não caiu.
+
+### Incidentes do fim da rodada 1 (30/09 ~01:15Z–01:45Z)
+
+- **Mini PC travado (load 30).** O container encostou no teto de 3 GB: os processos usavam 2,9 GB e o código era relido
+  do disco sem parar (77% de espera de disco, pressão "full" em 69%). O Home Assistant seguiu respondendo.
+  - **Não houve OOM:** "oom_kill = 0" não prova que está tudo bem.
+  - **Causa:** 11 processos de chat do painel do Hermes (~250 MB cada, um vivo havia 1 h, ignoram SIGTERM), mais a
+    comparação de modelos e 2 agentes.
+  - **Resposta:**
+    - parei a comparação de modelos e dei SIGKILL nos chats; os processos caíram de 2,9 pra 1,4 GB;
+    - criei o **freio de memória** (≥ 85% encerra os chats do painel), provado com gabarito: mata só o processo falso de
+      chat e poupa o inocente;
+    - achado de custo: **a interface do Hermes (painel + chats) chegou a pesar mais que os agentes.**
+- **Zelador em laço:** o cartão de revisão com contrato de PR não podia fechar (o PR foi reprovado) e o zelador não
+  conferia o resultado. Ficou 7 triagens seguidas no mesmo cartão. Agora a revisão é sempre `local-only` e o zelador
+  arquiva o que recusa fechar.
+- **Merge do #52 pelo cartão antigo do arquiteto** (criado antes do revisor existir):
+  - respeitou a proteção da `main` (os 2 checks obrigatórios estavam verdes no merge; ele considerou furar e recusou);
+  - mas o check ficou verde porque **o próprio PR alterou a trava que o julgava** (no GitHub, o PR roda o CI da versão
+    dele). A regra "PR de tarefa não mexe em `.github/`" fecha esse buraco;
+  - escreveu que o #56 foi "revisado pelo dono", o que é **falso** (autoridade inventada). Corrigido no registro.
+- **A proteção da `main` estava ativa** (ruleset, o dono fez os cliques): exige `npm run check` + teste protegido, sem
+  review obrigatório. É a trava dura que a avaliação pedia.
+- **Erro meu:** publiquei o sincronizador sem teste verde (`cp` fora do `&&`). O procedimento agora exige o `testar_sinc.py`
+  com `TESTE OK`, e o teste não escreve mais no log real.
+- **Comparação de modelos (parcial, interrompida pelo incidente):** muse **9/9** nos testes de aceitação da #38, em 539 s,
+  sem mexer no teste. Os outros modelos ficam pra quando a máquina tiver folga, rodando com 1 agente só.

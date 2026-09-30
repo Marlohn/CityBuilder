@@ -79,6 +79,7 @@ Roda como cron `--no-agent` do perfil default, a cada 2 min. A cópia **em produ
 | CI da `main` vermelho | cartão do `dev` com **prioridade 40** (a maior), 1 por commit da main |
 | PR rascunho `qa/N` com a tarefa N fechada | fechado com comentário |
 | PR `fix/main-*` sem `em-revisão` | volta pro `dev` ajustar, como os `dev/*` |
+| processos do container ≥ 85% do teto (roda antes de tudo, sem depender do GitHub) | **freio de memória**: encerra (SIGKILL) as sessões de chat do painel, que são interface e não trabalho; registra em `freio.jsonl` |
 
 **Regras embutidas, cada uma nasceu de uma falha real (a data está no comentário do código):**
 
@@ -119,6 +120,8 @@ Roda como cron `--no-agent` do perfil default, a cada 2 min. A cópia **em produ
 | Dev mexe na trava do CI dentro do PR da tarefa | A trava vigia o próprio Dev | PR de tarefa que toca `.github/` é reprovado; CI muda em `fix/ci-*` |
 | Chamada ao jev dá 403 (Cloudflare 1010) | O User-Agent padrão do Python é barrado | User-Agent próprio (`citybuilder-sincronizador/1.0`) |
 | Modelo "grátis" recusa (`FreeTierError`) | Só `space-bunny` e `jev` atendem fora do cliente OpenCode, mesmo com a chave da conta | Os outros só pelo `opencode run -m opencode/<id>` |
+| Mini PC travado (load 30, 77% de espera de disco), mas nenhum processo morto | O container encostou no teto (processos 2,9 de 3 GB): o kernel descarta o código da memória e relê do disco sem parar. A causa foi 11 processos de **chat do painel** (~250 MB cada, ignoram SIGTERM) + comparação de modelos + 2 agentes | Freio de memória no sincronizador; decida pela pressão (`memory.pressure`) e por `anon`, não por "OOM kill = 0" |
+| Cartão de revisão bloqueado pra sempre e zelador em laço | O contrato de PR (`--completion-contract <url>`) só fecha o cartão com o PR verde; revisão que reprova nunca fecharia | Revisão sempre `local-only`; zelador arquiva o que se recusa a fechar |
 | Script "compila" mas quebra | `py_compile` não pega nome inexistente | `pyflakes` + **executar** um ciclo em modo simulação antes de publicar |
 
 ## Operar
@@ -137,8 +140,11 @@ cd /opt/data/avaliacao && python3 metricas.py --json metricas-$(date -u +%Y%m%dT
 **Deploy do sincronizador:**
 1. Mude o arquivo em `hermes/harness/`.
 2. Rode `pyflakes`.
-3. Copie para `/tmp` no container e rode `main()` com `criar`/`zelar` trocados por `print` (modo simulação contra o GitHub real).
-4. Só então copie para `/opt/data/scripts/`.
+3. Copie para `/tmp/sinc_novo.py` no container e rode `hermes/harness/testar_sinc.py`: um ciclo inteiro contra o GitHub real
+   com **todos** os efeitos simulados (criar cartão, fechar/arquivar, editar issue, fechar PR, jev, freio).
+4. **Só se ele imprimir `TESTE OK`**, copie para `/opt/data/scripts/` (encadeie com `&&`: em 30/09 um `cp` solto publicou
+   uma versão sem teste verde).
+5. Mudou uma função com efeito colateral? Escreva o gabarito dela antes (caso que tem que agir + caso que não pode agir).
 
 **Subir ou descer agentes simultâneos:** decida pelo pico de `anon` (o `vigia.sh` mede). Ajuste
 `kanban.max_in_progress` e reinicie só o gateway.
