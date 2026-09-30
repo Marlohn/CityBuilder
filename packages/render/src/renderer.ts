@@ -66,6 +66,7 @@ export class CityRenderer {
   private preview: Mesh;
   private previewMat: StandardMaterial;
   private map: MapView | null = null;
+  private targetChosen = false;
   private occupied = new Uint8Array(0);
   private zoom = 30;
   /** Tecla apertada → momento (ms) até onde o movimento dela já foi aplicado. */
@@ -150,7 +151,7 @@ export class CityRenderer {
     this.ground.update(map, this.occupied);
     this.roads.update(map);
     this.trees.update(map, this.occupied);
-    if (first) {
+    if (first && !this.targetChosen) {
       this.camera.target.set(map.width / 2, 0, map.height / 2);
     }
   }
@@ -279,6 +280,7 @@ export class CityRenderer {
   }
 
   lookAt(x: number, y: number) {
+    this.targetChosen = true;
     this.camera.target.set(x, 0, y);
   }
 
