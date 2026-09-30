@@ -11,4 +11,5 @@ s.criar=lambda chave,titulo,papel,alvo="",**k: print(f"  CRIARIA [{chave}] -> {p
 s.jev=lambda *a,**k: None   # triagem simulada: nao chama a API no teste
 s.TRIAGEM_LOG="/tmp/triagem-teste.jsonl"   # teste nao suja o log real da avaliacao
 s.freio_memoria=lambda: None   # teste nunca mata processo de verdade
+s.ACOES="/tmp/acoes-teste.jsonl"; s.diario_github=lambda: None   # teste nao suja o registro real nem posta no GitHub
 s.main(); print("TESTE OK")

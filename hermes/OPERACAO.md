@@ -81,6 +81,16 @@ Roda como cron `--no-agent` do perfil default, a cada 2 min. A cópia **em produ
 | PR `fix/main-*` sem `em-revisão` | volta pro `dev` ajustar, como os `dev/*` |
 | processos do container ≥ 85% do teto (roda antes de tudo, sem depender do GitHub) | **freio de memória**: encerra (SIGKILL) as sessões de chat do painel, que são interface e não trabalho; registra em `freio.jsonl` |
 
+**Rastro de tudo (regra do dono, 30/09: nada de solução que não dá pra rastrear depois):**
+- Toda ação com efeito colateral do sincronizador passa por `registrar()` e vira uma linha em
+  `/opt/data/avaliacao/acoes.jsonl` (data, ação, alvo, motivo, impacto). Isso vale pra cartão criado, zelador
+  liberou/arquivou (com a causa do jev), freio de memória, cartão obsoleto arquivado, PR do QA fechado, main vermelha e
+  tarefa mandada quebrar.
+- A issue **#61 "🤖 Diário do loop"** (etiqueta `diario-loop`) recebe o impacto **na hora** e o resto **num resumo por dia**.
+  É onde o dono olha.
+- Ação **manual** de supervisor (humano ou Claude) também é registrada lá, em comentário.
+- Automação nova: pergunte "se isso agir às 3h, como o dono descobre amanhã o que aconteceu e por quê?". Sem resposta, não sobe.
+
 **Regras embutidas, cada uma nasceu de uma falha real (a data está no comentário do código):**
 
 - A tarefa espera as linhas `Depende de #N` (com número) fecharem.

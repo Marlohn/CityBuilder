@@ -17,6 +17,7 @@ Sem GH_TOKEN, sai calado. Stdout vazio = nada a entregar (é o que o cron espera
 Cada cartão leva a chave no título ([chave]); a chave é também a idempotency-key.
 """
 
+import collections
 import datetime as dt
 import hashlib
 import json
@@ -30,6 +31,19 @@ HERMES = "/opt/hermes/.venv/bin/hermes"
 GH = "/opt/data/.local/bin/gh"
 MAX_RODADAS = 3  # docs/PLANO.md 12: falhou 3 vezes, volta pro arquiteto quebrar
 BRT = dt.timezone(dt.timedelta(hours=-3))
+
+
+ACOES = "/opt/data/avaliacao/acoes.jsonl"
+
+
+def registrar(acao, alvo, motivo="", impacto=False):
+    """Toda ação automática com efeito colateral deixa UMA linha aqui (30/09, pedido do dono: nada que não dê
+    pra rastrear depois). O diário no GitHub (issue 'Diário do loop') é montado a partir deste arquivo."""
+    linha = {"quando": dt.datetime.now(BRT).isoformat(timespec="seconds"), "acao": acao, "alvo": alvo,
+             "motivo": motivo, "impacto": impacto}
+    with open(ACOES, "a") as f:
+        f.write(json.dumps(linha, ensure_ascii=False) + "\n")
+    print(f"{acao}: {alvo} {('(' + motivo + ')') if motivo else ''}")
 
 
 def token():
@@ -146,7 +160,7 @@ def criar(chave, titulo, papel, alvo, contrato="local-only", prioridade=0):
          "--created-by", "sincronizador", "--completion-contract", contrato,
          "--body-file", "-"],
         input=corpo, capture_output=True, text=True, timeout=60, check=True)
-    print(f"novo cartão: [{chave}] -> {papel}")
+    registrar("cartao_criado", f"[{chave}] -> {papel}", titulo[:80])
 
 
 REPROVOU = ("ANTES DO MERGE, o CI tem que ter rodado sobre a main ATUAL: se "
@@ -206,6 +220,8 @@ def triar(cid, titulo):
         # tira a etiqueta para não nascer outra rodada igual; o Arquiteto quebra e reetiqueta as partes
         subprocess.run([GH, "issue", "edit", n, "-R", REPO, "--remove-label", "pronto-pra-dev",
                         "--remove-label", "pronto-pra-teste"], capture_output=True, timeout=60)
+        registrar("tarefa_mandada_quebrar", f"issue #{n}", f"cartão {cid} estourou passos/tempo (jev: orcamento, "
+                  f"confiança {conf}); etiquetas pronto-pra-* removidas", impacto=True)
         criar(f"arquiteto-quebrar-{n}", f"Quebrar a tarefa #{n} (travou por tamanho)", "arquiteto",
               f"A tarefa #{n} travou por ESTOURAR passos/tempo no cartão {cid} ({titulo[:60]}). Não é erro "
               "passageiro: é grande demais pra um ciclo. Quebre em Tarefas menores (máx. ~3 arquivos cada, com "
@@ -233,9 +249,8 @@ def zelar(lista):
             titulo = next((c.get("title") or "" for c in lista if c["id"] == cid), "")
             try:
                 causa = triar(cid, titulo)
-                print(f"zelador: {cid} travou por {causa}")
             except Exception as e:  # triagem é bônus; liberar o cartão é obrigação
-                print(f"zelador: triagem falhou em {cid}: {e}")
+                causa = f"triagem falhou: {e}"[:120]
             r = subprocess.run([HERMES, "kanban", "complete", cid, "--summary",
                                 "Zelador: bloqueado sem ninguém para destravar; fechado para liberar a próxima rodada "
                                 "(o motivo está nos eventos/diagnóstico deste cartão)."],
@@ -243,9 +258,10 @@ def zelar(lista):
             if r.returncode != 0 or "cannot complete" in (r.stdout + r.stderr):
                 # contrato de PR ou estado terminal recusam o complete: arquiva pra não triar de novo a cada ciclo
                 subprocess.run([HERMES, "kanban", "archive", cid], capture_output=True, timeout=60)
-                print(f"zelador: {cid} não fechava ({(r.stdout + r.stderr).strip()[:80]}); arquivado")
+                registrar("zelador_arquivou", f"{cid} {titulo[:60]}",
+                          f"travou por {causa}; não fechava: {(r.stdout + r.stderr).strip()[:80]}", impacto=True)
             else:
-                print(f"zelador: liberei {cid}")
+                registrar("zelador_liberou", f"{cid} {titulo[:60]}", f"travou por {causa}")
             visto.pop(cid, None)
     visto = {k: v for k, v in visto.items() if k in bloqueados}
     json.dump(visto, open(ZELADOR, "w"))
@@ -289,7 +305,8 @@ def freio_memoria():
     with open(FREIO_LOG, "a") as f:
         f.write(json.dumps({"quando": dt.datetime.now(BRT).isoformat(timespec="minutes"),
                             "anon_mb": anon // 1048576, "teto_mb": teto // 1048576, "encerrados": len(alvos)}) + "\n")
-    print(f"freio de memória: {anon // 1048576}/{teto // 1048576} MB, {len(alvos)} sessões de chat do painel encerradas")
+    registrar("freio_memoria", f"{len(alvos)} sessões de chat do painel encerradas",
+              f"processos em {anon // 1048576}/{teto // 1048576} MB (limite {int(FREIO_PCT * 100)}%)", impacto=True)
 
 
 def main_vermelha(existentes, lista):
@@ -306,7 +323,7 @@ def main_vermelha(existentes, lista):
         if (t.startswith("[main-vermelha-") and not t.startswith(f"[main-vermelha-{sha[:7]}]")
                 and c.get("status") in ("ready", "todo")):
             subprocess.run([HERMES, "kanban", "archive", c["id"]], capture_output=True, timeout=60)
-            print(f"conserto de main obsoleto arquivado: {t[:40]}")
+            registrar("cartao_obsoleto_arquivado", t[:60], f"a main andou para {sha[:7]}")
     runs = json.loads(gh("api", f"repos/{REPO}/commits/{sha}/check-runs"))["check_runs"]
     falhas = [r for r in runs if r.get("conclusion") == "failure" and r["name"] != "testes de aceitação protegidos"]
     if not falhas:
@@ -315,6 +332,7 @@ def main_vermelha(existentes, lista):
     if chave in existentes:
         return
     lista = "\n".join(f"- {r['name']}: {r['html_url']}" for r in falhas)
+    registrar("main_vermelha", f"main {sha[:7]}", "; ".join(r["name"] for r in falhas), impacto=True)
     criar(chave, f"Consertar a main: CI vermelho em {sha[:7]}", "dev",
           f"O CI da main está VERMELHO no commit {sha[:7]} e isso trava todo merge:\n{lista}\n"
           "Leia o log (`gh run view <id> --log-failed`), reproduza local (o seu Node é o mesmo do CI) e conserte a "
@@ -338,6 +356,75 @@ def aviso_ci(pr):
 
 def gh_json(*args):
     return json.loads(gh(*args) or "{}")
+
+
+DIARIO_ESTADO = "/opt/data/avaliacao/diario-estado.json"
+DIARIO_TITULO = "🤖 Diário do loop (ações automáticas)"
+NOMES = {"cartao_criado": "cartões criados", "zelador_liberou": "cartões travados liberados",
+         "zelador_arquivou": "cartões arquivados à força", "freio_memoria": "freio de memória",
+         "cartao_obsoleto_arquivado": "cartões obsoletos arquivados", "pr_qa_fechado": "PRs do QA fechados",
+         "main_vermelha": "main vermelha", "tarefa_mandada_quebrar": "tarefas mandadas quebrar"}
+
+
+def diario_github():
+    """Publica o que o loop fez sozinho numa issue fixa do GitHub, onde o dono já olha.
+
+    Ação de impacto (impacto=True): comentário na hora. O resto: um resumo por dia, com a contagem por tipo e a
+    lista do que não é rotina. Resumo diário tem motivo: é leitura pra humano, não urgência.
+    """
+    try:
+        est = json.load(open(DIARIO_ESTADO))
+    except (OSError, ValueError):
+        est = {}
+    try:
+        acoes = [json.loads(l) for l in open(ACOES)]
+    except OSError:
+        acoes = []
+    hoje = dt.datetime.now(BRT).strftime("%Y-%m-%d")
+    if "issue" not in est:
+        subprocess.run([GH, "label", "create", "diario-loop", "-R", REPO, "--color", "ededed", "--force",
+                        "--description", "Registro automático do que o loop de agentes fez sozinho"],
+                       capture_output=True, timeout=60)
+        corpo = ("Registro automático, escrito pelo sincronizador (`hermes/harness/sincronizar_github.py`), de tudo "
+                 "que o loop de agentes faz **sozinho** e que tem efeito: cartão travado liberado ou arquivado, freio de "
+                 "memória, PR do QA fechado, main vermelha, tarefa mandada quebrar.\n\n- Ação de impacto: comentário na "
+                 "hora.\n- Resto: um resumo por dia.\n\nFonte completa: `/opt/data/avaliacao/acoes.jsonl` no mini PC. "
+                 "Não é item de roadmap.")
+        url = subprocess.run([GH, "issue", "create", "-R", REPO, "--title", DIARIO_TITULO, "--label", "diario-loop",
+                              "--body", corpo], capture_output=True, text=True, timeout=60).stdout.strip()
+        if not url:
+            return
+        # sem microssegundos, e ainda assim: 1 s pra trás pra não perder ação do mesmo segundo da criação
+        corte = dt.datetime.now(BRT).replace(microsecond=0) - dt.timedelta(seconds=1)
+        est = {"issue": int(url.rstrip("/").split("/")[-1]), "dia": hoje, "impacto_ate": corte.isoformat()}
+        json.dump(est, open(DIARIO_ESTADO, "w"))
+        return
+
+    def postar(texto):
+        r = subprocess.run([GH, "issue", "comment", str(est["issue"]), "-R", REPO, "--body-file", "-"],
+                           input=texto, capture_output=True, text=True, timeout=60)
+        return r.returncode == 0
+
+    # compara como horário, não como texto: "…:05-03:00" < "…:05.123-03:00" como texto escondia a ação (30/09, pego no teste)
+    ate = dt.datetime.fromisoformat(est.get("impacto_ate") or "1970-01-01T00:00:00-03:00")
+    novos = [a for a in acoes if a.get("impacto") and dt.datetime.fromisoformat(a["quando"]) > ate]
+    if novos:
+        linhas = "\n".join(f"- `{a['quando'][11:16]}` **{NOMES.get(a['acao'], a['acao'])}**: {a['alvo']}"
+                           + (f" ({a['motivo']})" if a["motivo"] else "") for a in novos)
+        if postar(f"⚠️ **Ação de impacto** ({len(novos)}):\n\n{linhas}"):
+            est["impacto_ate"] = max(a["quando"] for a in novos)
+    if est.get("dia", hoje) < hoje:
+        do_dia = [a for a in acoes if a["quando"][:10] == est["dia"]]
+        if do_dia:
+            cont = collections.Counter(a["acao"] for a in do_dia)
+            resumo = " · ".join(f"{NOMES.get(k, k)}: {v}" for k, v in cont.most_common())
+            fora_rotina = [a for a in do_dia if a["acao"] != "cartao_criado"][-30:]
+            lista = "\n".join(f"- `{a['quando'][11:16]}` {NOMES.get(a['acao'], a['acao'])}: {a['alvo']}"
+                              + (f" ({a['motivo']})" if a["motivo"] else "") for a in fora_rotina)
+            if not postar(f"📋 **Resumo de {est['dia']}**: {resumo}\n\n{lista or '(só rotina)'}"):
+                return
+        est["dia"] = hoje
+    json.dump(est, open(DIARIO_ESTADO, "w"))
 
 
 def main():
@@ -386,7 +473,7 @@ def main():
                 if (t.startswith(f"[revisar-pr-{pr['number']}-") and not t.startswith(f"[{chave}]")
                         and c.get("status") in ("ready", "todo")):
                     subprocess.run([HERMES, "kanban", "archive", c["id"]], capture_output=True, timeout=60)
-                    print(f"revisão obsoleta arquivada: {t[:40]}")
+                    registrar("cartao_obsoleto_arquivado", t[:60], f"PR #{pr['number']} ganhou commit novo {sha}")
             if chave not in existentes:
                 criar(chave, f"Revisar PR #{pr['number']}: {pr['title']}", "revisor",
                       f"Revise o PR #{pr['number']} ({pr['url']}). Aprovou e o CI está verde? Faça o merge.\n"
@@ -418,7 +505,7 @@ def main():
             subprocess.run([GH, "pr", "close", str(pr["number"]), "-R", REPO, "--comment",
                             f"Fechado pelo sincronizador: a tarefa #{m.group(1)} já foi entregue (issue fechada). "
                             "O teste deste PR entrou na main junto com o PR do Dev."], capture_output=True, timeout=60)
-            print(f"PR do QA #{pr['number']} fechado (tarefa #{m.group(1)} entregue)")
+            registrar("pr_qa_fechado", f"PR #{pr['number']}", f"tarefa #{m.group(1)} já entregue")
     # PLANO 12.2: bug passa na frente de tudo. Tarefa de item com etiqueta bug ganha prioridade.
     bugs = {i["number"] for i in todas if any(l["name"] == "bug" for l in i["labels"])}
     for etiqueta, papel, prio in (("pronto-pra-dev", "dev", 20), ("pronto-pra-teste", "qa", 10)):
@@ -476,6 +563,10 @@ def main():
     for chave, titulo, papel, alvo, _hora, prio in fixos:
         if chave not in existentes:
             criar(chave, titulo, papel, alvo, prioridade=prio)
+    try:
+        diario_github()
+    except Exception as e:  # o diário não pode derrubar o ciclo; a fonte (acoes.jsonl) já foi gravada
+        print(f"diário do GitHub falhou: {e}")
 
 
 if __name__ == "__main__":
