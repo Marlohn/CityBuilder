@@ -15,7 +15,9 @@ Cities: Skylines, com vidas realistas do nascimento à morte e dados reais do Br
 
 1. Clone limpo: `git checkout main && git reset --hard origin/main && git pull`.
 2. A ordem oficial é a da **issue #2** (`gh issue view 2`), que o workflow publica. O `ROADMAP.md` commitado fica velho.
-3. Pegue o primeiro item de **Agora** que ainda não tem issue **Tarefa** apontando pra ele.
+3. Pegue o primeiro item de **Agora** que ainda não tem issue **Tarefa** apontando pra ele, **aberta ou fechada** (`gh issue list --label tarefa --state all`:
+   sem o `--state all` você não vê o que já foi entregue e planeja de novo). Item com tarefas fechadas: leia o que elas entregaram e planeje só o
+   que FALTA; se nada falta, comente no item e pare.
 4. Leia o código envolvido e crie as issues **Tarefa** (formulário do repositório, texto por `--body-file`):
    - no máximo ~3 arquivos, numa **lista numerada**, um caminho entre crases por linha (`1. `+`packages/sim/src/x.ts`):
      o sincronizador usa essa lista para não liberar dois devs no mesmo arquivo;
