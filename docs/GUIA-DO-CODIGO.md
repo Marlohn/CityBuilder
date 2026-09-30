@@ -177,6 +177,13 @@ Na tela, um carro dentro do mapa está SEMPRE desenhado: ou na viagem visual (Tr
 
 O limite de tela (`DEFAULT_TRAFFIC_VISUALS.maxActive`, em `trafficVisuals.ts`) é número técnico de memória/desenho, não é regra de jogo e não vai para a config.
 
+### 3.12 Contar viagens de ontem por motivo no relatório
+
+1. Campo novo em `YearCounters` (`packages/sim/src/city.ts`) com zero em `emptyYear()`.
+2. Método em `City` que soma no ano atual (o `game.ts` vira `city.year` em `city.lastYear` no fim do ano, e 1 dia do jogo = 1 ano).
+3. Leitura em `view/report.ts` a partir de `city.lastYear`, com o helper `n()` (ponto de milhar).
+4. Não mexa em `packages/contract` nem no `StatsView`: contagem de ontem é dado do motor, não visão para a tela.
+
 ---
 
 ## 4. Testes

@@ -208,7 +208,7 @@ $H kanban list                     # quadro
 $H kanban show <id>                # resumo, eventos e diagnóstico de um cartão
 $H kanban log <id>                 # o que o agente fez
 $H cron list                       # sincronizador: every 2m, last run ok?
-$H config get kanban.max_in_progress   # agentes simultâneos (hoje 2; por perfil 1)
+$H config get kanban.max_in_progress   # agentes simultâneos (hoje 2; por perfil 1). Com 3, a máquina engasgou (30/09 13:00)
 cd /opt/data/avaliacao && python3 metricas.py --json metricas-$(date -u +%Y%m%dT%H%MZ).json
 ```
 
@@ -234,6 +234,10 @@ Ele tem teste de mutação feito à mão: reprova com o loop ocioso, com SOUL di
 **Subir ou descer agentes simultâneos:** decida pelo pico de `anon` (o `vigia.sh` mede). Ajuste
 `kanban.max_in_progress` e reinicie só o gateway. **Medido em 30/09:** 2 agentes ≈ 2,0–2,1 GB de processos; com a comparação
 de modelos junto, 2,6–2,7 GB de 3 GB. Ou seja, **não cabe empurrar pra 3** enquanto a comparação roda.
+**Com 3 e sem comparação de modelos também não cabe (30/09, tarde):** o `vigia.sh` (amostra a cada 1 min) mostrou picos de 1,5–2,3 GB e
+achei que cabia, mas às 13:00 o `freio.jsonl` (amostra a cada 2 min) registrou 2.817 MB, a pressão de disco ficou ~24% por 5 min e o
+load chegou a 20. O que estoura é o `npm run check` (só o `tsc` do dev usa ~430 MB) rodando ao mesmo tempo no dev e no QA. **Meça o pico
+pelo `freio.jsonl` e por `memory.pressure`, não por amostra pontual.** Voltou para 2.
 
 ## Avaliação do experimento
 
