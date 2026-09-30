@@ -48,34 +48,59 @@ function prediosDoTipo(game: Game, id: string): number[] {
 
 describe("issue #99: prefeito constrói a segunda escola e a segunda UBS quando a primeira lota", () => {
   it("a cidade do teste tem uma escola e uma UBS ativas e depois lotadas", { timeout: 600000 }, () => {
-    const game = gameNoDia(25);
-    const b = game.sim.buildings;
-    const escolas = prediosDoTipo(game, "escola").filter((id) => b.state[id] === BSTATE.active);
-    const ubs = prediosDoTipo(game, "ubs").filter((id) => b.state[id] === BSTATE.active);
+    const game16 = gameNoDia(16);
+    const b16 = game16.sim.buildings;
+    const escolas16 = prediosDoTipo(game16, "escola").filter((id) => b16.state[id] === BSTATE.active);
+    const ubs16 = prediosDoTipo(game16, "ubs").filter((id) => b16.state[id] === BSTATE.active);
     expect(
-      escolas.length,
-      `a cidade do teste deveria ter 1 escola ativa aos 25 dias, mas tem ${escolas.length}: ` +
+      escolas16.length,
+      `a cidade do teste deveria ter exatamente 1 escola ativa no dia 16, mas tem ${escolas16.length}: ` +
         `sem esse cenário o teste não prova nada`,
     ).toBe(1);
     expect(
-      ubs.length,
-      `a cidade do teste deveria ter 1 UBS ativa aos 25 dias, mas tem ${ubs.length}: ` +
+      ubs16.length,
+      `a cidade do teste deveria ter exatamente 1 UBS ativa no dia 16, mas tem ${ubs16.length}: ` +
         `sem esse cenário o teste não prova nada`,
     ).toBe(1);
-    const e = escolas[0]!;
+    const e = escolas16.find((id) => b16.state[id] === BSTATE.active)!;
     expect(
-      b.students[e],
-      `a escola do teste deveria estar lotada aos 25 dias (students === studentsCapacity), ` +
-        `mas tem ${b.students[e]} alunos para ${b.studentsCapacity(e)} vagas: ` +
+      b16.students[e],
+      `a escola do teste deveria estar lotada no dia 16 (students === studentsCapacity), ` +
+        `mas tem ${b16.students[e]} alunos para ${b16.studentsCapacity(e)} vagas: ` +
         `sem lotação o teste não prova nada`,
-    ).toBe(b.studentsCapacity(e));
-    const u = ubs[0]!;
+    ).toBe(b16.studentsCapacity(e));
+    const u = ubs16.find((id) => b16.state[id] === BSTATE.active)!;
     expect(
-      b.patients[u],
-      `a UBS do teste deveria estar lotada aos 25 dias (patients === patientsCapacity), ` +
-        `mas tem ${b.patients[u]} pacientes para ${b.patientsCapacity(u)} vagas: ` +
+      b16.patients[u],
+      `a UBS do teste deveria estar lotada no dia 16 (patients === patientsCapacity), ` +
+        `mas tem ${b16.patients[u]} pacientes para ${b16.patientsCapacity(u)} vagas: ` +
         `sem lotação o teste não prova nada`,
-    ).toBe(b.patientsCapacity(u));
+    ).toBe(b16.patientsCapacity(u));
+    const game17 = gameNoDia(17);
+    const b17 = game17.sim.buildings;
+    const escolas17 = prediosDoTipo(game17, "escola");
+    const emObra17 = escolas17.filter(
+      (id) => b17.state[id] === BSTATE.constructing && b17.state[id] < BSTATE.active,
+    );
+    expect(
+      emObra17.length,
+      `no dia 17 era esperada a segunda escola em obra (state === constructing, isto é, ` +
+        `nem active nem demolished e state < active), mas não há nenhuma em obra entre ` +
+        `${escolas17.length} escolas: o prefeito não começou a segunda mesmo com a primeira lotada`,
+    ).toBeGreaterThanOrEqual(1);
+    const game20 = gameNoDia(20);
+    const escolas20 = prediosDoTipo(game20, "escola");
+    const ubs20 = prediosDoTipo(game20, "ubs");
+    expect(
+      escolas20.length,
+      `no dia 20 eram esperadas pelo menos 2 escolas, mas só existe ${escolas20.length}: ` +
+        `o prefeito não construiu a segunda mesmo com a primeira lotada no dia 16`,
+    ).toBeGreaterThanOrEqual(2);
+    expect(
+      ubs20.length,
+      `no dia 20 eram esperadas pelo menos 2 UBS, mas só existe ${ubs20.length}: ` +
+        `o prefeito não construiu a segunda mesmo com a primeira lotada no dia 16`,
+    ).toBeGreaterThanOrEqual(2);
   });
 
   it("com a primeira escola lotada, o prefeito constrói uma segunda escola", { timeout: 600000 }, () => {
