@@ -98,11 +98,12 @@ Roda como cron `--no-agent` do perfil default, a cada 2 min. A cópia **em produ
 | issue `pronto-pra-dev` | `dev` (até 3 rodadas; espera `Depende de #N`; **um dev por arquivo**) |
 | issue `pronto-pra-teste` | `qa` (até 3 rodadas) |
 | **3 rodadas gastas sem entrega** | `arquiteto` "quebrar a tarefa" (docs/PLANO.md 12) + comentário na issue |
-| menos de 3 tarefas abertas | `arquiteto` planeja (a chave muda com o estado, então não replaneja o nada) |
+| menos de 3 tarefas **prontas para começar** (sem `Depende de #N` aberta) | `arquiteto` planeja (a chave muda com o estado, então não replaneja o nada). Tarefa que espera outra **não** conta: em 30/09 três tarefas do mesmo item enchiam a fila e seguravam os bugs urgentes independentes (#26, #27, #25) |
 | 1× por dia | `designer`; e `qa` caça bug, só se estiver sem fila |
 | cartão bloqueado | **zelador**: fecha na hora, com o motivo do bloqueio no resumo (arquiva se o Hermes recusar), pra liberar a próxima rodada |
 | CI da `main` vermelho | `dev`, **prioridade 40** (a maior), um conserto aberto por vez, até 3 rodadas por commit; o cartão manda conferir se a `main` já está verde |
 | PR rascunho `qa/N` com a tarefa N fechada | fechado, com comentário no PR |
+| PR `dev/N` mesclado (últimas 48 h) e a tarefa N ainda aberta | issue fechada, com comentário: o GitHub nem sempre fecha (o #68 dizia `Closes #39` e `closingIssuesReferences` veio vazio; sem isso a #39 ganharia outra rodada de dev) |
 
 O arquivo tem ~340 linhas e **só faz isso**. Cada função com efeito tem gabarito em `testar_sinc.py`, e `mutantes.py`
 prova que o teste fica vermelho quando o defeito volta.

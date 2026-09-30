@@ -113,10 +113,14 @@ print("tarefas: ok")
 
 # ---- diários / planejamento -------------------------------------------------------------------------------------
 sem_fila = [{"number": 1, "labels": [{"name": "roadmap"}]}]
-s.diarios(sem_fila, {}, "20260930")
+s.diarios(sem_fila, {}, "20260930", [])
 assert [c[0][:15] for c in CRIADOS] == ["arquiteto-plano", "designer-202609", "qa-caca-2026093"], CRIADOS; CRIADOS.clear()
 cheia = [{"number": n, "labels": [{"name": "tarefa"}, {"name": "pronto-pra-teste"}]} for n in (1, 2, 3)]
-s.diarios(cheia, {}, "20260930"); cria("designer-20260930")  # fila cheia: não planeja; QA com fila: não caça
+livres = [{"number": n, "body": ""} for n in (1, 2, 3)]
+s.diarios(cheia, {}, "20260930", livres); cria("designer-20260930")  # fila cheia: não planeja; QA com fila: não caça
+presas = [{"number": 1, "body": ""}, {"number": 2, "body": "Depende de #1"}, {"number": 3, "body": "Depende de #1, #2"}]
+s.diarios(cheia, {}, "20260930", presas)  # 3 abertas, mas só 1 pode começar: planeja outro item
+assert [c[0][:15] for c in CRIADOS] == ["arquiteto-plano", "designer-202609"], CRIADOS; CRIADOS.clear()
 print("diários: ok")
 
 # ---- PR do QA de tarefa entregue --------------------------------------------------------------------------------
@@ -124,6 +128,21 @@ ESCRITOS.clear()
 s.fechar_prs_qa([pr(5, "a", "qa/5"), pr(6, "b", "qa/6"), pr(7, "c", "qa/bug-41"), pr(8, "d", "dev/5")], {6})
 assert [a[2] for a in ESCRITOS if a[0] == "pr"] == ["5"], ESCRITOS; ESCRITOS.clear()
 print("PR do QA: ok")
+
+# ---- tarefa entregue que o GitHub não fechou -----------------------------------------------------------------------
+import datetime as _dt
+_agora = _dt.datetime(2026, 9, 30, 12, 0, tzinfo=_dt.timezone.utc)
+_mesclado = lambda ramo, horas: {"number": 68, "headRefName": ramo, "mergedAt": (_agora - _dt.timedelta(hours=horas)).isoformat()}
+_todas = [{"number": 5, "labels": [{"name": "tarefa"}]}, {"number": 7, "labels": [{"name": "roadmap"}]}]
+ESCRITOS.clear()
+assert s.fechar_tarefas_entregues([_mesclado("dev/5", 1)], _todas, _agora) == {5} and ESCRITOS[0][:3] == ("issue", "close", "5")
+ESCRITOS.clear()
+assert s.fechar_tarefas_entregues([_mesclado("dev/5", 60)], _todas, _agora) == set(), "PR antigo: não reabre decisão"
+assert s.fechar_tarefas_entregues([_mesclado("dev/9", 1)], _todas, _agora) == set(), "tarefa já fechada"
+assert s.fechar_tarefas_entregues([_mesclado("qa/5", 1)], _todas, _agora) == set(), "PR do QA não entrega"
+assert s.fechar_tarefas_entregues([_mesclado("dev/7", 1)], _todas, _agora) == set(), "issue que não é tarefa"
+assert not ESCRITOS[1:], ESCRITOS
+print("tarefa entregue: ok")
 
 # ---- zelador ----------------------------------------------------------------------------------------------------
 CHAMADAS = []
