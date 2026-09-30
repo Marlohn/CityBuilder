@@ -207,6 +207,11 @@ $H config get kanban.max_in_progress   # agentes simultâneos (hoje 2; por perfi
 cd /opt/data/avaliacao && python3 metricas.py --json metricas-$(date -u +%Y%m%dT%H%MZ).json
 ```
 
+**Saúde em um comando:** `python3 /opt/data/scripts/saude.py` (só leitura; sai com 1 se algo falhar). Confere os 5 perfis (SOUL
+igual ao do repo, origem registrada), os 2 crons, produção == repo, token do GitHub, proteção da `main`, Kilo, memória, disco e
+o invariante do loop (nada aberto com tarefa pronta; PR em revisão sem cartão). Rode no começo de toda sessão de supervisão.
+Ele tem teste de mutação feito à mão: reprova com o loop ocioso, com SOUL diferente e com origem errada.
+
 **Deploy do sincronizador e do freio:**
 1. Mude os arquivos em `hermes/harness/` num PR (CI verde, merge). Confira `git diff --cached --check`: sem CRLF.
 2. Com o clone atualizado no container, rode e espere `TESTE OK` em cada um:
