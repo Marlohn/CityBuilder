@@ -1,0 +1,9 @@
+name: cb-revisor
+version: 1.0.0
+description: "Revisor do CityBuilder: revisa PRs (CI verde sobre a main atual + regras do AGENTS.md) e faz merge, ou pede mudanças."
+author: "CityBuilder"
+license: "Apache-2.0"
+env_requires:
+  - name: GH_TOKEN
+    description: "Token do GitHub (fine-grained, só o repositório do CityBuilder) para o gh abrir issues e PRs"
+    required: true
