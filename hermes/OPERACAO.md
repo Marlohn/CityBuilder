@@ -103,6 +103,7 @@ Roda como cron `--no-agent` do perfil default, a cada 2 min. A cópia **em produ
 | cartão bloqueado | **zelador**: fecha na hora, com o motivo do bloqueio no resumo (arquiva se o Hermes recusar), pra liberar a próxima rodada |
 | CI da `main` vermelho | `dev`, **prioridade 40** (a maior), um conserto aberto por vez, até 3 rodadas por commit; o cartão manda conferir se a `main` já está verde |
 | PR rascunho `qa/N` com a tarefa N fechada | fechado, com comentário no PR |
+| PR `dev/N` reprovado com a issue N de volta em `pronto-pra-teste` (teste do QA errado) | **sem** ajuste do dev: ele não pode mexer em `tests/acceptance/`. O revisor devolve a tarefa ao QA (regra no SOUL), o QA corrige no mesmo `qa/N` e volta pra `pronto-pra-dev`; aí o dev traz o teste com `git merge origin/qa/N`. Achado no PR #76 (30/09): não havia caminho pra isso |
 | PR `dev/N` mesclado (últimas 48 h) e a tarefa N ainda aberta | issue fechada, com comentário: o GitHub nem sempre fecha (o #68 dizia `Closes #39` e `closingIssuesReferences` veio vazio; sem isso a #39 ganharia outra rodada de dev) |
 
 O arquivo tem ~340 linhas e **só faz isso**. Cada função com efeito tem gabarito em `testar_sinc.py`, e `mutantes.py`
