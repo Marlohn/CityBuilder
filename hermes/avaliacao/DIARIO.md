@@ -279,3 +279,24 @@ Uma tarefa por modelo: é indício, não prova. Todos sem mexer no teste. Bruto 
 - Cinco modelos entregam o mesmo resultado; o muse não é o mais rápido. `space-bunny` (303 s) e `nemotron-3-ultra` (439 s, o menor diff)
   foram melhores que ele nesta tarefa. `big-pickle` é rápido mas deixa o `check` vermelho; `lightning` não serve.
 - Não troquei o modelo do dev: falta uma 2ª tarefa (a #49 tem teste pronto) para ver se a ordem se mantém. Candidato: `bakeoff.sh` com `nemotron-3-ultra` e `space-bunny`.
+
+### Tarde de 30/09: o loop andando com 3 agentes (e o que não coube)
+
+- **Entregas sem supervisor entre ~12:30 e ~13:20 (UTC):** #39, #72, #49 e #40 mescladas; #81 e #82 já com teste do QA, #81 implementada. O arquiteto
+  planejou o #26 sozinho e o QA e o dev o entregaram em sequência.
+- **Bloqueios de comando caíram de 3–9% para ~0–2%** depois de o dono liberar `approvals.single_query_mode` (0 em 416 chamadas nas últimas 2 h).
+- **Falhas de desenho achadas com dado e corrigidas (cada uma com cenário e mutante):**
+  - fila do arquiteto contava tarefa presa como "fila cheia" e segurava 3 bugs urgentes independentes;
+  - o GitHub não fechou a #39 mesmo com `Closes #39` no PR mesclado (`closingIssuesReferences` vazio);
+  - teste do QA errado não tinha caminho (o dev não pode mexer nele): revisor devolve ao QA, e o dev também sabe devolver;
+  - o revisor "devolvia" bloqueando o cartão em vez de trocar a etiqueta; o SOUL agora diz o comando;
+  - o arquiteto replanejava item por cima de tarefas **fechadas** (`gh issue list` só mostra abertas);
+  - item do roadmap com `pronto-pra-teste` virava cartão de QA; só issue com a etiqueta `tarefa` ganha cartão;
+  - revisão repetida enquanto a tarefa espera o QA (#49 e #40, ~15 min cada);
+  - QA de tarefa com PR do dev pronto passa na frente (terminar antes de começar).
+- **Erros do supervisor:** o deploy dos SOULs deu `reset` no clone de trabalho do dev no meio de um cartão (perdeu ~3 min de edição não
+  commitada; o agente se recuperou). Agora a origem dos perfis é `/opt/data/distribuicao`, um clone só pra isso. Também subi para 3
+  agentes com base em amostras pontuais de memória: às 13:00 a máquina engasgou (2.817 MB, pressão de disco ~24% por 5 min, load 20).
+  Voltei para 2.
+- **Intervenções do supervisor na tarde:** 3 encaminhamentos manuais (#49, #40 e prioridade de um cartão) e 1 correção de etiquetas (#21).
+  Todos ficaram como regra ou instrução de SOUL depois.
