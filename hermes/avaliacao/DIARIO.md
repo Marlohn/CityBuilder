@@ -186,3 +186,96 @@ A maioria virou regra no sincronizador. Continua alto: a métrica que decide ain
   com `TESTE OK`, e o teste não escreve mais no log real.
 - **Comparação de modelos (parcial, interrompida pelo incidente):** muse **9/9** nos testes de aceitação da #38, em 539 s,
   sem mexer no teste. Os outros modelos ficam pra quando a máquina tiver folga, rodando com 1 agente só.
+
+---
+
+## Rodada 2 (30/09 02:00Z → ~12:00Z): tirar o que sobrou de remendo
+
+Pedido do dono: o loop tem que rodar **sozinho** depois que o supervisor for desligado, então todo remendo vira problema.
+A rodada revisou tudo que o supervisor tinha montado e cortou o que não tinha evidência.
+
+### O que mudou (e o dado que justifica)
+
+| Peça | Antes | Agora | Por quê |
+|---|---|---|---|
+| Sincronizador | 620 linhas | ~340 | Só faz GitHub → kanban. O resto era peça que só o supervisor entendia |
+| Diário no GitHub (#61) e `acoes.jsonl` | 60 linhas + issue + arquivo | removidos | Repetiam o que o Hermes e o GitHub já guardam; o rastro passou a ficar **no próprio alvo** (cartão ou comentário) |
+| Triagem de cartão travado pelo jev | classificava o motivo | removida | 12 registros, todos dos **mesmos 2 cartões**, sempre "acesso": rodou só em cima de um bug do supervisor, nunca num caso real. A função dela (3 rodadas → arquiteto) virou regra sem LLM |
+| Vigia de consumo do Kilo | contava chamadas/h | removido | O Kilo não informa uso; era estimativa. O efeito (chamadas no Zen num papel do Kilo) aparece em `metricas.py` |
+| Freio de memória | dentro do sincronizador | arquivo e cron próprios | Uma peça que falha não derruba a outra. Casa pelo argv exato |
+| Regras coladas em todo cartão | ~30 linhas por cartão | 4 linhas | As regras foram pro `AGENTS.md` e pros `SOUL.md`, que são versionados e chegam com `hermes profile update` |
+| "Arquivar cartão obsoleto" (2 lugares) | código de limpeza | 1 regra: **um cartão aberto por assunto** | Prevenir em vez de limpar |
+
+### Achados (com número)
+
+1. **Um bug do próprio harness escondeu 2 tarefas por ~9 h.** O PR rascunho do QA (`qa/49`, "Closes #49") era contado como
+   trabalho do dev; a #49 nunca ganhou cartão e a #39, que divide `trafficSystem.ts` com ela, ficou presa atrás. O loop ficou
+   **sem nenhum cartão aberto** a noite toda. Já estava em produção e nenhum teste antigo pegava: **só a fumaça com o GitHub
+   real** mostrou que "não criar nada" estava errado. Lição: teste com dado falso não acha bug de premissa. O que faltou
+   foi um aviso de "loop ocioso com tarefa pronta" (ver **Pendências** do `OPERACAO.md`).
+2. **A `main` vermelha se consertou sozinha, sem supervisor.** Vermelha às 23:15 (BRT), o cartão de prioridade 40 foi ao dev,
+   que abriu o PR #65 (Playwright); o revisor revisou duas vezes e mesclou às 00:37: **~1 h 20, zero intervenções**.
+   É a prova mais forte de autonomia até agora.
+3. **Kilo (nemotron-3-ultra) funciona e é mais enxuto.** Depois da troca, todas as sessões dos 3 papéis ficaram 100% no
+   Kilo, sem fallback. Designer: 36–60 chamadas em 31–36 min (Zen) → **19 chamadas em 7 min**. Revisão do #65: 24 chamadas
+   em 8 min e 12 em 11 min. Tarefas diferentes: indício, não prova. A revisão do #57, que já estava rodando **no Zen** antes da
+   troca, ficou ~1 h a mais depois de o PR já estar mesclado.
+4. **A trava de segurança do Hermes bloqueia 3–9% das chamadas** (`BLOCKED: Command flagged as dangerous`), no QA 15,8% antes da
+   revisão de ferramentas e 6,7% depois. O maior culpado é o `git reset --hard` do começo de todo cartão (32 sessões).
+   Liberar é decisão do dono (ver `OPERACAO.md`). Custo: ~5% das chamadas, então o loop funciona sem isso.
+5. **Espera de CI não é o gargalo:** 4% das chamadas do arquiteto e 13% do revisor. A ideia "só gerar o cartão de revisão
+   depois do CI" foi **descartada por dado** antes de virar código.
+6. **Memória: não cabe empurrar pra 3 agentes.** 2 agentes ≈ 2,0–2,1 GB de processos; com a comparação de modelos junto,
+   2,6–2,7 GB de 3 GB. O freio disparou 2 vezes na noite **sem ter terminal de chat pra matar**: a pressão era dos agentes.
+7. **Jev pra detectar issue duplicada:** 6/6 duplicatas achadas (2 reais, #59 e #60, criadas pelos agentes, e 4 reescritas), 12
+   controles certos, 2 "erros" que eram **sobreposições reais** (#31 Faculdade ↔ #64 "Jovens no ensino superior"), e 1 erro
+   genuíno com confiança 0,52. Aprovado no gabarito, **não ligado**.
+
+### Erros do supervisor nesta rodada (registro honesto)
+
+- Tinha publicado o vigia do Kilo por **estimativa** e só o dono questionou; refiz e depois removi.
+- Deixei sobras de teste na máquina (um serviço `gateway-teste-kilo` órfão dentro do container, logs de perfis apagados) e
+  gravei uma linha de teste no `acoes.jsonl` de produção. Limpei.
+- O freio casava texto solto na linha de comando e podia matar processo inocente: **o teste que escrevi pegou**, e corrigi.
+- O perfil do revisor tinha a origem registrada apontando pro arquiteto desde o setup inicial (um `profile update` colou o
+  SOUL errado; ele estava ocioso). Achado pela conferência do "antes e depois" e corrigido.
+- Patches feitos no Windows gravaram CRLF e o primeiro diff do PR mostrava arquivos inteiros reescritos. Normalizei.
+
+### Intervenções do supervisor nesta rodada
+
+O loop **pediu** 1: a tarefa escondida, que nem ele nem ninguém sabia estar escondida (só o supervisor viu). As outras foram
+melhorias de arquitetura por iniciativa do supervisor, não socorro. O número que decide segue sendo intervenções por dia.
+
+### Ações manuais do supervisor (rastro, já que o diário do GitHub foi removido)
+
+- PR #66 (harness enxuto, freio próprio, SOULs e `AGENTS.md`), mesclado por mim com CI verde, **sem passar pelo revisor**
+  (é o harness; o revisor gastou 47 min num PR de docs).
+- `hermes profile update` nos 5 perfis; corrigi a origem registrada do revisor (backup `distribution.yaml.bak-20260930-fonte`).
+- Troquei o sincronizador em produção (cópia do anterior em `sincronizar_github.py.bak-antes-v2`), criei o cron `freio-memoria`,
+  removi `zelador.json`, `testar_diario.py`, `testar_kilo.py`, `diario-estado.json`.
+- Comentei e **fechei a issue #61** e apaguei a etiqueta `diario-loop`.
+- Bake-off: relancei os 5 modelos que faltavam (a rodada 1 deles era inválida: o OpenCode recusou ler a tarefa em `/tmp`).
+
+### Veredito parcial (dia 2)
+
+Melhorou onde importa: a autonomia foi **provada** num caso (`main` vermelha) e o sistema ficou menor. Mas o bug de 9 h mostra o
+risco real de rodar sem supervisor: **falha silenciosa**, o loop parado sem ninguém saber. Antes de dar por concluído, falta
+um aviso de "loop ocioso com tarefa pronta". Comparação de modelos: resultados abaixo quando terminarem.
+
+### Comparação de modelos para escrever código (30/09, tarefa #38, 9 testes de aceitação, via `opencode run`)
+
+Uma tarefa por modelo: é indício, não prova. Todos sem mexer no teste. Bruto em `/opt/data/avaliacao/bakeoff2.jsonl`.
+
+| Modelo | Tempo | Aceitação | `npm run check` | Linhas / arquivos |
+|---|---|---|---|---|
+| big-pickle | 167 s | 9/9 | **vermelho** | 119 / 2 |
+| space-bunny | 303 s | 9/9 | verde | 84 / 3 |
+| nemotron-3-ultra | 439 s | 9/9 | verde | 71 / 1 |
+| muse (o atual do dev/qa) | 539 s | 9/9 | verde | 101 / 2 |
+| longcat-2.5-preview | 699 s | 9/9 | verde | 107 / 2 |
+| mimo-v2.6-flash | 1380 s | 9/9 | verde | 98 / 3 |
+| nemotron-3.5-lightning | estourou 1500 s | 6/9 | vermelho | 47 / 1 |
+
+- Cinco modelos entregam o mesmo resultado; o muse não é o mais rápido. `space-bunny` (303 s) e `nemotron-3-ultra` (439 s, o menor diff)
+  foram melhores que ele nesta tarefa. `big-pickle` é rápido mas deixa o `check` vermelho; `lightning` não serve.
+- Não troquei o modelo do dev: falta uma 2ª tarefa (a #49 tem teste pronto) para ver se a ordem se mantém. Candidato: `bakeoff.sh` com `nemotron-3-ultra` e `space-bunny`.

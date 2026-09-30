@@ -154,6 +154,24 @@ def main():
                      "tokens_raciocinio_k": sum(s[5] or 0 for s in ses) // 1000,
                      "horas_modelo": horas(llm), "horas_ferramentas": horas(ferr)}
 
+    # --- provedor: chamadas de cada papel por modelo (o Kilo fica no principal; caiu pra reserva do Zen?) ---
+    # Só leitura: o Kilo não informa consumo (nem cabeçalho, nem endpoint); o efeito é o que importa, e o Hermes o grava
+    # exato em session_model_usage. Papel do Kilo com chamadas no Zen DEPOIS da troca = o Kilo recusou (limite ~200/h).
+    provedor = {}
+    for db in glob.glob("/opt/data/profiles/*/state.db"):
+        p = db.split("/")[4]
+        try:
+            c = sqlite3.connect(f"file:{db}?mode=ro", uri=True, timeout=5)
+            linhas = c.execute("select model, billing_base_url, count(distinct session_id), sum(api_call_count) "
+                               "from session_model_usage where last_seen>=? group by model, billing_base_url", (INICIO,)).fetchall()
+        except sqlite3.Error:
+            continue
+        for m, u, sess, n in linhas:
+            nome = f"{m.split('/')[-1]} @ {'kilo' if 'kilo.ai' in (u or '') else 'zen' if 'opencode.ai' in (u or '') else u}"
+            acc = provedor.setdefault(p, {}).setdefault(nome, {"sessoes": 0, "chamadas": 0})
+            acc["sessoes"] += sess
+            acc["chamadas"] += n or 0
+
     # --- GitHub: entregas ----------------------------------------------------------------
     issues = gh("issue", "list", "-R", REPO, "--label", "tarefa", "--state", "all", "--limit", "200",
                 "--json", "number,createdAt,closedAt,state")
@@ -183,7 +201,8 @@ def main():
     }
     entregas["reprovacoes"] = motivos_reprovacao([p["number"] for p in prs])
     saida = {"coletado": dt.datetime.now(dt.timezone.utc).isoformat(timespec="minutes"),
-             "entregas": entregas, "cartoes": cartoes, "ocupacao_pct_do_tempo": ocupacao, "modelo": modelo}
+             "entregas": entregas, "cartoes": cartoes, "ocupacao_pct_do_tempo": ocupacao, "modelo": modelo,
+             "chamadas_por_modelo": provedor}
     if "--json" in sys.argv:
         json.dump(saida, open(sys.argv[sys.argv.index("--json") + 1], "w"), ensure_ascii=False, indent=1)
     print(json.dumps(saida, ensure_ascii=False, indent=1))
