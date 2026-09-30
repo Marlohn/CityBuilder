@@ -85,12 +85,7 @@ interface Medida {
 }
 
 /** Progresso do motor: igual ao `positions()` do motor (`trafficSystem.ts`), que anda pela rota ponderada pelo tempo em cada quadradinho. */
-function engineIndex(
-  cum: Int32Array,
-  tick: number,
-  depart: number,
-  arrive: number,
-): number {
+function engineIndex(cum: Int32Array, tick: number, depart: number, arrive: number): number {
   const span = Math.max(1, arrive - depart);
   const f = Math.min(1, Math.max(0, (tick - depart) / span));
   const target = f * cum[cum.length - 1]!;
@@ -129,12 +124,7 @@ function drawnPoint(
 }
 
 /** Posição do quadradinho desenhado dentro da rota real (de trás para frente, como quem procura o fim). */
-function indexOnRoute(
-  route: Int32Array,
-  tiles: Int32Array,
-  drawnTile: number,
-  pos: number,
-): number {
+function indexOnRoute(route: Int32Array, tiles: Int32Array, drawnTile: number, pos: number): number {
   if (tiles.length === route.length) {
     let same = true;
     for (let k = 0; k < route.length; k++) {
@@ -152,11 +142,7 @@ function indexOnRoute(
   return -1;
 }
 
-function checkFrame(
-  game: ReturnType<typeof createTestGame>,
-  vis: TrafficVisuals,
-  m: Medida,
-): void {
+function checkFrame(game: ReturnType<typeof createTestGame>, vis: TrafficVisuals, m: Medida): void {
   const s = game.sim;
   const world = s.world;
   const veh = game.traffic.vehicles;
@@ -200,12 +186,7 @@ function checkFrame(
         }
       }
     }
-    const lo = engineIndex(
-      cum,
-      s.clock.tick,
-      veh.departTick[v]!,
-      veh.arriveTick[v]!,
-    );
+    const lo = engineIndex(cum, s.clock.tick, veh.departTick[v]!, veh.arriveTick[v]!);
     if (lo > 0) m.engineStartedFrames++;
     const pt = drawnPoint(world, trip.tiles, trip.start, trip.duration, nowVis);
     const key = Math.round(pt.x * 1e4) + "," + Math.round(pt.y * 1e4);
