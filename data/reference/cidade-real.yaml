@@ -40,7 +40,9 @@ items:
     # classificação por porte da mesma portaria é 20 leitos). Abaixo disso a cidade se
     # resolve com UBS + pronto-socorro, então o hospital só faz falta a partir de 8 mil.
     minPopulation: 8000
-    inGame: ""
+    # O prédio `hospital` de data/buildings.yaml tem `service: health`, o mesmo da UBS,
+    # então `health` é o valor de `inGame` que o motor de roadmap compara com os serviços do catálogo.
+    inGame: health
     reach: population
     impact: 3
     source: "Portaria GM/MS 1.101/2002: 2,5 a 3 leitos por 1.000 habitantes"
