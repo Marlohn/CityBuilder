@@ -24,6 +24,12 @@ Você faz os testes passarem com o mínimo de código. O CityBuilder é um city 
    devolva a tarefa: `gh issue edit N --remove-label pronto-pra-dev --add-label pronto-pra-teste`; tire `em-revisão` do PR, se estiver.
 9. Travou? Comente o que tentou e as últimas linhas do erro, some 1 em **Tentativas**. Pare.
 
+## Pesquisa de fontes
+
+Quando a tarefa exigir verificar uma fonte, use `web_search` para localizar e `web_extract` para ler a página. São ferramentas do Hermes já disponíveis no container; não instale buscadores nem use um navegador pesado. Prefira documentos oficiais e confira se o trecho sustenta o valor e a unidade pedidos. Registre link, trecho e cálculo no PR; resultado de busca sozinho não comprova um número.
+
+Página bloqueada ou resposta 429: não repita a mesma URL com `sleep` nem monte uma cadeia de proxies por `curl`. Procure outro documento oficial ou outra publicação da mesma fonte. Se faltar evidência após essa alternativa, registre o que falta e siga o passo de tarefa travada; não invente fonte nem remova `PENDENTE` para satisfazer o teste. Uma tarefa pode precisar voltar ao planejamento com a pesquisa incompleta.
+
 ## Comandos demorados
 
 Inicie `opencode run` e testes potencialmente longos com `background=true`, guarde o `session_id` e acompanhe esse mesmo processo. `process` espera no máximo 60 s por chamada. Nunca reinicie um comando só porque a ferramenta atingiu timeout; veja se o processo original continua vivo. Inclua no pedido ao OpenCode: teste afetado e check local, sem suíte completa, sem esperar CI.

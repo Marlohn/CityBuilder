@@ -54,7 +54,7 @@ s.revisoes([pr(10, "aaaaaaa", "dev/1", ["em-revisão"])], {}); cria("revisar-pr-
 s.revisoes([pr(10, "aaaaaaa", "dev/1", ["em-revisão"])], {"revisar-pr-10-aaaaaaa": "done"}); cria("revisar-pr-10-aaaaaaa-retomar-r1")
 _retomadas = {"revisar-pr-10-aaaaaaa": "done", **{f"revisar-pr-10-aaaaaaa-retomar-r{n}": "done" for n in (1, 2, 3)}}
 s.revisoes([pr(10, "aaaaaaa", "dev/1", ["em-revisão"])], _retomadas); cria("arquiteto-destravar-pr-10-aaaaaaa")
-s.revisoes([pr(10, "aaaaaaa", "dev/1", ["em-revisão"])], {**_retomadas, "arquiteto-destravar-pr-10-aaaaaaa": "done"}); cria()
+s.revisoes([pr(10, "aaaaaaa", "dev/1", ["em-revisão"])], {**_retomadas, "arquiteto-destravar-pr-10-aaaaaaa": "done"}); cria("arquiteto-destravar-pr-10-aaaaaaa-retomar-r1")
 s.revisoes([pr(10, "aaaaaaa", "dev/1", ["em-revisão"])], {"revisar-pr-10-bbbbbbb": "ready"}); cria()  # 1 aberto por PR
 s.revisoes([pr(10, "aaaaaaa", "dev/1", ["em-revisão"])], {"revisar-pr-10-bbbbbbb": "done"}); cria("revisar-pr-10-aaaaaaa")
 s.revisoes([pr(10, "aaaaaaa", "dev/1")], {}); cria("dev-ajuste-pr-10-aaaaaaa")
@@ -71,6 +71,23 @@ s.revisoes([pr(10, "aaaaaaa", "dev/10", ["em-revisão"])], {}, {10}); cria()  # 
 s.revisoes([pr(10, "aaaaaaa", "dev/10", ["em-revisão"])], {}, {11}); cria("revisar-pr-10-aaaaaaa")  # outra issue esperando: revisa normal
 s.revisoes([pr(10, "aaaaaaa", "dev/10")], {}, {10}); cria()  # issue 10 esperando o QA corrigir o teste: sem ajuste do dev
 s.revisoes([pr(10, "aaaaaaa", "dev/10")], {}, {11}); cria("dev-ajuste-pr-10-aaaaaaa")  # outra issue esperando: não afeta
+
+# Diagnóstico não reinicia orçamento: autorização explícita + decisão do SHA atual, uma tentativa por PR.
+_decisao = {**_ajustes, "arquiteto-destravar-pr-10-ccccccc": "done"}
+_pdiag = pr(10, "ccccccc", "dev/10", ["pronto-pra-dev"])
+s.revisoes([_pdiag], _ajustes); cria("arquiteto-destravar-pr-10-ccccccc")  # etiqueta sozinha não basta
+s.revisoes([pr(10, "ccccccc", "dev/10")], _decisao); cria("arquiteto-destravar-pr-10-ccccccc-retomar-r1")
+s.revisoes([_pdiag], _decisao); cria("dev-diagnostico-pr-10")
+assert any(a[:3] == ("pr", "edit", "10") and "pronto-pra-dev" in a for a in ESCRITOS)
+ESCRITOS.clear()
+s.revisoes([_pdiag], {**_decisao, "arquiteto-destravar-pr-10-ccccccc-retomar-r1": "running"}); cria()
+s.revisoes([_pdiag], {**_decisao, "dev-diagnostico-pr-10": "running"}); cria()
+for _fim in s.TERMINAIS:
+    s.revisoes([_pdiag], {**_decisao, "dev-diagnostico-pr-10": _fim}); cria("arquiteto-destravar-pr-10-ccccccc-retomar-r1")
+s.revisoes([_pdiag], _decisao, {10}); cria()  # nunca contorna retorno ao QA
+s.revisoes([pr(10, "ddddddd", "dev/10", ["pronto-pra-dev"])], _decisao); cria("arquiteto-destravar-pr-10-ddddddd")
+s.revisoes([_pdiag], {**_decisao, "dev-diagnostico-pr-10": "done",
+                     **{f"arquiteto-destravar-pr-10-ccccccc-retomar-r{n}": "done" for n in (1, 2, 3)}}); cria()
 print("revisões/ajustes: ok")
 s.preparar_revisao = real_preparar
 
