@@ -234,6 +234,17 @@ Para criar uma categoria de receita ou despesa (ex.: `taxa_lixo`), siga estas ca
 6. Mostre na UI em `packages/ui` (painel de finanças): leia só do `StatsView.finance` do contrato,
    sem importar o motor. Nada de lógica de conta na tela, só exibição.
 
+### 3.14 Mudou uma regra que muda a cidade? Suba a versão do save
+
+O save é um replay (`packages/sim/src/save/replay.ts`): semente + comandos com o tick.
+Quando uma mudança de regra impede o save antigo de refazer a mesma cidade,
+suba `REPLAY_VERSION` em +1 e adicione um degrau em `MIGRATIONS` com a versão
+de destino como chave (ex.: `3: (r) => ({ ...r, version: 3 })`).
+
+1. Cada migração é uma função pura: recebe um `Replay` e devolve um `Replay` NOVO, sem mudar o original.
+2. A corrente é degrau por degrau: `applyMigrations` começa na versão do save e aplica `v -> v + 1` até a atual. Se faltar um degrau, recusa com erro em vez de abrir pela metade.
+3. Na escrita nada muda: `makeReplay` sempre grava na versão atual. A migração só acontece na leitura (`parseReplay`), sobre uma cópia.
+
 ---
 
 ## 4. Testes
