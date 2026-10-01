@@ -1,5 +1,23 @@
 # Diário da avaliação: agentes Hermes + kanban + LLM grátis (CityBuilder)
 
+## 01/10 22:45Z — orçamento consumido explícito na escalada
+
+No PR201, `dev-diagnostico-pr-201` terminou em 22:19:55Z e devolveu ao QA. O QA publicou a correção às
+22:25:14Z, mas o Arquiteto voltou a orientar merge pelo Dev e manteve autorização no mesmo PR em 22:31,
+22:41 e 22:45, sem novo HEAD. O script respeitou a trava de uma tentativa extra e chamou retomadas limitadas;
+as mensagens dos agentes não produziram encaminhamento executável. Houve custo de novas rodadas sem avanço.
+
+O corpo da escalada tinha instrução condicional de conferir se a tentativa fora usada, embora a chave e seu
+estado já estivessem no dicionário consultado pelo script. Agora o cartão inclui esses fatos e escolhe a instrução
+correta: chave ausente permite autorização única; chave existente informa status e orçamento consumido, sem
+instruir reautorizar. Novo commit do QA não reinicia tentativas. SOUL do Arquiteto reforça o encaminhamento após
+esgotamento. Não altera gates, limites, cartões, labels ou features diretamente pelo supervisor.
+
+O cenário no harness falhou contra a produção anterior: o cartão não fornecia o orçamento apurado. Após mudança,
+verifica estados terminais e a ausência da instrução contraditória. Os mutantes anteriores permanecem, com um
+novo para omissão do orçamento consumido. Isso valida os fatos e a instrução entregue ao agente, não garante
+que o LLM cumprirá a orientação. Eficácia depende das próximas escaladas reais. Publicar/aplicar só após CI/merge.
+
 ## 01/10 — reserva automática entre provedores, após #206
 
 O dono pediu conferir fallback e desempenho por mais algumas rodadas, sem dependência futura do Codex.
