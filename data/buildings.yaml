@@ -92,6 +92,25 @@ buildings:
     upkeepPerYear: 1200000
     constructionMonths: 12
     models: [proc/clinic]
+  - id: hospital
+    floors: 2
+    label: Hospital municipal
+    service: health
+    w: 4
+    h: 3
+    nearWater: 0
+    # Portaria GM/MS 1.101/2002: 2,5 a 3 leitos para cada 1.000 habitantes; 90 leitos atendem cidade de 30 a 40 mil hab.
+    patients: 90
+    # PENDENTE: equipe mínima de hospital de ~100 leitos. Usado ~2 professionals por leito (médicos,
+    # enfermeiros, técnicos e administrativo): 2 x 90 = 180.
+    jobs: 180
+    # PENDENTE: custo de obra de hospital municipal pequeno. Usado R$ 60 milhões.
+    cost: 60000000
+    # PENDENTE: custo anual de operação. Usado R$ 200 mil por leito: 200.000 x 90 = R$ 18 milhões.
+    upkeepPerYear: 18000000
+    # PENDENTE: prazo de obra. Usado 30 meses.
+    constructionMonths: 30
+    models: [proc/hospital]
   # Água, luz e esgoto. Consumo médio de água: 154 litros por pessoa por dia (SNIS/ANA, citado pela CNM:
   # https://cnm.org.br/comunicacao/noticias/brasileiro-consome-em-media-154-litros-de-agua-por-dia-aponta-onu).
   # Poço tubular profundo: 40% das sedes urbanas são abastecidas só por água subterrânea (Atlas Águas 2021, ANA).
