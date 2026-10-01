@@ -36,7 +36,7 @@ As regras abaixo substituem instruções antigas de rodar check completo em cada
   O envelope `timeouts.tools.sequential_call` caía no padrão de 420 s, antes de alguns comandos terminarem;
   `concurrent_batch` também usa esse padrão. Ambos passam a 900 s; comandos longos devem iniciar em background e ser
   acompanhados pelo mesmo `session_id`, com esperas de até 60 s. Timeout não significa processo encerrado.
-- **Capacidade:** continuam duas vagas globais e uma por perfil. Modelos gratuitos atuais mantidos nesta primeira mudança.
+- **Capacidade:** continuam duas vagas globais e uma por perfil. São limites configurados; o máximo seguro do fluxo novo ainda não foi validado. Uma vaga por perfil também protege seu clone compartilhado. Modelos gratuitos atuais mantidos nesta primeira mudança.
   A supervisão do Codex é temporária; nenhuma regra de produção depende do Codex nem de uma aprovação humana.
 - **Validação:** checks rápidos do harness antes do deploy e CI do PR de infraestrutura; eficácia medida nas entregas
   novas (QA → Dev → CI → revisão → Pages), sem bake-off. Resultados e intervenções em `hermes/avaliacao/DIARIO.md`.
@@ -168,7 +168,9 @@ aconteceu e por quê?". A resposta tem que ser "está no alvo".
 - A tarefa espera as linhas `Depende de #N` (com número) fecharem.
 - **Um dev por arquivo:** compara a lista numerada ``1. `caminho` `` que o Arquiteto escreve na tarefa.
 - Tarefa de item com etiqueta `bug` ganha prioridade.
-- Issue com PR **do dev** aberto que a fecha (`Closes/Fecha #N`) não ganha cartão novo. O rascunho do QA também diz
+- Issue com PR **do dev** aberto que a fecha (`Closes/Fecha #N`) ou branch exata `dev/N` não ganha cartão novo. A branch
+  preserva o vínculo mesmo se o agente apagar `Closes` ao atualizar a descrição, como no PR #180 (01/10).
+  O rascunho do QA também diz
   `Closes #N` e **não conta**: em 30/09 ele escondeu a #49 (e a #39, que divide arquivo com ela) por ~9 h.
 - **Chave arquivada continua contando como cartão existente:** verificado que o Hermes cria OUTRO cartão se a chave for
   reusada depois de arquivada; sem isso o cartão nascia de novo a cada 2 min.
@@ -288,13 +290,15 @@ Ele tem teste de mutação feito à mão: reprova com o loop ocioso, com SOUL di
    `hermes cron create "every 2m" --name freio-memoria --script freio_memoria.py --no-agent --deliver local`.
 5. Função nova com efeito colateral: escreva o cenário **e o mutante** antes.
 
-**Subir ou descer agentes simultâneos:** decida pelo pico de `anon` (o `vigia.sh` mede). Ajuste
-`kanban.max_in_progress` e reinicie só o gateway. **Medido em 30/09:** 2 agentes ≈ 2,0–2,1 GB de processos; com a comparação
-de modelos junto, 2,6–2,7 GB de 3 GB. Ou seja, **não cabe empurrar pra 3** enquanto a comparação roda.
-**Com 3 e sem comparação de modelos também não cabe (30/09, tarde):** o `vigia.sh` (amostra a cada 1 min) mostrou picos de 1,5–2,3 GB e
-achei que cabia, mas às 13:00 o `freio.jsonl` (amostra a cada 2 min) registrou 2.817 MB, a pressão de disco ficou ~24% por 5 min e o
-load chegou a 20. O que estoura é o `npm run check` (só o `tsc` do dev usa ~430 MB) rodando ao mesmo tempo no dev e no QA. **Meça o pico
-pelo `freio.jsonl` e por `memory.pressure`, não por amostra pontual.** Voltou para 2.
+**Subir ou descer agentes simultâneos:** revalide com o fluxo em uso. Em 01/10, o host informou Intel N150,
+4 CPUs e ~8 GB de RAM; o cgroup do container confirmou teto de 3 GiB. A configuração confirmou
+`kanban.max_in_progress=2` e `max_in_progress_per_profile=1`. Isso confirma o limite escolhido, não a capacidade máxima.
+As medições de 30/09 são históricas: os testes locais e o fluxo mudaram. Elas não provam que três workers
+sejam inviáveis hoje. Observe pico de `anon`, memória disponível do host, pressão e variação dos eventos
+do cgroup durante entregas reais; `memory.peak` e eventos acumulados isolados não datam uma falha.
+Uma coleta passiva com dois workers também não valida três. Antes de alterar a configuração, confira no
+despachante instalado como a alteração é carregada e preserve os workers ativos. Mais de um Dev no mesmo
+clone continua inseguro mesmo que sobre RAM: precisa de workspace isolado.
 
 ## Avaliação do experimento
 
