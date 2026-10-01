@@ -6,6 +6,7 @@ export { Rng } from "./core/rng";
 export { checkInvariants } from "./debug/invariants";
 export { createGame, type Game } from "./game";
 export { joinHousehold, newPerson } from "./people/actions";
+export { describeCommandIssue, validateReplayCommands } from "./save/commandCompat";
 export {
   applyMigrations,
   type BugReport,
