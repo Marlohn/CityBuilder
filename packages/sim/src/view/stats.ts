@@ -108,6 +108,7 @@ export function statsView(game: Game, behind = false): StatsView {
       parking: city.year.parkingMisses,
       water: c.withoutWater,
       power: c.withoutPower,
+      sewer: c.withoutSewage,
     },
     hospitalBeds: { total: hospitalBedsTotal, occupied: hospitalBedsOccupied },
     utilities: {

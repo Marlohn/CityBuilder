@@ -59,6 +59,8 @@ export interface UnmetDesireCounts {
   /** Pessoas morando em prédio sem água / sem luz. */
   water: number;
   power: number;
+  /** Pessoas morando em prédio sem coleta de esgoto (a ETE é a que trata). */
+  sewer: number;
 }
 
 export interface RealismItem {
