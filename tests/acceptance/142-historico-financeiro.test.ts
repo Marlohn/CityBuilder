@@ -125,7 +125,10 @@ describe("histórico financeiro anual (issue #142)", () => {
       const exp = totalDoAno(resumo, "expenses", "expensesByCategory");
       expect(rev, `ano ${i}: resumo sem receita`).not.toBeNull();
       expect(exp, `ano ${i}: resumo sem despesa`).not.toBeNull();
-      expect(rev!).toBeGreaterThan(0);
+      // O ano 0 (fundacao) fecha antes da primeira hora uteil: a cidade nasce sem moradores,
+      // entao receita 0 com despesa de fundacao e o resultado certo. Receita > 0 e do ano 1 em diante.
+      if (i === 0) expect(rev!, "ano 0: fundacao com receita 0").toBe(0);
+      else expect(rev!, `ano ${i}: receita do ano`).toBeGreaterThan(0);
       expect(saldoDoAno(resumo), `ano ${i}: resumo sem saldo`).not.toBeNull();
       expect(sePagou(resumo), `ano ${i}: resumo sem dizer se a cidade se pagou`).not.toBeNull();
     }
