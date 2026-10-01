@@ -11,7 +11,8 @@ O corpo da escalada tinha instrução condicional de conferir se a tentativa for
 estado já estivessem no dicionário consultado pelo script. Agora o cartão inclui esses fatos e escolhe a instrução
 correta: chave ausente permite autorização única; chave existente informa status e orçamento consumido, sem
 instruir reautorizar. Novo commit do QA não reinicia tentativas. SOUL do Arquiteto reforça o encaminhamento após
-esgotamento. Não altera gates, limites, cartões, labels ou features diretamente pelo supervisor.
+esgotamento. Não altera limites, cartões, labels ou features diretamente pelo supervisor. Cenários e mutantes do
+sincronizador passam a rodar no check existente do CI, sem rede/LLM e sem mudar os quatro checks obrigatórios.
 
 O cenário no harness falhou contra a produção anterior: o cartão não fornecia o orçamento apurado. Após mudança,
 verifica estados terminais e a ausência da instrução contraditória. Os mutantes anteriores permanecem, com um
