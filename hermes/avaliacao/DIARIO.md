@@ -16,6 +16,13 @@ Também foi corrigida a afirmação antiga sobre capacidade: dois workers config
 três sejam inviáveis no fluxo atual. Coleta passiva temporária iniciada em 15:03:13Z, a cada 15 s,
 por 30 min, em `/opt/data/avaliacao/recursos-ciclo-rapido-20261001.jsonl`; não é parte da fábrica.
 
+Às 15:19Z, foi conferido outro defeito: o ajuste de #180 substituiu a descrição e apagou `Closes #173`.
+O sincronizador só reconhecia o vínculo pelo texto e criou `dev-issue-173-r2` além de `dev-ajuste-pr-180-bcf134d`.
+A correção considera também a branch exata `dev/N` dos PRs abertos. `qa/N` e nomes parecidos continuam sem
+reservar tarefa do Dev; o QA que precisa destravar esse PR mantém prioridade. O cenário reproduziu a duplicata
+na versão anterior e ganha mutante para impedir regressão. O supervisor não interrompeu o clone ativo.
+O segundo CI de #180 falhou em dois snapshots de `tests/unit/reference.test.ts`; esse ajuste segue com o Dev.
+
 ## 01/10 13:25Z — diagnóstico terminou, mas não havia retorno ao Dev
 
 PR #165 implantado às 13:15:12Z; main `4324ded` e Pages verdes. Config e SOUL Dev conferidos, saúde OK.

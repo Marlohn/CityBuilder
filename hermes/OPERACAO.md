@@ -168,7 +168,9 @@ aconteceu e por quê?". A resposta tem que ser "está no alvo".
 - A tarefa espera as linhas `Depende de #N` (com número) fecharem.
 - **Um dev por arquivo:** compara a lista numerada ``1. `caminho` `` que o Arquiteto escreve na tarefa.
 - Tarefa de item com etiqueta `bug` ganha prioridade.
-- Issue com PR **do dev** aberto que a fecha (`Closes/Fecha #N`) não ganha cartão novo. O rascunho do QA também diz
+- Issue com PR **do dev** aberto que a fecha (`Closes/Fecha #N`) ou branch exata `dev/N` não ganha cartão novo. A branch
+  preserva o vínculo mesmo se o agente apagar `Closes` ao atualizar a descrição, como no PR #180 (01/10).
+  O rascunho do QA também diz
   `Closes #N` e **não conta**: em 30/09 ele escondeu a #49 (e a #39, que divide arquivo com ela) por ~9 h.
 - **Chave arquivada continua contando como cartão existente:** verificado que o Hermes cria OUTRO cartão se a chave for
   reusada depois de arquivada; sem isso o cartão nascia de novo a cada 2 min.
