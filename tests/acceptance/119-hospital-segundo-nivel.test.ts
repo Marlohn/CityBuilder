@@ -392,7 +392,6 @@ describe("issue #119: hospital é o segundo nível de saúde", () => {
         `(packages/sim/src/people/population.ts): sem ele não dá para separar quem tem leito`,
     ).not.toBe("undefined");
     if (pop.hospital === undefined) return;
-    const leitos = pop.hospital;
     // Hospital de verdade: avança 1 dia para os comandos aplicarem (o prédio ainda está
     // em obras, mas o id já é o definitivo) e o grupo B recebe esse id real.
     run.nextDay();
@@ -439,10 +438,10 @@ describe("issue #119: hospital é o segundo nível de saúde", () => {
       });
       joinHousehold(city, p, familia);
       if (i < N) {
-        leitos[p] = -1;
+        pop.hospital![p] = -1;
         grupoA.push(p);
       } else {
-        leitos[p] = hospital;
+        pop.hospital![p] = hospital;
         grupoB.push(p);
       }
     }
