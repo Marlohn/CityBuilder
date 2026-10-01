@@ -86,6 +86,7 @@ export function statsView(game: Game, behind = false): StatsView {
       school: c.childrenWithoutSchool,
       university: c.wantUniversity,
       health: c.withoutClinic,
+      hospital: c.withoutHospital,
       housing: c.householdsWaitingHome,
       job: c.byRole[ROLE.unemployed]!,
       transit: city.year.transitRefusals,
