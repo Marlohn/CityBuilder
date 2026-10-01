@@ -380,3 +380,12 @@ button:disabled {
 .file-button input {
   display: none;
 }
+
+/* Barras de demanda dentro da barra principal: largura fixa para não esticar a fileira. */
+.topbar .demand {
+  width: 190px;
+  margin: 0;
+}
+.topbar .demand .dlabel {
+  width: 80px;
+}

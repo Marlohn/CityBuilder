@@ -78,7 +78,9 @@ jobs:
           BASE="origin/${{ github.base_ref }}"
           if git fetch origin "qa/${ISSUE}" 2>/dev/null; then BASE="origin/qa/${ISSUE}"; fi
           echo "Comparando com ${BASE}"
-          CHANGED=$(git diff --name-only "${BASE}...${HEAD_SHA}" | grep -E '^tests/acceptance/' || true)
+          # Compare os CONTEUDOS dos dois commits, não o merge-base. Após rebase, o mesmo
+          # teste do QA tem outro ancestral e o diff de três pontos acusa alteração falsa (#129).
+          CHANGED=$(git diff --name-only "${BASE}" "${HEAD_SHA}" | grep -E '^tests/acceptance/' || true)
           # O Dev pode trazer arquivos de teste que ja estao na main (merge da main na branch dele).
           # Isso nao e alteracao do Dev: e o mesmo arquivo, byte a byte, que ja passou pela revisao.
           # So conta como violacao o que o Dev mudou de verdade em relacao a main.

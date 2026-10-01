@@ -27,6 +27,8 @@ export function statsView(game: Game, behind = false): StatsView {
   const perfAvg = sim.perf.averages();
   const msPerTick = Object.values(perfAvg).reduce((s, v) => s + v, 0);
   const d = game.growth.demand;
+  // Totais de água e luz em pessoas equivalentes (inteiros, como a população).
+  const u = game.utilities.totals();
   return {
     tick: sim.clock.tick,
     day: sim.clock.day,
@@ -64,9 +66,24 @@ export function statsView(game: Game, behind = false): StatsView {
       water: c.withoutWater,
       power: c.withoutPower,
     },
+    utilities: {
+      enabled: game.utilities.enabled,
+      water: {
+        capacity: u.water.capacity === null ? null : Math.round(u.water.capacity),
+        used: Math.round(u.water.used),
+      },
+      power: {
+        capacity: u.power.capacity === null ? null : Math.round(u.power.capacity),
+        used: Math.round(u.power.used),
+      },
+    },
     vehiclesMoving: game.traffic.vehicles.moving.size,
     peopleWalking: 0,
     cars: c.householdsWithCar,
+    construction: {
+      blockedByWater: game.growth.blockedByWater,
+      blockedByPower: game.growth.blockedByPower,
+    },
     realism: game.realism,
     perf: {
       msPerTick,

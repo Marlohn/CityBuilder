@@ -48,6 +48,8 @@ assert s.aberto({"revisar-pr-5-aaa": "ready"}, "revisar-pr-5-") and not s.aberto
 print("chaves/rodadas: ok")
 
 # ---- revisões e ajustes -----------------------------------------------------------------------------------------
+real_preparar = s.preparar_revisao
+s.preparar_revisao = lambda pr: True  # roteamento puro; o gate real é verificado abaixo
 s.revisoes([pr(10, "aaaaaaa", "dev/1", ["em-revisão"])], {}); cria("revisar-pr-10-aaaaaaa")
 s.revisoes([pr(10, "aaaaaaa", "dev/1", ["em-revisão"])], {"revisar-pr-10-aaaaaaa": "done"}); cria()
 s.revisoes([pr(10, "aaaaaaa", "dev/1", ["em-revisão"])], {"revisar-pr-10-bbbbbbb": "ready"}); cria()  # 1 aberto por PR
@@ -62,6 +64,37 @@ s.revisoes([pr(10, "aaaaaaa", "dev/10", ["em-revisão"])], {}, {11}); cria("revi
 s.revisoes([pr(10, "aaaaaaa", "dev/10")], {}, {10}); cria()  # issue 10 esperando o QA corrigir o teste: sem ajuste do dev
 s.revisoes([pr(10, "aaaaaaa", "dev/10")], {}, {11}); cria("dev-ajuste-pr-10-aaaaaaa")  # outra issue esperando: não afeta
 print("revisões/ajustes: ok")
+s.preparar_revisao = real_preparar
+
+# CI ausente, parcial, vermelho ou branch atrasada nunca gasta uma vaga de revisão.
+_p = pr(10, "aaaaaaa", "dev/1", ["em-revisão"])
+assert s.estado_ci(_p) == "aguardando"
+_p["statusCheckRollup"] = [{"name": n, "status": "COMPLETED", "conclusion": "SUCCESS"}
+                         for n in s.CHECKS_CI | {"testes de aceitação protegidos"}]
+assert s.estado_ci(_p) == "verde"
+_p["statusCheckRollup"][0]["conclusion"] = "FAILURE"
+assert s.estado_ci(_p) == "falhou"
+_p["statusCheckRollup"][0]["conclusion"] = "SKIPPED"
+assert s.estado_ci(_p) == "aguardando"
+_p["statusCheckRollup"][0]["conclusion"] = "SUCCESS"
+_gh_gate = s.gh
+s.gh = lambda *a: "0"
+assert s.preparar_revisao(_p)
+_p["mergeStateStatus"] = "UNKNOWN"
+assert not s.preparar_revisao(_p)
+_p["mergeStateStatus"] = "DIRTY"
+assert not s.preparar_revisao(_p)
+assert any(a[:2] == ("pr", "comment") for a in ESCRITOS)
+assert any(a[:2] == ("pr", "edit") for a in ESCRITOS)
+ESCRITOS.clear()
+_p["mergeStateStatus"] = "CLEAN"
+s.gh = lambda *a: "1"
+assert not s.preparar_revisao(_p)
+assert ESCRITOS[0][0] == "api" and "update-branch" in ESCRITOS[0][1]
+assert any("expected_head_sha=" in a for a in ESCRITOS[0])
+s.gh = _gh_gate
+ESCRITOS.clear()
+print("gate de CI/main: ok")
 
 # ---- main vermelha ----------------------------------------------------------------------------------------------
 SHA = "1234567" + "0" * 33

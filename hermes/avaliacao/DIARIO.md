@@ -1,5 +1,29 @@
 # Diário da avaliação: agentes Hermes + kanban + LLM grátis (CityBuilder)
 
+## 30/09 à noite — ciclo rápido, entregas reais
+
+Pedido do dono: fábrica autônoma, buscando uma pequena entrega jogável a cada 10 minutos no conjunto dos projetos.
+Sem repetir a mesma tarefa para comparar modelos; ajustar o fluxo enquanto entrega trabalho novo.
+
+Linha de base observada entre 18:17Z e 00:17Z (seis horas): 7 PRs `dev/*` mesclados, cerca de um a cada 51 min.
+As duas vagas somaram aproximadamente 651 de 720 minutos disponíveis (~90%). Na janela, as sessões do Revisor
+registraram cerca de 44 min em comandos de espera; checagens completas do Dev e Revisor atingiram o envelope
+de 420 s e foram iniciadas novamente. São medições de registros, não benchmark controlado; há trabalho em andamento
+nas bordas da janela. PR #113: ~95 min de fila para ~8 min de revisão. CPU medida perto de quatro núcleos ocupados
+durante checks simultâneos, sem pressão relevante de memória naquele instante.
+
+Mudança: validação local explícita + CI completo obrigatório; gate de CI/main no sincronizador; revisão sem espera
+nem execução de testes; timeouts do Hermes coerentes com terminal; instrução de uma execução em background acompanhada
+pelo mesmo identificador. Duas vagas e modelos mantidos. Procedimento e reversão em `hermes/OPERACAO.md`.
+
+Resultados das primeiras entregas e eventuais intervenções serão registrados abaixo depois de observados.
+
+Durante a implantação, achado adicional no PR #129: a trava de aceitação reprovou
+`118-dados-hospital.test.ts` depois de um rebase, apesar de o arquivo ser idêntico nas branches QA e Dev.
+Confirmado com diff direto vazio e diff de três pontos listando o arquivo. A trava passa a comparar os conteúdos
+dos commits QA/Dev diretamente; alteração real continua barrada e arquivos idênticos à main continuam permitidos.
+Correção do fluxo no PR de infraestrutura, sem modificar o teste ou o código do hospital.
+
 **Pergunta do dono (29/09/2026):** isso funciona pros meus outros projetos, ou é perda de tempo?
 **Como medir:** números saem de `/opt/data/avaliacao/metricas.py` (kanban.db, state.db dos perfis e GitHub), com um
 `metricas-<data>.json` por coleta. O qualitativo fica neste diário, uma seção por rodada. Nada aqui é impressão sem número

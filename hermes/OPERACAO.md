@@ -6,6 +6,36 @@
 
 ## Em uma frase
 
+### Atualização de 30/09 à noite: ciclo rápido autônomo
+
+O dono autorizou mudar a fábrica e medir com tarefas novas reais, sem repetir tarefas em comparações de LLM.
+As regras abaixo substituem instruções antigas de rodar check completo em cada perfil ou esperar CI no Revisor.
+
+- **Dev/QA no mini PC:** teste afetado + tipos/estilo/camadas. `aplicar_perfis.py` exporta `CITYBUILDER_LOCAL_CHECK=1`
+  no ambiente comum do terminal; `npm run check` passa a informar `CHECK LOCAL OK`, nunca `TUDO OK` da suíte inteira.
+  `--local` também ativa isso explicitamente. `--full` é diagnóstico excepcional. No CI o modo local é ignorado.
+- **GitHub CI:** continua rodando todas as verificações, simulações lentas e Playwright. Nenhuma cobertura removida.
+  A trava de aceitação compara conteúdo QA/Dev diretamente (dois commits, sem merge-base): o rebase do #129
+  produzia falso positivo mesmo com teste idêntico. Arquivo alterado de verdade segue reprovado.
+- **Sincronizador:** antes de criar revisão, verifica checks completos do HEAD e ancestralidade da main. Branch atrasada
+  recebe update com SHA esperado e espera fora do kanban; conflito/CI vermelho voltam ao Dev com comentário. Check ausente,
+  parcial ou mergeabilidade desconhecida não liberam revisão. Não há LLM dormindo à espera do GitHub.
+- **Revisor:** lê diff/testes e evidências, sem npm/rebase/push. Merge com `--match-head-commit` no SHA lido. Se main mudou,
+  encerra o cartão sem merge: o sincronizador atualiza a branch e despacha a revisão do novo commit.
+- **Timeout do Hermes:** fonte verificada na imagem fixa, `agent/tool_executor.py` e `agent/deadline.py`.
+  O envelope `timeouts.tools.sequential_call` caía no padrão de 420 s, antes de alguns comandos terminarem;
+  `concurrent_batch` também usa esse padrão. Ambos passam a 900 s; comandos longos devem iniciar em background e ser
+  acompanhados pelo mesmo `session_id`, com esperas de até 60 s. Timeout não significa processo encerrado.
+- **Capacidade:** continuam duas vagas globais e uma por perfil. Modelos gratuitos atuais mantidos nesta primeira mudança.
+  A supervisão do Codex é temporária; nenhuma regra de produção depende do Codex nem de uma aprovação humana.
+- **Validação:** checks rápidos do harness antes do deploy e CI do PR de infraestrutura; eficácia medida nas entregas
+  novas (QA → Dev → CI → revisão → Pages), sem bake-off. Resultados e intervenções em `hermes/avaliacao/DIARIO.md`.
+- **Deploy:** fonte no clone de distribuição, nunca reset no clone de um agente ativo. Atualize perfis com `hermes profile
+  update`, execute `aplicar_perfis.py` e copie o sincronizador após validação. A configuração dos próximos workers vem
+  dos perfis; o gateway não precisa reiniciar para mudar SOUL/timeouts. Não mude concorrência nesta rodada.
+- **Reversão:** reverta o PR, reponha o sincronizador guardado em `.bak-ciclo-rapido`, atualize os perfis e remova a linha
+  `CITYBUILDER_LOCAL_CHECK` do ambiente comum. Config anterior está nos backups dos perfis.
+
 O GitHub é o quadro oficial (issues, etiquetas, PRs, CI). Um script sem LLM (o **sincronizador**) transforma etiqueta
 em cartão no **kanban do Hermes**. O despachante do Hermes entrega cada cartão ao perfil certo, e os perfis fazem o
 trabalho com modelos grátis.

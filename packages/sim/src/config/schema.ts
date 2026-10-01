@@ -216,6 +216,10 @@ export const GameConfigSchema = z.object({
       /** Rede da região que chega pela estrada de acesso (pessoas equivalentes). */
       regionalWater: nonneg,
       regionalPower: nonneg,
+      /** Rede regional de esgoto (pessoas equivalentes). */
+      regionalSewage: nonneg,
+      /** Fração da água consumida que volta como esgoto. */
+      sewageShareOfConsumption: prob,
       /** A cada quantos ticks recalcula quem tem água e luz. */
       everyTicks: intPos,
     })
@@ -225,6 +229,8 @@ export const GameConfigSchema = z.object({
       personsPerJob: 0.5,
       regionalWater: 1e9,
       regionalPower: 1e9,
+      regionalSewage: 1e9,
+      sewageShareOfConsumption: 0.8,
       everyTicks: 60,
     }),
   director: z
@@ -257,7 +263,7 @@ const BuildingType = z
     id: z.string(),
     label: z.string(),
     zone: z.enum(["residential_low", "residential_high", "commercial", "industrial"]).optional(),
-    service: z.enum(["school", "health", "water", "power"]).optional(),
+    service: z.enum(["school", "health", "water", "power", "sewage"]).optional(),
     /** Água e luz: quantas pessoas (equivalentes) o prédio abastece. */
     serves: z.number().int().min(0).default(0),
     /** Precisa ficar a até N quadradinhos de rio ou lago (captação de água). 0 = em qualquer lugar. */
