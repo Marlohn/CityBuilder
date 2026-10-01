@@ -21,12 +21,56 @@ function bar(v: number, scale: number): number {
   return Math.round((100 * v) / (v + scale));
 }
 
+/** Custeio do ano: gasto que a cidade repete todo ano (chave ausente conta como 0). */
+function operatingCost(expensesByCategory: Record<string, number>): number {
+  return (
+    (expensesByCategory["educacao"] ?? 0) +
+    (expensesByCategory["saude"] ?? 0) +
+    (expensesByCategory["agua_e_luz"] ?? 0) +
+    (expensesByCategory["manutencao_vias"] ?? 0)
+  );
+}
+
+/** Investimento do ano: só a obra, que acontece uma vez (chave ausente conta como 0). */
+function investmentCost(expensesByCategory: Record<string, number>): number {
+  return (expensesByCategory["obras_vias"] ?? 0) + (expensesByCategory["obras_servicos"] ?? 0);
+}
+
+/** Soma dos valores de um breakdown por categoria. */
+function sumCategories(breakdown: Record<string, number>): number {
+  let total = 0;
+  for (const v of Object.values(breakdown)) total += v;
+  return total;
+}
+
 export function statsView(game: Game, behind = false): StatsView {
   const { sim, city } = game;
   const c = currentCensus(game);
   const perfAvg = sim.perf.averages();
   const msPerTick = Object.values(perfAvg).reduce((s, v) => s + v, 0);
   const d = game.growth.demand;
+  // Totais de água e luz em pessoas equivalentes (inteiros, como a população).
+  const u = game.utilities.totals();
+  // Finanças por categoria do último ano fechado (cópias, para a tela não mexer no motor).
+  const revenueByCategory = { ...city.lastYear.revenueByCategory };
+  const expensesByCategory = { ...city.lastYear.expensesByCategory };
+  const operating = operatingCost(expensesByCategory);
+  const investment = investmentCost(expensesByCategory);
+  let hospitalBedsTotal = 0;
+  for (let i = 0; i < sim.buildings.count; i++) {
+    if (sim.buildings.isActive(i) && sim.buildings.typeOf(i).id === "hospital") {
+      hospitalBedsTotal += sim.buildings.patientsCapacity(i);
+    }
+  }
+  let hospitalBedsOccupied = 0;
+  for (let p = 0; p < city.pop.count; p++) {
+    const bed = city.pop.hospital[p]!;
+    if (bed < 0) continue;
+    if (sim.buildings.isActive(bed) && sim.buildings.typeOf(bed).id === "hospital") {
+      hospitalBedsOccupied++;
+    }
+  }
+  hospitalBedsOccupied = Math.min(hospitalBedsOccupied, hospitalBedsTotal);
   return {
     tick: sim.clock.tick,
     day: sim.clock.day,
@@ -57,6 +101,7 @@ export function statsView(game: Game, behind = false): StatsView {
       school: c.childrenWithoutSchool,
       university: c.wantUniversity,
       health: c.withoutClinic,
+      hospital: c.withoutHospital,
       housing: c.householdsWaitingHome,
       job: c.byRole[ROLE.unemployed]!,
       transit: city.year.transitRefusals,
@@ -64,10 +109,40 @@ export function statsView(game: Game, behind = false): StatsView {
       water: c.withoutWater,
       power: c.withoutPower,
     },
+    hospitalBeds: { total: hospitalBedsTotal, occupied: hospitalBedsOccupied },
+    utilities: {
+      enabled: game.utilities.enabled,
+      water: {
+        capacity: u.water.capacity === null ? null : Math.round(u.water.capacity),
+        used: Math.round(u.water.used),
+      },
+      power: {
+        capacity: u.power.capacity === null ? null : Math.round(u.power.capacity),
+        used: Math.round(u.power.used),
+      },
+    },
     vehiclesMoving: game.traffic.vehicles.moving.size,
     peopleWalking: 0,
     cars: c.householdsWithCar,
+    construction: {
+      blockedByWater: game.growth.blockedByWater,
+      blockedByPower: game.growth.blockedByPower,
+    },
     realism: game.realism,
+    finance: {
+      revenueByCategory,
+      expensesByCategory,
+      netOperating: sumCategories(revenueByCategory) - operating,
+      investment,
+      yearlyHistory: city.yearlyHistory.map((h) => ({
+        year: h.year,
+        revenue: h.revenue,
+        expenses: h.expenses,
+        netOperating: h.revenue - operatingCost(h.expensesByCategory),
+        investment: investmentCost(h.expensesByCategory),
+        moneyEnd: h.moneyEnd,
+      })),
+    },
     perf: {
       msPerTick,
       ticksPerSecond: msPerTick > 0 ? 1000 / msPerTick : 0,

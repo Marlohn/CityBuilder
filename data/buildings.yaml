@@ -73,7 +73,7 @@ buildings:
     cost: 9000000
     # Custo por aluno por ano: VAAF-MIN do Fundeb 2024 = R$ 5.357,06.
     upkeepPerStudentPerYear: 5357
-    # PENDENTE: prazo de obra.
+    # Prazo de obra com recurso federal: Resolução CD/FNDE nº 13/2011, art. 11 = 548 dias; 548 / 30 = 18,3 -> 18 meses - https://www.gov.br/fnde/pt-br/acesso-a-informacao/legislacao/resolucoes/2011/resolucao-cd-fnde-no-13-de-21-de-marco-de-2011
     constructionMonths: 18
     models: [proc/school]
   - id: ubs
@@ -88,11 +88,30 @@ buildings:
     jobs: 8
     # Convênio de UBS Porte 1 no Novo PAC (2024): R$ 2,01 milhões.
     cost: 2012826
-    # PENDENTE: custo anual da equipe e da unidade.
-    upkeepPerYear: 1200000
+    # Custo anual da equipe: custo médio mensal de 1 eSF de R$ 154.088,23 x 12 = R$ 1.849.059 (Fiocruz, 56 U.A.P. analisadas) - https://arca.fiocruz.br/items/45d8359a-df7f-4500-b3c7-7277a8d02087
+    upkeepPerYear: 1849059
     constructionMonths: 12
     models: [proc/clinic]
-  # Água e luz. Consumo médio de água: 154 litros por pessoa por dia (SNIS/ANA, citado pela CNM:
+  - id: hospital
+    floors: 2
+    label: Hospital municipal
+    service: health
+    w: 4
+    h: 3
+    nearWater: 0
+    # Portaria GM/MS 1.101/2002: 2,5 a 3 leitos para cada 1.000 habitantes; 90 leitos atendem cidade de 30 a 40 mil hab.
+    patients: 90
+    # PENDENTE: equipe mínima de hospital de ~100 leitos. Usado ~2 professionals por leito (médicos,
+    # enfermeiros, técnicos e administrativo): 2 x 90 = 180.
+    jobs: 180
+    # Custo de obra: Hospital Regional de Belo Jardim (PE), 100 leitos por R$ 56 mi = 560 mil/leito; 560.000 x 90 = R$ 50.400.000 - https://belojardim.pe.gov.br/ordem-de-servico-e-assinada-para-inicio-das-obras-do-hospital-regional-de-belo-jardim-com-uti-100-leitos-e-investimento-de-r-56-milhoes/
+    cost: 50400000
+    # Custo anual por leito no SUS: gasto médio/internação de R$ 2.826 x 27,7 internações/leito/ano = R$ 78.280/leito/ano; 78.280 x 90 = R$ 7.045.200 (SIH/DATASUS 2025) - https://drpap.com.br/indicadores-hospitalares
+    upkeepPerYear: 7045200
+    # Prazo de obra: cronograma inicial do Hospital Público Estadual de Franca (SP): 1 prédio = 30 meses (MPD busca 24) - https://www.jornaldafranca.com.br/empresa-responsavel-pelo-hospital-do-estado-quer-encurtar-tempo-de-obra-pra-24-meses/
+    constructionMonths: 30
+    models: [proc/hospital]
+  # Água, luz e esgoto. Consumo médio de água: 154 litros por pessoa por dia (SNIS/ANA, citado pela CNM:
   # https://cnm.org.br/comunicacao/noticias/brasileiro-consome-em-media-154-litros-de-agua-por-dia-aponta-onu).
   # Poço tubular profundo: 40% das sedes urbanas são abastecidas só por água subterrânea (Atlas Águas 2021, ANA).
   - id: poco
@@ -104,9 +123,9 @@ buildings:
     # PENDENTE: vazão típica de poço tubular urbano. Usado 20 L/s: 20 x 86.400 / 154 = ~11.200 pessoas.
     serves: 11200
     jobs: 2
-    # PENDENTE: custo de perfuração e equipamento.
+    # Custo de perfuração e equipamento: orçamento-base SINAPI da Prefeitura de Piracema (MG) para construção de poço tubular = R$ 369.439,77 (perfuração + revestimento + desenvolvimento). Para o poço do jogo (20 L/s, 100 m) = ~4 x esse orçamento: 369.439,77 x 4 = 1.477.759 -> 1.500.000 - https://www.piracema.mg.gov.br/licitacao/download/3026
     cost: 1500000
-    # PENDENTE: custo de operação (energia do bombeamento, cloração).
+    # Custo de operação: pessoal 2 operadores x R$ 6.000/mês x 12 = 144.000/ano (SNIS IN008, despesa média anual por empregado) + bombeamento e cloração. Custo medido de captação subterrânea em poço de 25 m³/h = R$ 0,077/m³ x 631.800 m³/ano (20 L/s) = 48.649/ano. Total = 144.000 + 48.649 = 192.649 -> 300.000/ano - https://www.gov.br/mdr/pt-br/assuntos/saneamento/snis https://aguassubterraneas.abas.org/asubterraneas/article/download/23313/15405/0
     upkeepPerYear: 300000
     constructionMonths: 6
     models: [proc/well]
@@ -122,10 +141,10 @@ buildings:
     jobs: 15
     # Captação: a estação precisa ficar a até 3 quadradinhos (48 m) do rio ou lago.
     nearWater: 3
-    # PENDENTE: custo de obra de ETA de 100 L/s.
-    cost: 25000000
-    # PENDENTE: custo de operação.
-    upkeepPerYear: 3000000
+    # Custo de obra: custo unitário de ETA "novo" para vazão de 51 a 100 L/s = R$ 130.726,98/L/s (Plano de Negócios Referencial da concessão SAAES-PI, ANEXO VII, Tabela 24). 100 L/s x 130.726,98 = 13.072.698 -> 13.072.700 - https://suparc.sead.pi.gov.br/wp-content/uploads/2024/03/Conc-SAAES-PI-%E2%80%93-PNR_RCP.pdf
+    cost: 13072700
+    # Custo de operação, por ano, para 100 L/s = 3.153.600 m³/ano (100 x 86,4 x 365): energia 0,52 kWh/m³ x 3.153.600 x R$ 0,7164/kWh (tarifa média de saneamento, ANEEL/Equatorial GO, via Plano Microrregional de Esgotamento de GO) = 1.174.804; produtos químicos (sulfato de alumínio 35 mg/L x R$ 3,00/kg, flúor 0,7 mg/L x R$ 5,00/kg, cal 10 mg/L x R$ 0,70/kg, cloro 2 mg/L x R$ 2,60/kg, polímero 0,8 mg/L x R$ 2,00/kg = R$ 0,1223/m³) x 3.153.600 = 385.685; pessoal 15 operadores x R$ 6.000/mês x 12 = 1.080.000. Total = 1.174.804 + 385.685 + 1.080.000 = 2.640.489 -> 2.640.490 - https://goias.gov.br/seinfra/wp-content/uploads/sites/6/2025/07/ANEXO_C___RELATORIO_DE_PREMISSAS-1.pdf https://rgsa.openaccesspublications.org/rgsa/article/download/12006/6655 https://suparc.sead.pi.gov.br/wp-content/uploads/2024/03/Conc-SAAES-PI-%E2%80%93-PNR_RCP.pdf
+    upkeepPerYear: 2640490
     constructionMonths: 24
     models: [proc/eta]
   # Subestação de distribuição de energia. No Brasil a rede é da distribuidora (concessionária); no
@@ -141,9 +160,29 @@ buildings:
     # dá ~0,5 kW. 10 MVA x 0,9 / 0,5 kW = 18.000 domicílios = ~50.000 pessoas.
     serves: 50000
     jobs: 4
-    # PENDENTE: custo de subestação de 10 MVA (Banco de Preços de Referência da ANEEL).
-    cost: 12000000
-    # PENDENTE: custo de operação.
-    upkeepPerYear: 1000000
+    # Custo de obra: Subestação Monte Verde (Celesc, Florianópolis, 40 MVA) = R$ 39,03 milhões. Por MVA: 39.030.000 / 40 = 975.750; 10 MVA x 975.750 = 9.757.500 - https://www.santacatarinaempauta.com.br/2025/04/16/celesc-inauura-subestacao-monte-verde-para-atender-a-20-mil-unidades-consumidoras-em-florianopolis/
+    cost: 9757500
+    # Custo de operação: pessoal 4 x R$ 6.000/mês x 12 = 288.000 (SNIS IN008) + manutenção = 0,5% do CAPEX ao ano (premissa do Plano Microrregional de Esgotamento de GO): 0,005 x 9.757.500 = 48.788. Total = 288.000 + 48.788 = 336.788 -> 336.800 - https://www.gov.br/mdr/pt-br/assuntos/saneamento/snis https://goias.gov.br/seinfra/wp-content/uploads/sites/6/2025/07/ANEXO_C___RELATORIO_DE_PREMISSAS-1.pdf
+    upkeepPerYear: 336800
     constructionMonths: 18
     models: [proc/substation]
+  # Estação de tratamento de esgoto: trata o esgoto coletado e despeja o efluente tratado no rio ou lago.
+  - id: ete
+    floors: 1
+    label: Estação de tratamento de esgoto
+    service: sewage
+    w: 3
+    h: 3
+    # PENDENTE: porte típico de ETE urbana. Usado 50.000 (mesma ordem da ETA de 100 L/s).
+    serves: 50000
+    # A ETE despeja o efluente tratado no rio/lago, como a ETA capta: precisa ficar a até 3 quadradinhos dele.
+    nearWater: 3
+    # PENDENTE: equipe de operação de ETE de porte médio.
+    jobs: 10
+    # Custo de obra: custo unitário de ETE "tratamento secundário" para vazão de 26 a 50 L/s = R$ 276.048,19/L/s (Relatório de Premissas do Plano Microrregional de Esgotamento Sanitário de Goiás, Tabela 7). 50 L/s x 276.048,19 = 13.802.410 -> 13.802.400 - https://goias.gov.br/seinfra/wp-content/uploads/sites/6/2025/07/ANEXO_C___RELATORIO_DE_PREMISSAS-1.pdf
+    cost: 13802400
+    # Custo de operação, por ano, para 50 L/s = 1.576.800 m³/ano (50 x 86,4 x 365): energia 0,33 kWh/m³ (lodo ativado, CEEE) x 1.576.800 x R$ 0,7164/kWh = 372.774; produtos químicos (PAC R$ 0,24/m³ + polímero R$ 0,0375/m³) x 1.576.800 = 437.562; lodo 0,12 m³/hab.ano x 30% de remoção x R$ 108,29/m³ = R$ 3,90/hab.ano x 50.000 = 195.000; pessoal 10 x R$ 6.000/mês x 12 = 720.000. Total = 372.774 + 437.562 + 195.000 + 720.000 = 1.725.336 -> 1.725.340 - https://goias.gov.br/seinfra/wp-content/uploads/sites/6/2025/07/ANEXO_C___RELATORIO_DE_PREMISSAS-1.pdf https://rgsa.openaccesspublications.org/rgsa/article/download/12006/6655
+    upkeepPerYear: 1725340
+    # Prazo de obra: ETE Centenário (Samae, Jaraguá do Sul/SC) = 840 dias de execução; 840 / 30 = 28 meses - https://www.samaejs.com.br/noticias/assinada-ordem-de-servico-para-o-inicio-da-obra-da-nova-estacao-de-tratamento-de-esgoto-no-centenario/
+    constructionMonths: 28
+    models: [proc/eta]

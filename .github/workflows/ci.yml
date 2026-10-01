@@ -39,6 +39,10 @@ jobs:
   e2e:
     name: teste de tela (Playwright)
     runs-on: ubuntu-latest
+    # Mesmo Playwright do package-lock.json; browsers e dependências já instalados.
+    container:
+      image: mcr.microsoft.com/playwright:v1.63.0-noble
+      options: --init --ipc=host
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
@@ -47,7 +51,9 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npx playwright install --with-deps chromium
+      - name: Conferir versão da imagem e do pacote
+        run: |
+          node -e 'const actual = require("@playwright/test/package.json").version; if (actual !== "1.63.0") throw new Error("Atualize também a imagem Playwright do CI: pacote " + actual); console.log("Playwright " + actual + ": imagem e pacote compatíveis");'
       - run: npm run test:e2e
       - uses: actions/upload-artifact@v4
         if: always()
@@ -78,15 +84,30 @@ jobs:
           BASE="origin/${{ github.base_ref }}"
           if git fetch origin "qa/${ISSUE}" 2>/dev/null; then BASE="origin/qa/${ISSUE}"; fi
           echo "Comparando com ${BASE}"
-          CHANGED=$(git diff --name-only "${BASE}...${HEAD_SHA}" | grep -E '^tests/acceptance/' || true)
+          # Compare os CONTEUDOS dos dois commits, não o merge-base. Após rebase, o mesmo
+          # teste do QA tem outro ancestral e o diff de três pontos acusa alteração falsa (#129).
+          CHANGED=$(git diff --name-only "${BASE}" "${HEAD_SHA}" | grep -E '^tests/acceptance/' || true)
           # O Dev pode trazer arquivos de teste que ja estao na main (merge da main na branch dele).
           # Isso nao e alteracao do Dev: e o mesmo arquivo, byte a byte, que ja passou pela revisao.
           # So conta como violacao o que o Dev mudou de verdade em relacao a main.
+          # O Dev pode trazer testes de OUTRAS branches qa/ (issue que depende de outra).
+          # Byte a byte igual a qualquer qa/* significa que ele nao editou: veio no merge.
+          git fetch origin "+refs/heads/qa/*:refs/remotes/origin/qa/*" || true
           VIOLACOES=""
           for f in $CHANGED; do
             if git diff --quiet "origin/${{ github.base_ref }}" "${HEAD_SHA}" -- "$f"; then
               echo "Ignorado (identico a main, veio no merge): $f"
-            else
+              continue
+            fi
+            VIOLADO=0
+            for q in $(git for-each-ref --format='%(refname:short)' refs/remotes/origin/qa/); do
+              if git diff --quiet "$q" "${HEAD_SHA}" -- "$f"; then
+                echo "Ignorado (identico a ${q}, veio no merge): $f"
+                VIOLADO=1
+                break
+              fi
+            done
+            if [ "$VIOLADO" -eq 0 ]; then
               VIOLACOES="${VIOLACOES} $f"
             fi
           done

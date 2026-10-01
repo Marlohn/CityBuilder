@@ -96,6 +96,25 @@ export class AutoMayor {
       saving = !this.placeServiceNearDemand("escola", census.samples.school ?? []) || saving;
     if (census.withoutClinic > 500)
       saving = !this.placeServiceNearDemand("ubs", census.samples.health ?? []) || saving;
+    // Hospital: só entra com a receita do ÚLTIMO ANO FECHADO cobrindo o custeio anual do hospital
+    // (data/buildings.yaml, upkeepPerYear). Hospital é obra cara e manutenção permanente: entrar sem
+    // receita no azul deixa a cidade no vermelho (foi o que travou a cidade de referência no #156).
+    // Enquanto a receita não fecha, o prefeito ESPERA (não marca `saving`: guardar dinheiro não
+    // resolve, e `saving` parava a abertura de bairros). No modo sandbox o dinheiro é infinito e não
+    // há espera. Gatilhos: config/health.yaml (hospitalMinPopulation = minPopulation do hospital em
+    // data/reference/cidade-real.yaml, 8.000) e hospitalMinUncovered (PENDENTE de fonte).
+    if (census.population >= this.game.sim.config.health.hospitalMinPopulation) {
+      const uncovered = census.withoutHospital;
+      const minUncovered = this.game.sim.config.health.hospitalMinUncovered;
+      if (uncovered > minUncovered) {
+        const t = this.game.sim.treasury;
+        const upkeep = this.hospitalUpkeep();
+        const revenueCovers =
+          t.mode === "sandbox" || (t.lastYearRevenue > 0 && t.lastYearRevenue - t.lastYearExpenses >= upkeep);
+        if (revenueCovers)
+          saving = !this.placeServiceNearDemand("hospital", census.samples.hospital ?? []) || saving;
+      }
+    }
     if (saving && this.districts.length > 0) return;
     // Abre bairro do tipo que está faltando: indústria separada (como manda o zoneamento) ou misto.
     if (this.districts.length === 0) this.buildDistrict("mixed");
@@ -281,18 +300,34 @@ export class AutoMayor {
    * Coloca o serviço perto de onde está a demanda (amostras de casas sem atendimento).
    * Devolve false só quando falta dinheiro (aí o prefeito guarda dinheiro em vez de abrir bairro).
    */
-  private placeServiceNearDemand(service: "escola" | "ubs", samples: number[]): boolean {
+  /** Custeio anual de um hospital do catálogo (data/buildings.yaml), ou 0 se não houver. */
+  private hospitalUpkeep(): number {
+    const t = this.game.sim.buildings.catalog.find((b) => b.id === "hospital");
+    return t?.upkeepPerYear ?? 0;
+  }
+
+  private placeServiceNearDemand(service: "escola" | "ubs" | "hospital", samples: number[]): boolean {
     if (samples.length === 0) return true;
     const sim = this.game.sim;
     const w = sim.world;
     const pick = samples[this.rng.int(samples.length)]!;
     const px = w.xOf(pick);
     const py = w.yOf(pick);
-    // Já tem um igual (pronto ou em obra) a menos de ~1 km: espera ele ficar pronto.
+    // Prédio lotado não conta como "já tem serviço por perto": em obra espera ficar
+    // pronto (vai abrir vaga) e ativo só vale se ainda tem vaga livre; senão continua
+    // o loop para construir outro perto da demanda.
     const b = sim.buildings;
     for (let id = 0; id < b.count; id++) {
-      if (b.state[id]! > BSTATE.active || b.typeOf(id).id !== service) continue;
-      if (Math.abs(b.x[id]! - px) + Math.abs(b.y[id]! - py) < 60) return true;
+      if (b.typeOf(id).id !== service) continue;
+      if (Math.abs(b.x[id]! - px) + Math.abs(b.y[id]! - py) >= 60) continue;
+      // Em obra ainda vai abrir vaga: espera ele ficar pronto.
+      if (b.state[id]! < BSTATE.active) return true;
+      if (b.state[id]! > BSTATE.active) continue;
+      const hasVacancy =
+        service === "escola"
+          ? b.students[id]! < b.studentsCapacity(id)
+          : b.patients[id]! < b.patientsCapacity(id);
+      if (hasVacancy) return true;
     }
     return this.placeNear(service, px, py);
   }

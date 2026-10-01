@@ -1,5 +1,152 @@
 # Diário da avaliação: agentes Hermes + kanban + LLM grátis (CityBuilder)
 
+## 01/10 15:43Z — preparação do navegador no CI
+
+Nos jobs de tela dos runs `36881805274` (#181) e `36882075526` (#180), a instalação de Chromium e
+dependências levou 5min26s e 5min19s; os testes levaram 7min24s e 5min06s. Logs mostram esperas nos
+downloads de fontes/Mesa no mirror Ubuntu. Isso é tempo externo ao mini PC, sem relação com mais vagas locais.
+
+O job passa a usar a [imagem oficial do Playwright](https://playwright.dev/docs/ci#via-containers),
+`mcr.microsoft.com/playwright:v1.63.0-noble`; o registro MCR respondeu 200 e o lock confirma versão 1.63.0.
+Conserva Node22, comando e todos os testes, nome do check e proteções. A imagem traz browsers e bibliotecas;
+a conferência de versão falha com mensagem direta se o pacote e a imagem divergem numa atualização futura.
+Nenhuma imagem ou ferramenta foi instalada no mini PC. O pull da imagem também custa tempo: só o CI real
+do PR e as próximas entregas podem confirmar economia. Sem benchmark repetindo tarefa e sem promessa de ganho.
+Fonte de configuração: [Docker oficial](https://playwright.dev/docs/docker), com `--init` e `--ipc=host`.
+
+## 01/10 15:12Z — teste local verde, mas código não enviado
+
+Na sessão Dev `20261001_145857_57bf5c` da tarefa #173, o teste afetado passou 3/3 e o check local
+passou após alterar contrato, stats e UI. O agente fez push sem `git add`/`git commit`: o PR #180
+ficou no SHA `c2f4394`, que continha apenas o teste do QA. O CI reprovou duas asserções porque
+`unmet.hospital` ainda era inexistente no código enviado. Isso não foi lentidão do hardware ou do GitHub.
+O sincronizador devolveu sozinho; Dev `t_d444334e` publicou a correção `bcf134d` às 15:09Z e concluiu
+às 15:11Z. O CI novo ainda estava em execução. O supervisor não escreveu a feature nem encaminhou cartões.
+
+O SOUL Dev passa a pedir commit explícito, árvore limpa e comparação do SHA local, branch remota e PR
+antes de concluir, registrando o SHA dos testes. É orientação, não trava nova: o benefício depende das
+próximas entregas reais. O deploy só acontece após merge validado e será registrado no PR.
+Também foi corrigida a afirmação antiga sobre capacidade: dois workers configurados não provam que
+três sejam inviáveis no fluxo atual. Coleta passiva temporária iniciada em 15:03:13Z, a cada 15 s,
+por 30 min, em `/opt/data/avaliacao/recursos-ciclo-rapido-20261001.jsonl`; não é parte da fábrica.
+
+Às 15:19Z, foi conferido outro defeito: o ajuste de #180 substituiu a descrição e apagou `Closes #173`.
+O sincronizador só reconhecia o vínculo pelo texto e criou `dev-issue-173-r2` além de `dev-ajuste-pr-180-bcf134d`.
+A correção considera também a branch exata `dev/N` dos PRs abertos. `qa/N` e nomes parecidos continuam sem
+reservar tarefa do Dev; o QA que precisa destravar esse PR mantém prioridade. O cenário reproduziu a duplicata
+na versão anterior e ganha mutante para impedir regressão. O supervisor não interrompeu o clone ativo.
+O segundo CI de #180 falhou em dois snapshots de `tests/unit/reference.test.ts`; esse ajuste segue com o Dev.
+
+## 01/10 13:25Z — diagnóstico terminou, mas não havia retorno ao Dev
+
+PR #165 implantado às 13:15:12Z; main `4324ded` e Pages verdes. Config e SOUL Dev conferidos, saúde OK.
+As sessões já ativas preservaram suas ferramentas antigas. Nenhuma entrega nova completa após esse deploy.
+
+Arquiteto concluiu `t_03460b00` às 13:19:10Z, após 46min41s. No comentário #156 registrou regressão do hospital:
+na medição dele, população 18.516 na main contra 8.586 no PR e caixa final negativo. O supervisor conferiu o
+registro e o encaminhamento; não repetiu a simulação nem implementou a correção. O agente manteve a issue
+`pronto-pra-dev`, mas as três chaves `dev-ajuste-pr-156-*` já estavam gastas. O sincronizador não criava outro Dev
+nem reabria a decisão do Arquiteto no mesmo SHA: diagnóstico concluído deixava o PR parado.
+
+Correção: autorização explícita `pronto-pra-dev` **no PR**, cartão do Arquiteto concluído para o SHA atual e uma
+única tentativa adicional por PR. Sem autorização, reencaminha ao Arquiteto com retomadas limitadas. Depois dessa
+tentativa, ele deve quebrar a tarefa e fechar o PR antigo. Não reinicia o orçamento de três nem contorna QA/CI.
+O caso #156 voltará ao Arquiteto para autorizar ou dividir; nenhum rótulo de encaminhamento é aplicado pelo Codex.
+JEV não agrega aqui: é estado de cartões e etiquetas, resolvido por regra determinística.
+
+## 01/10 13:00Z — pesquisa do Dev sem ferramenta web
+
+PR de documentação #161 mesclado com os checks completos verdes e branch atualizada; não exige deploy funcional.
+A primeira candidata nova é #162: QA iniciou às 12:34:30Z, terminou às 12:40:30Z e abriu o rascunho #164.
+Dev iniciou às 12:43:31Z. A tarefa pede cinco valores de custos/prazos com fontes. Não está publicada nem conta como entrega.
+
+Sessão `20261001_124333_70246b`: ao redor de 12:53Z já havia 48 chamadas, aproximadamente 51 mil tokens de entrada
+e 18 mil de saída. Houve pesquisa por `curl`, resposta 429 do FNDE e esperas `sleep 45` e `sleep 40`, depois buscas
+DuckDuckGo via Jina. O perfil Dev não tinha `web`; Designer e Arquiteto tinham. São fatos do config e das mensagens,
+não prova de que toda a demora vem disso. O container já oferece pesquisa e extração sem instalação adicional:
+uma consulta oficial retornou em 3,48 s. A disponibilidade dos provedores gratuitos pode variar.
+
+Correção proposta: liberar `web` no Dev e orientar pesquisa com as ferramentas do Hermes, sem repetir página bloqueada
+com sleeps/proxies. A fonte deve sustentar o número; pesquisa incompleta segue o tratamento de tarefa travada.
+Sem novo serviço, skill ou JEV. Ganho de tempo ainda não medido; avaliar nas próximas tarefas reais. A sessão ativa
+mantém sua configuração original e não será interrompida para aplicar esta mudança.
+
+## 01/10 09:28 Brasília (12:28Z) — proteção nativa e acompanhamento retomado
+
+PR #160 implantado às 12:06:03Z. O Hermes publicou #153 (11:49:22Z, revisão 8min26s) e #154 (12:14:10Z,
+revisão 7min23s), com CI dos HEADs e Pages verdes, sem intervenção operacional nesses merges. Ambos são trabalho
+iniciado antes dos deploys; não contam como as três entregas novas. A meta de dez minutos não está comprovada.
+
+Ao auditar #154, o Revisor usou main antiga `5f2eaf8`; a main já tinha `e23d219`. A API de proteção clássica deu 404,
+mas a leitura de rulesets confirmou proteção ativa: só dois checks obrigatórios e strict=false. Corrigido o diagnóstico
+inicial de ausência de proteção. A tentativa de ajustar esse ruleset deu 403; o acompanhamento temporário foi removido
+por bloqueio de permissão, sem parar o Hermes. O dono adicionou Administration: write e autorizou continuar.
+
+PUT e GET confirmaram às 12:28:53Z: ruleset existente `24212946` com strict=true e quatro checks obrigatórios da
+GitHub Actions. Condições, bypass vazio e regras de exclusão/force-push preservados. Sem plugin ou serviço novo.
+Contagem de três entregas novas permanece em zero; acompanhamento retomado após a alteração de configuração.
+
+JEV: uma consulta de observação sobre #156 às 12:02Z respondeu `investigar` em 1,134 s. Havia CI do PR vermelho,
+alegação do Dev de falha também na main e CI da main verde. A resposta não mudou o fluxo nem comprova economia
+de tempo. Confiança retornada não é prova de acerto. Registro em `/opt/data/avaliacao/jev-observacoes.jsonl` e
+comentário no #159. Uso pontual, somente se poupar decisão/releitura custosa; sem plugins ou benchmarks repetidos.
+
+## 01/10 11:45Z — retomada não pode virar espera de CI
+
+Após deploy do #159 às 11:30:05Z, o sincronizador criou retomadas e atualizou `dev/120` e `dev/144` sem LLM.
+O Dev ajustou #156 em 3min54s, mas o CI ainda estava vermelho (aceitação #48); não conta como entrega publicada.
+Main e Pages do #159 verdes. Nenhuma entrega nova completa contada nesta checagem.
+
+Falha confirmada na sessão `20261001_113021_948087` do Arquiteto: depois de atualizar #154, executou `sleep 60`
+e `sleep 420` esperando checks. A mudança de SHA também criou outro cartão de escalada para #154 enquanto o
+primeiro estava ativo. Correção: impedir segunda escalada ativa por PR e explicitar no SOUL que Arquiteto encaminha
+sem esperar CI; infraestrutura corrigida volta para o gate com `em-revisão`. Não alterar clones ativos nem cancelar
+o agente só para aplicar SOUL. Intervenção registrada; a meta das três entregas autônomas permanece pendente.
+
+## 01/10 — deploy confirmado e correção de fila parada
+
+O PR #133 entrou em 01/10 às 00:46:16Z, com CI verde, mas o servidor ainda usava sincronizador e perfis anteriores.
+As entregas da madrugada não são evidência do ciclo rápido. Deploy efetivo confirmado às **11:10:49Z**:
+clone de distribuição atualizado, cinco SOULs aplicados, timeouts de ferramentas em 900 s e ambiente local ativo.
+Nenhum clone de agente foi resetado pela supervisão.
+
+Logo após o deploy, não havia cartões ativos, apesar dos PRs #149, #151, #153 e #156 ainda abertos com `em-revisão`.
+O roteamento só chamava o gate de CI/main quando a chave da revisão nunca havia existido. Uma revisão concluída
+do mesmo SHA escondia o PR dos ciclos seguintes. Corrigido para reavaliar PR aberto, retomar revisão verde com
+chave própria e devolver falha ao Dev. Ajuste concluído sem novo commit também pode ser retomado, respeitando
+o limite total de três ajustes. Limite esgotado encaminha ao Arquiteto, em vez de abandonar o PR em silêncio.
+Nas issues #142 e #143, comentários do QA/Arquiteto confirmavam correções publicadas, mas `pronto-pra-teste`
+continuava presente. Os SOULs agora exigem executar e conferir a troca de etiquetas. Uma escalada de issue
+concluída sem encaminhamento recebe retomada limitada, sem duplicar cartão ativo.
+
+Validação da correção: cenários do harness sem rede e 21 regressões injetadas detectadas. CI completo permanece
+obrigatório antes de merge. Esta foi intervenção de implantação; a contagem de três entregas autônomas novas
+continua pendente, sem afirmar que a meta de dez minutos foi atingida.
+
+## 30/09 à noite — ciclo rápido, entregas reais
+
+Pedido do dono: fábrica autônoma, buscando uma pequena entrega jogável a cada 10 minutos no conjunto dos projetos.
+Sem repetir a mesma tarefa para comparar modelos; ajustar o fluxo enquanto entrega trabalho novo.
+
+Linha de base observada entre 18:17Z e 00:17Z (seis horas): 7 PRs `dev/*` mesclados, cerca de um a cada 51 min.
+As duas vagas somaram aproximadamente 651 de 720 minutos disponíveis (~90%). Na janela, as sessões do Revisor
+registraram cerca de 44 min em comandos de espera; checagens completas do Dev e Revisor atingiram o envelope
+de 420 s e foram iniciadas novamente. São medições de registros, não benchmark controlado; há trabalho em andamento
+nas bordas da janela. PR #113: ~95 min de fila para ~8 min de revisão. CPU medida perto de quatro núcleos ocupados
+durante checks simultâneos, sem pressão relevante de memória naquele instante.
+
+Mudança: validação local explícita + CI completo obrigatório; gate de CI/main no sincronizador; revisão sem espera
+nem execução de testes; timeouts do Hermes coerentes com terminal; instrução de uma execução em background acompanhada
+pelo mesmo identificador. Duas vagas e modelos mantidos. Procedimento e reversão em `hermes/OPERACAO.md`.
+
+Resultados das primeiras entregas e eventuais intervenções serão registrados abaixo depois de observados.
+
+Durante a implantação, achado adicional no PR #129: a trava de aceitação reprovou
+`118-dados-hospital.test.ts` depois de um rebase, apesar de o arquivo ser idêntico nas branches QA e Dev.
+Confirmado com diff direto vazio e diff de três pontos listando o arquivo. A trava passa a comparar os conteúdos
+dos commits QA/Dev diretamente; alteração real continua barrada e arquivos idênticos à main continuam permitidos.
+Correção do fluxo no PR de infraestrutura, sem modificar o teste ou o código do hospital.
+
 **Pergunta do dono (29/09/2026):** isso funciona pros meus outros projetos, ou é perda de tempo?
 **Como medir:** números saem de `/opt/data/avaliacao/metricas.py` (kanban.db, state.db dos perfis e GitHub), com um
 `metricas-<data>.json` por coleta. O qualitativo fica neste diário, uma seção por rodada. Nada aqui é impressão sem número

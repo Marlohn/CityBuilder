@@ -202,8 +202,66 @@ def main_vermelha(existentes):
               "pra ficar verde: se o teste estiver errado, explique no PR com número.", prioridade=40)
 
 
+CHECKS_CI = {"npm run check", "testes lentos (coorte IBGE e cidade de 50 mil)", "teste de tela (Playwright)"}
+
+
+def estado_ci(pr):
+    """Só libera a revisão com todos os checks do CI concluídos no HEAD consultado."""
+    checks = pr.get("statusCheckRollup") or []
+    obrigatorios = CHECKS_CI | ({"testes de aceitação protegidos"} if pr["headRefName"].startswith("dev/") else set())
+    if any(c.get("conclusion") in ("FAILURE", "TIMED_OUT", "ACTION_REQUIRED", "CANCELLED") for c in checks):
+        return "falhou"
+    verdes = {c.get("name") for c in checks if c.get("status") == "COMPLETED" and c.get("conclusion") == "SUCCESS"}
+    return "verde" if obrigatorios <= verdes else "aguardando"
+
+
+def preparar_revisao(pr):
+    """CI/atualização de branch são trabalho do script; nunca ocupam uma vaga de LLM."""
+    n = str(pr["number"])
+    if pr.get("isDraft") or pr.get("mergeStateStatus") == "UNKNOWN":
+        return False
+    motivo = None
+    if pr.get("mergeStateStatus") == "DIRTY":
+        motivo = "A branch tem conflito com a main. Resolva no mesmo branch, sem force-push, e publique novamente."
+    else:
+        atras = int(gh("api", f"repos/{REPO}/compare/main...{pr['headRefOid']}", "--jq", ".behind_by"))
+        if atras:
+            # O SHA esperado impede atualizar uma revisão que mudou durante a consulta.
+            gh_escrever("api", f"repos/{REPO}/pulls/{n}/update-branch", "-X", "PUT",
+                        "-f", f"expected_head_sha={pr['headRefOid']}")
+            return False
+        if estado_ci(pr) == "falhou":
+            motivo = "O CI deste commit falhou. Leia os logs, corrija só a causa e publique novamente; não repita a suíte completa no mini PC."
+    if motivo:
+        # Comentário primeiro: nunca encaminhar o Dev sem a evidência da devolução.
+        if gh_escrever("pr", "comment", n, "-R", REPO, "--body-file", "-", texto=f"Sincronizador: {motivo}"):
+            gh_escrever("pr", "edit", n, "-R", REPO, "--remove-label", "em-revisão")
+        return False
+    return estado_ci(pr) == "verde"
+
+
+def escalar_pr(pr, existentes, motivo):
+    """Rodadas gastas exigem uma decisão registrada, não um PR esquecido."""
+    if aberto(existentes, f"arquiteto-destravar-pr-{pr['number']}-"):
+        return
+    chave = f"arquiteto-destravar-pr-{pr['number']}-{pr['headRefOid'][:7]}"
+    if chave in existentes:
+        chave = rodada(existentes, chave + "-retomar")
+        if chave is None:
+            return
+    if chave:
+        criar(chave, f"Destravar PR #{pr['number']}: {pr['title']}", "arquiteto",
+              f"O PR {pr['url']} continua aberto: {motivo}. Leia cartões e comentários, ache a causa e "
+              "registre a decisão no PR. Não implemente a feature. Se a tarefa precisa ser quebrada, crie "
+              "tarefas menores e feche o PR antigo com o motivo; se o teste está errado, encaminhe ao QA "
+              "pela etiqueta da issue. Causa no código comprovada e correção específica? Registre a evidência e "
+              "adicione pronto-pra-dev NO PR para autorizar uma única tentativa após diagnóstico. Se essa tentativa "
+              "já foi gasta, quebre em tarefas menores e feche o PR antigo; não autorize de novo. "
+              "Não conclua com comentário sem encaminhamento. Não repita rodadas sem mudar a causa.", prioridade=25)
+
+
 def revisoes(prs, existentes, esperando_qa=frozenset()):
-    """PR em revisão -> cartão do revisor (1 aberto por PR, 1 por commit). Sem etiqueta -> o Dev ajusta (até 3)."""
+    """PR em revisão -> um cartão aberto por PR. Encerrar cartão sem decidir não encerra o PR."""
     for pr in prs:
         n, sha = pr["number"], pr["headRefOid"][:7]
         # Issue de volta no QA (teste errado): o Dev recoloca `em-revisão` no PR, mas revisar de novo só repete a devolução
@@ -214,22 +272,52 @@ def revisoes(prs, existentes, esperando_qa=frozenset()):
         if any(lb["name"] == "em-revisão" for lb in pr["labels"]):
             chave = f"revisar-pr-{n}-{sha}"
             # Commit novo com a revisão anterior ainda na fila: não cria outra, a que está aberta olha o PR como está.
-            if chave not in existentes and not aberto(existentes, f"revisar-pr-{n}-"):
+            if not aberto(existentes, f"revisar-pr-{n}-") and preparar_revisao(pr):
+                if chave in existentes:
+                    chave = rodada(existentes, chave + "-retomar")
+                    if chave is None:
+                        escalar_pr(pr, existentes, "três retomadas de revisão terminaram sem decisão")
+                        continue
                 criar(chave, f"Revisar PR #{n}: {pr['title']}", "revisor",
-                      f"Revise o PR #{n} ({pr['url']}). Aprovou e o CI está verde? Faça o merge.", prioridade=30)
+                      f"Revise o PR #{n} ({pr['url']}). O sincronizador já conferiu CI e main. Leia o diff, "
+                      "não rode npm/check/testes e não espere CI. Se o HEAD/main mudou, conclua o cartão sem merge: "
+                      "o sincronizador atualizará e chamará novamente. Aprovou? Confira checks e faça merge "
+                      "com --match-head-commit no SHA revisado.", prioridade=30)
         elif pr["headRefName"].startswith(("dev/", "fix/main-")):
             # Issue de volta no QA (teste errado: o Dev não pode corrigir, o CI barra): o ajuste espera o QA (branch dev/N = issue N).
             if re.fullmatch(r"dev/(\d+)", pr["headRefName"]) and int(pr["headRefName"][4:]) in esperando_qa:
                 continue
             # PR do Dev fora de revisão = a revisão pediu mudanças (tirou a etiqueta). Uma rodada por commit, no máximo 3.
             base = f"dev-ajuste-pr-{n}-"
-            if (sum(k.startswith(base) for k in existentes) < MAX_RODADAS and base + sha not in existentes
-                    and not aberto(existentes, base)):
-                criar(base + sha, f"Ajustar PR #{n} pedido na revisão: {pr['title']}", "dev",
+            if sum(k.startswith(base) for k in existentes) < MAX_RODADAS and not aberto(existentes, base):
+                chave = base + sha
+                if chave in existentes:
+                    chave = rodada(existentes, chave + "-retomar")
+                criar(chave, f"Ajustar PR #{n} pedido na revisão: {pr['title']}", "dev",
                       f"A revisão pediu mudanças no PR #{n} ({pr['url']}). Leia o último comentário de revisão "
                       f"(`gh pr view {n} --comments`), ajuste no MESMO branch {pr['headRefName']} (conflito com a main: "
-                      "`git merge origin/main` e resolva), deixe `npm run check` verde, dê push e recoloque a etiqueta (o QA corrigiu o teste? traga com `git merge origin/qa/<issue>`): "
+                      "`git merge origin/main` e resolva), rode validação LOCAL e o teste afetado, dê push e recoloque a etiqueta (o QA corrigiu o teste? traga com `git merge origin/qa/<issue>`): "
                       f"`gh pr edit {n} --add-label em-revisão`.", prioridade=25)
+            elif sum(k.startswith(base) for k in existentes) >= MAX_RODADAS and not aberto(existentes, base):
+                # Uma autorização explícita do Arquiteto não reinicia as três tentativas normais.
+                diagnostico = f"dev-diagnostico-pr-{n}"
+                if diagnostico in existentes and existentes[diagnostico] not in TERMINAIS:
+                    continue
+                autorizado = any(lb["name"] == "pronto-pra-dev" for lb in pr["labels"])
+                decidiu = existentes.get(f"arquiteto-destravar-pr-{n}-{sha}") == "done" or any(
+                    k.startswith(f"arquiteto-destravar-pr-{n}-{sha}-retomar-") and st == "done"
+                    for k, st in existentes.items())
+                if (autorizado and decidiu and diagnostico not in existentes
+                        and not aberto(existentes, f"arquiteto-destravar-pr-{n}-")):
+                    criar(diagnostico, f"Aplicar diagnóstico no PR #{n}: {pr['title']}", "dev",
+                          f"O Arquiteto diagnosticou o PR #{n} ({pr['url']}) e autorizou UMA tentativa adicional. "
+                          f"Leia a evidência e ajuste somente a causa no branch {pr['headRefName']}. "
+                          "Preserve o teste do QA; teste afetado + check LOCAL, push e em-revisão. "
+                          "Não espere CI. Se não resolver, registre o resultado; o Arquiteto deve quebrar a tarefa.",
+                          prioridade=25)
+                    gh_escrever("pr", "edit", str(n), "-R", REPO, "--remove-label", "pronto-pra-dev")
+                else:
+                    escalar_pr(pr, existentes, "tentativas esgotadas; encaminhamento após diagnóstico ainda pendente")
 
 
 def fechar_prs_qa(prs, abertas):
@@ -270,6 +358,8 @@ def tarefas(todas, prs, existentes):
     # Issue com PR do DEV aberto que a fecha já está com alguém (29/09: a #38 seguia 'pronto-pra-dev' com o PR #43 em
     # revisão). O rascunho do QA (qa/N) também diz "Closes #N" e NÃO conta: em 30/09 ele escondeu a #49 do dev por 2 h.
     com_pr = {int(n) for pr in prs if not pr["headRefName"].startswith("qa/") for n in FECHA.findall(pr["body"] or "")}
+    # #180 perdeu Closes ao editar a descrição: dev/N continua sendo o trabalho da issue N.
+    com_pr |= {int(pr["headRefName"][4:]) for pr in prs if re.fullmatch(r"dev/(\d+)", pr["headRefName"])}
     bugs = {i["number"] for i in todas if any(lb["name"] == "bug" for lb in i["labels"])}  # PLANO 12.2: bug passa na frente
     for etiqueta, papel, prio in (("pronto-pra-dev", "dev", 20), ("pronto-pra-teste", "qa", 10)):
         lista = json.loads(gh("issue", "list", "-R", REPO, "--state", "open", "--label", etiqueta,
@@ -304,13 +394,23 @@ def tarefas(todas, prs, existentes):
                       # Terminar antes de começar: QA de tarefa que já tem PR do dev pronto destrava esse PR (30/09: o #79 esperava
                       # atrás de 3 tarefas novas, com o QA serializado). Passa na frente até de bug.
                       prioridade=prio + (5 if eh_bug else 0) + (15 if papel == "qa" and n in com_pr else 0))
-            elif esgotada(existentes, base) and f"arquiteto-quebrar-{n}" not in existentes:
-                criar(f"arquiteto-quebrar-{n}", f"Quebrar a tarefa #{n} ({MAX_RODADAS} rodadas sem entrega)", "arquiteto",
+            elif esgotada(existentes, base) and existentes.get(f"arquiteto-quebrar-{n}", "done") in TERMINAIS:
+                if aberto(existentes, f"arquiteto-quebrar-{n}-retomar-"):
+                    continue
+                chave = f"arquiteto-quebrar-{n}"
+                if chave in existentes:
+                    chave = rodada(existentes, chave + "-retomar")
+                    if chave is None:
+                        continue
+                criar(chave, f"Destravar a tarefa #{n} ({MAX_RODADAS} rodadas sem entrega)", "arquiteto",
                       f"A tarefa #{n} gastou {MAX_RODADAS} rodadas de {papel} sem entregar. Não repita: leia o que cada "
                       "rodada fez (`hermes kanban list`, PRs e comentários) e ache o porquê. Se for tamanho, quebre em "
                       "Tarefas menores (máx. ~3 arquivos cada, `Depende de #N` quando precisar) e etiquete a primeira. "
                       "Se a definição estiver errada, corrija-a. Comente na issue o que decidiu e feche-a se foi toda "
-                      "substituída.", prioridade=15)
+                      "substituída. Comentário sozinho não encaminha tarefa: execute e confira as etiquetas. "
+                      "QA já corrigiu o teste e fez push? Remova pronto-pra-teste e adicione pronto-pra-dev. "
+                      "PR precisa de ajuste? Registre o motivo nele e remova em-revisão. Não conclua o cartão "
+                      "apenas dizendo que outro papel deve agir.", prioridade=15)
                 gh_escrever("issue", "comment", str(n), "-R", REPO, "--body-file", "-",
                             texto=f"Sincronizador: {MAX_RODADAS} rodadas de {papel} sem entregar esta tarefa. Chamei o "
                                   f"Arquiteto para quebrá-la (cartão arquiteto-quebrar-{n}).")
@@ -366,7 +466,7 @@ def main():
     dia = dt.datetime.now(BRT).strftime("%Y%m%d")
     main_vermelha(existentes)
     prs = json.loads(gh("pr", "list", "-R", REPO, "--state", "open", "--json",
-                        "number,title,body,labels,headRefName,headRefOid,url", "--limit", "50"))
+                        "number,title,body,labels,headRefName,headRefOid,url,isDraft,mergeStateStatus,statusCheckRollup", "--limit", "50"))
     todas = json.loads(gh("issue", "list", "-R", REPO, "--state", "open", "--json", "number,labels", "--limit", "300"))
     mesclados = json.loads(gh("pr", "list", "-R", REPO, "--state", "merged", "--limit", "20",
                               "--json", "number,headRefName,mergedAt"))

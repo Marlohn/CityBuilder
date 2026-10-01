@@ -16,15 +16,19 @@ realism:
     - { id: tfr, label: Filhos por mulher, unit: filhos, min: 1.3, max: 2.3, source: "IBGE 2023: 1,57 (UFs de 1,39 a 2,26)" }
     - { id: unemployment, label: Desemprego, unit: "%", min: 4, max: 15, source: "PNAD: 5,6% em 2025; série 2012-2025" }
     - { id: employmentLevel, label: Nível de ocupação, unit: "%", min: 50, max: 66, source: "PNAD 2025: 59,1%" }
-    # Faixa: Censo 2010 (10,8%) até estados mais envelhecidos. PENDENTE: faixa por UF.
-    - { id: pop60plus, label: Pessoas com 60 anos ou mais, unit: "%", min: 10, max: 22, source: "Censo 2022: 15,6%" }
+    # Faixa pelas UFs do Censo 2022: Roraima 7,9% (mais jovem) a Rio Grande do Sul 20,2% (mais velho).
+    - { id: pop60plus, label: Pessoas com 60 anos ou mais, unit: "%", min: 8, max: 20, source: "IBGE Censo 2022, tabela 1209 (grupos de idade 60-69 e 70+): Brasil 15,8%; UFs de 7,9% (RR) a 20,2% (RS) - https://servicodados.ibge.gov.br/api/v3/agregados/1209/periodos/2022/variaveis/606?localidades=N3[all]" }
     - { id: householdSize, label: Pessoas por domicílio, unit: pessoas, min: 2.3, max: 3.4, source: "Censo 2022: 2,79 (2010: 3,31)" }
     - { id: householdsWithCar, label: Domicílios com carro, unit: "%", min: 29, max: 70, source: "PNAD 2023: 48,1% (Nordeste 29,9% a Sul 69,2%)" }
-    # Média nacional inclui metrópoles; cidade pequena tem trajetos curtos. Só avalia a partir de 50 mil
-    # habitantes (PENDENTE: faixa por porte de cidade).
-    - { id: commuteUnder30, label: Trabalhadores com trajeto de até 30 min, unit: "%", min: 55, max: 85, minPopulation: 50000, source: "Censo 2022: 67%" }
+    # A fatia de trabalhadores com trajeto de até 30 min cai com o porte da cidade (Censo 2022): os
+    # municípios são agrupados pela população do Censo (tabela 4709) e o percentual é a soma das faixas
+    # de até 30 min sobre as pessoas ocupadas que trabalhavam fora do domicílio (tabela 10331).
+    # Só avalia a partir de 50 mil habitantes.
+    - { id: commuteUnder30, label: Trabalhadores com trajeto de até 30 min, unit: "%", min: 45, max: 82, minPopulation: 50000, source: "IBGE Censo 2022, tabela 10331 (tempo habitual de deslocamento: até 5 min + 6 a 15 min + mais de 15 até 30 min), por porte de cidade (população do Censo, tabela 4709): 78,3% nos municípios de 50 a 100 mil, 67,2% de 100 a 500 mil e 49,5% de 500 mil ou mais - https://servicodados.ibge.gov.br/api/v3/agregados/10331/periodos/2022/variaveis/13556?localidades=N6[all]&classificacao[537]=31609,19429,79189,79190" }
     - { id: marriageAgeMale, label: Idade média ao casar (homens), unit: anos, min: 27, max: 36, source: "IBGE Registro Civil 2023: 31,5" }
     - { id: marriageAgeFemale, label: Idade média ao casar (mulheres), unit: anos, min: 25, max: 34, source: "IBGE Registro Civil 2023: 29,2" }
     - { id: divorceRate, label: Divórcios por mil adultos (20+), unit: por mil, min: 1.5, max: 4.5, source: "IBGE 2023: 2,8" }
     - { id: higherEducation, label: Jovens 18-24 no ensino superior, unit: "%", min: 15, max: 45, source: "PNAD Educação 2023: 30,5%" }
-    - { id: schoolEnrollment, label: Crianças 6-17 na escola, unit: "%", min: 90, max: 100, source: "PENDENTE: taxa de escolarização (PNAD Educação)" }
+    # Taxas PNAD Educação 2023 (6-17 = grupo 6-14 + grupo 15-17): Brasil 99,4% e 91,9%;
+    # entre as UFs, 96,5% a 99,8% (6-14) e 85,6% a 95,0% (15-17).
+    - { id: schoolEnrollment, label: Crianças 6-17 na escola, unit: "%", min: 85, max: 100, source: "IBGE PNAD Educação 2023, tabela 7138 (taxa de escolarização): 6-14 anos 99,4%, 15-17 anos 91,9%; UFs de 96,5% (RR) a 99,8% (SC) e de 85,6% (AP) a 95,0% (RJ) - https://servicodados.ibge.gov.br/api/v3/agregados/7138/periodos/2023/variaveis/10276?localidades=N1[all]&classificacao[58]=31615,2792" }

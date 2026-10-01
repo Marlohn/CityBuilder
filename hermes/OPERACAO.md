@@ -6,6 +6,46 @@
 
 ## Em uma frase
 
+### Atualização de 30/09 à noite: ciclo rápido autônomo
+
+O dono autorizou mudar a fábrica e medir com tarefas novas reais, sem repetir tarefas em comparações de LLM.
+As regras abaixo substituem instruções antigas de rodar check completo em cada perfil ou esperar CI no Revisor.
+
+- **Dev/QA no mini PC:** teste afetado + tipos/estilo/camadas. `aplicar_perfis.py` exporta `CITYBUILDER_LOCAL_CHECK=1`
+  no ambiente comum do terminal; `npm run check` passa a informar `CHECK LOCAL OK`, nunca `TUDO OK` da suíte inteira.
+  `--local` também ativa isso explicitamente. `--full` é diagnóstico excepcional. No CI o modo local é ignorado.
+- **GitHub CI:** continua rodando todas as verificações, simulações lentas e Playwright. Nenhuma cobertura removida.
+  A trava de aceitação compara conteúdo QA/Dev diretamente (dois commits, sem merge-base): o rebase do #129
+  produzia falso positivo mesmo com teste idêntico. Arquivo alterado de verdade segue reprovado.
+- **Sincronizador:** antes de criar revisão, verifica checks completos do HEAD e ancestralidade da main. Branch atrasada
+  recebe update com SHA esperado e espera fora do kanban; conflito/CI vermelho voltam ao Dev com comentário. Check ausente,
+  parcial ou mergeabilidade desconhecida não liberam revisão. Não há LLM dormindo à espera do GitHub.
+- **Cartão concluído não é entrega:** PR ainda aberto é reavaliado mesmo se já teve revisão do mesmo commit.
+  Retomadas têm chaves próprias, sem dois cartões abertos para o mesmo PR. Depois de três retomadas de revisão ou
+  três ajustes do Dev, o Arquiteto recebe o PR para decidir a causa e encaminhar QA ou tarefas menores.
+  Escalada tem no máximo um cartão aberto por PR, mesmo que o SHA mude. O Arquiteto não espera CI nem revisa:
+  corrige o encaminhamento e encerra. CI de infraestrutura já corrigido na main: recoloca `em-revisão` para o script
+  atualizar a branch e aguardar os checks fora do kanban.
+  Após três ajustes, causa no código comprovada permite **uma** tentativa adicional por PR: Arquiteto registra
+  o diagnóstico, põe `pronto-pra-dev` no PR e conclui o cartão do SHA atual. O script consome a etiqueta.
+  Falhou essa tentativa? Arquiteto cria tarefas menores e fecha o PR antigo. Comentário sem encaminhamento
+  recebe retomada limitada do Arquiteto; nunca reinicia as três tentativas normais.
+- **Revisor:** lê diff/testes e evidências, sem npm/rebase/push. Merge com `--match-head-commit` no SHA lido. Se main mudou,
+  encerra o cartão sem merge: o sincronizador atualiza a branch e despacha a revisão do novo commit.
+- **Timeout do Hermes:** fonte verificada na imagem fixa, `agent/tool_executor.py` e `agent/deadline.py`.
+  O envelope `timeouts.tools.sequential_call` caía no padrão de 420 s, antes de alguns comandos terminarem;
+  `concurrent_batch` também usa esse padrão. Ambos passam a 900 s; comandos longos devem iniciar em background e ser
+  acompanhados pelo mesmo `session_id`, com esperas de até 60 s. Timeout não significa processo encerrado.
+- **Capacidade:** continuam duas vagas globais e uma por perfil. São limites configurados; o máximo seguro do fluxo novo ainda não foi validado. Uma vaga por perfil também protege seu clone compartilhado. Modelos gratuitos atuais mantidos nesta primeira mudança.
+  A supervisão do Codex é temporária; nenhuma regra de produção depende do Codex nem de uma aprovação humana.
+- **Validação:** checks rápidos do harness antes do deploy e CI do PR de infraestrutura; eficácia medida nas entregas
+  novas (QA → Dev → CI → revisão → Pages), sem bake-off. Resultados e intervenções em `hermes/avaliacao/DIARIO.md`.
+- **Deploy:** fonte no clone de distribuição, nunca reset no clone de um agente ativo. Atualize perfis com `hermes profile
+  update`, execute `aplicar_perfis.py` e copie o sincronizador após validação. A configuração dos próximos workers vem
+  dos perfis; o gateway não precisa reiniciar para mudar SOUL/timeouts. Não mude concorrência nesta rodada.
+- **Reversão:** reverta o PR, reponha o sincronizador guardado em `.bak-ciclo-rapido`, atualize os perfis e remova a linha
+  `CITYBUILDER_LOCAL_CHECK` do ambiente comum. Config anterior está nos backups dos perfis.
+
 O GitHub é o quadro oficial (issues, etiquetas, PRs, CI). Um script sem LLM (o **sincronizador**) transforma etiqueta
 em cartão no **kanban do Hermes**. O despachante do Hermes entrega cada cartão ao perfil certo, e os perfis fazem o
 trabalho com modelos grátis.
@@ -40,7 +80,7 @@ GitHub (issues/etiquetas/PRs/CI) --lê a cada 2 min--> sincronizador (sem LLM)
 | `arquiteto` | **Só planeja**: quebra o próximo item da issue #2 em tarefas | medium | `web` | github, codebase-inspection |
 | `revisor` | **Só revisa** PRs: CI verde sobre a main atual + regras = merge, ou pede mudanças | medium | — | github, systematic-debugging, codebase-inspection |
 | `qa` | Teste de aceitação que falha antes do código; caça bug quando está sem fila | low | — | github, opencode, test-driven-development, systematic-debugging |
-| `dev` | Faz o teste passar (o código sai do OpenCode/muse); conserta a main vermelha | low | — | github, opencode, test-driven-development, systematic-debugging, node-inspect-debugger |
+| `dev` | Faz o teste passar (o código sai do OpenCode/muse); conserta a main vermelha | low | `web` | github, opencode, test-driven-development, systematic-debugging, node-inspect-debugger |
 
 - **Modelo principal por papel (30/09):**
   - **designer, arquiteto e revisor:** `nvidia/nemotron-3-ultra-550b-a55b:free` pelo **Kilo** (provedor nativo
@@ -128,7 +168,9 @@ aconteceu e por quê?". A resposta tem que ser "está no alvo".
 - A tarefa espera as linhas `Depende de #N` (com número) fecharem.
 - **Um dev por arquivo:** compara a lista numerada ``1. `caminho` `` que o Arquiteto escreve na tarefa.
 - Tarefa de item com etiqueta `bug` ganha prioridade.
-- Issue com PR **do dev** aberto que a fecha (`Closes/Fecha #N`) não ganha cartão novo. O rascunho do QA também diz
+- Issue com PR **do dev** aberto que a fecha (`Closes/Fecha #N`) ou branch exata `dev/N` não ganha cartão novo. A branch
+  preserva o vínculo mesmo se o agente apagar `Closes` ao atualizar a descrição, como no PR #180 (01/10).
+  O rascunho do QA também diz
   `Closes #N` e **não conta**: em 30/09 ele escondeu a #49 (e a #39, que divide arquivo com ela) por ~9 h.
 - **Chave arquivada continua contando como cartão existente:** verificado que o Hermes cria OUTRO cartão se a chave for
   reusada depois de arquivada; sem isso o cartão nascia de novo a cada 2 min.
@@ -165,12 +207,29 @@ aconteceu e por quê?". A resposta tem que ser "está no alvo".
 
 - **O dono não faz nenhum passo manual e não aprova nada.** Contrato, save, schema e VISAO seguem CI verde + revisão = merge
   (o CODEOWNERS está sem efeito na prática; a regra está no `AGENTS.md`). A `main` **tem** proteção (ruleset): exige
-  `npm run check` e `testes de aceitação protegidos`, sem review obrigatório.
+  os quatro jobs do CI (`npm run check`, `testes de aceitação protegidos`,
+  `testes lentos (coorte IBGE e cidade de 50 mil)` e `teste de tela (Playwright)`), com branch atualizada antes
+  do merge (`strict_required_status_checks_policy=true`), sem bypass e sem review humano obrigatório.
 - **PR do supervisor (docs e harness) não passa pelo revisor:** CI verde e merge do supervisor. Deliberado: o revisor gastou
   47 min num PR só de documentação.
 - **Nada espera sem motivo:** gatilho é evento, não relógio. Todo intervalo precisa de motivo escrito ao lado.
 - **Nunca afirme "não dá" ou "não tem permissão" sem testar aquela operação.** O token dos agentes tem Contents, Issues,
-  PRs e Workflows de escrita, mas não tem Administration.
+  PRs e Workflows de escrita. Em 01/10 o dono adicionou Administration: write para corrigir o ruleset da fábrica.
+
+### Proteção nativa da main (conferida em 01/10)
+
+Ruleset `main`, ID `24212946`, ativo em `~DEFAULT_BRANCH`; GitHub Actions é a origem dos checks (`integration_id=15368`).
+Foram preservadas as regras de exclusão e de force-push. Não criar uma segunda proteção por cima: atualize o ruleset
+existente, preservando condições e bypass vazio. Confira com `gh api repos/Marlohn/CityBuilder/rules/branches/main`
+ou `gh api repos/Marlohn/CityBuilder/rulesets/24212946`. A API clássica `branches/main/protection` pode devolver 404
+mesmo quando há um ruleset ativo; 404 nessa rota não prova ausência de proteção.
+
+Antes, o ruleset exigia só check geral e aceitação, sem atualização da branch. No #154, o Revisor citou main `5f2eaf8`
+apesar de ela já estar em `e23d219`: todos os checks consultados estavam verdes, mas a main atual não foi considerada.
+A trava nativa agora recusa merge desatualizado, independentemente do prompt. A espera continua no sincronizador.
+Estado anterior guardado em `/opt/data/avaliacao/ruleset-main-antes-20261001.json`; mudanças no ruleset exigem
+Administration: write. A primeira tentativa deu 403, sem alteração; após ajuste do token pelo dono, PUT e GET
+confirmaram a configuração às 09:28:53 de Brasília (12:28:53Z). Registro de aplicação no PR #160.
 
 ## Armadilhas já pagas
 
@@ -231,13 +290,15 @@ Ele tem teste de mutação feito à mão: reprova com o loop ocioso, com SOUL di
    `hermes cron create "every 2m" --name freio-memoria --script freio_memoria.py --no-agent --deliver local`.
 5. Função nova com efeito colateral: escreva o cenário **e o mutante** antes.
 
-**Subir ou descer agentes simultâneos:** decida pelo pico de `anon` (o `vigia.sh` mede). Ajuste
-`kanban.max_in_progress` e reinicie só o gateway. **Medido em 30/09:** 2 agentes ≈ 2,0–2,1 GB de processos; com a comparação
-de modelos junto, 2,6–2,7 GB de 3 GB. Ou seja, **não cabe empurrar pra 3** enquanto a comparação roda.
-**Com 3 e sem comparação de modelos também não cabe (30/09, tarde):** o `vigia.sh` (amostra a cada 1 min) mostrou picos de 1,5–2,3 GB e
-achei que cabia, mas às 13:00 o `freio.jsonl` (amostra a cada 2 min) registrou 2.817 MB, a pressão de disco ficou ~24% por 5 min e o
-load chegou a 20. O que estoura é o `npm run check` (só o `tsc` do dev usa ~430 MB) rodando ao mesmo tempo no dev e no QA. **Meça o pico
-pelo `freio.jsonl` e por `memory.pressure`, não por amostra pontual.** Voltou para 2.
+**Subir ou descer agentes simultâneos:** revalide com o fluxo em uso. Em 01/10, o host informou Intel N150,
+4 CPUs e ~8 GB de RAM; o cgroup do container confirmou teto de 3 GiB. A configuração confirmou
+`kanban.max_in_progress=2` e `max_in_progress_per_profile=1`. Isso confirma o limite escolhido, não a capacidade máxima.
+As medições de 30/09 são históricas: os testes locais e o fluxo mudaram. Elas não provam que três workers
+sejam inviáveis hoje. Observe pico de `anon`, memória disponível do host, pressão e variação dos eventos
+do cgroup durante entregas reais; `memory.peak` e eventos acumulados isolados não datam uma falha.
+Uma coleta passiva com dois workers também não valida três. Antes de alterar a configuração, confira no
+despachante instalado como a alteração é carregada e preserve os workers ativos. Mais de um Dev no mesmo
+clone continua inseguro mesmo que sobre RAM: precisa de workspace isolado.
 
 ## Avaliação do experimento
 

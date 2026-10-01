@@ -96,6 +96,14 @@ button:disabled {
 .stat.negative .value {
   color: var(--bad);
 }
+.topbar .blocked {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.1;
+  color: var(--warn);
+  font-size: 12px;
+  font-weight: 600;
+}
 .speeds {
   margin-left: auto;
   display: flex;
@@ -379,4 +387,13 @@ button:disabled {
 }
 .file-button input {
   display: none;
+}
+
+/* Barras de demanda dentro da barra principal: largura fixa para não esticar a fileira. */
+.topbar .demand {
+  width: 190px;
+  margin: 0;
+}
+.topbar .demand .dlabel {
+  width: 80px;
 }

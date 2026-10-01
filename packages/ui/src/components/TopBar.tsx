@@ -1,5 +1,5 @@
 import type { GameClient } from "../client";
-import { clock, int, money } from "../format";
+import { clock, int, money, pct } from "../format";
 import type { Store, UiState } from "../store";
 
 const SPEEDS = [
@@ -10,8 +10,67 @@ const SPEEDS = [
   { v: 4, label: "▶▶▶", title: "Velocidade 4x" },
 ];
 
+// Limites de cor do número de água/luz: número de tela.
+// PENDENTE: sem fonte oficial (limite de alerta escolhido pela equipe).
+const UTILITY_WARN = 0.8;
+const UTILITY_BAD = 0.95;
+
+const DEMAND_BARS = [
+  {
+    key: "residential",
+    label: "Residencial",
+    color: "#5fb36e",
+    title: "Casas que a cidade quer: mais Casas = mais moradores (100% = 100 casas)",
+  },
+  {
+    key: "commercial",
+    label: "Comercial",
+    color: "#6f9fe0",
+    title: "Lojas e serviços que a cidade quer (100% = 100 vagas de comércio)",
+  },
+  {
+    key: "industrial",
+    label: "Industrial",
+    color: "#e0c064",
+    title: "Indústrias que a cidade quer (100% = 100 vagas de indústria)",
+  },
+] as const;
+
+function utilityColor(fraction: number): string {
+  if (fraction >= UTILITY_BAD) return "var(--bad)";
+  if (fraction >= UTILITY_WARN) return "var(--warn)";
+  return "var(--accent)";
+}
+
+function UtilityStat({ name, used, capacity }: { name: string; used: number; capacity: number | null }) {
+  const value = `${int(used)} / ${capacity === null ? "—" : int(capacity)}`;
+  const title =
+    capacity === null
+      ? `${name}: ${int(used)} pessoas equivalentes usando; serviço sem limite (desligado)`
+      : `${name}: ${int(used)} de ${int(capacity)} pessoas equivalentes usando (${pct(capacity > 0 ? used / capacity : 0)})`;
+  const fraction = capacity && capacity > 0 ? used / capacity : 0;
+  return (
+    <div className="stat" title={title}>
+      <span className="label">{name}</span>
+      <span className="value small" style={{ color: capacity === null ? undefined : utilityColor(fraction) }}>
+        {value}
+      </span>
+      <span className="sub">pessoas equivalentes</span>
+    </div>
+  );
+}
+
 export function TopBar({ ui, store, client }: { ui: UiState; store: Store; client: GameClient }) {
   const s = ui.stats;
+  const blockedByWater = s !== null && s.construction.blockedByWater > 0;
+  const blockedByPower = s !== null && s.construction.blockedByPower > 0;
+  const showBlockedWarning = s !== null && ui.speed !== 0 && (blockedByWater || blockedByPower);
+  const blockedMessage =
+    blockedByWater && blockedByPower
+      ? "⚠ obras paradas: falta água e luz"
+      : blockedByWater
+        ? "⚠ obras paradas: falta água"
+        : "⚠ obras paradas: falta luz";
   return (
     <div className="topbar">
       <div className="brand">CityBuilder</div>
@@ -34,6 +93,30 @@ export function TopBar({ ui, store, client }: { ui: UiState; store: Store; clien
           {s ? `+${money(s.lastYearRevenue)} / -${money(s.lastYearExpenses)}` : "—"}
         </span>
       </div>
+      {s ? (
+        <div className="stat" title="Demanda da cidade por casas, comércio e indústrias (100% = 100 vagas)">
+          <span className="label">Demanda</span>
+          <div className="demandbars">
+            {DEMAND_BARS.map((b) => (
+              <div className="demand" key={b.key} title={b.title}>
+                <span className="dlabel">{b.label}</span>
+                <div className="dbar">
+                  <div
+                    style={{ width: `${Math.max(0, Math.min(100, s.demand[b.key]))}%`, background: b.color }}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
+      {s ? (
+        <>
+          <UtilityStat name="Água" used={s.utilities.water.used} capacity={s.utilities.water.capacity} />
+          <UtilityStat name="Luz" used={s.utilities.power.used} capacity={s.utilities.power.capacity} />
+        </>
+      ) : null}
+      {showBlockedWarning ? <div className="blocked">{blockedMessage}</div> : null}
       <div className="speeds">
         {SPEEDS.map((sp) => (
           <button

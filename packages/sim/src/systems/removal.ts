@@ -4,7 +4,7 @@
  * Os prédios removidos no tick são tratados juntos, numa passada só pelo registro.
  */
 import type { City } from "../city";
-import { fire, leaveHome, unenroll, unregisterClinic } from "../people/actions";
+import { fire, leaveHome, unenroll, unregisterClinic, unregisterHospital } from "../people/actions";
 import { EV } from "../people/events";
 import { PSTATUS } from "../people/population";
 import type { System } from "../sim";
@@ -32,15 +32,19 @@ export class RemovalSystem implements System {
     const access = sim.buildings.access[id]!;
     const maxSchool = sim.config.education.maxDistanceMeters;
     const maxClinic = sim.config.health.maxDistanceMeters;
+    const maxHospital = sim.config.health.hospitalMaxDistanceMeters;
     for (let p = 0; p < pop.count; p++) {
       if (pop.status[p] !== PSTATUS.alive) continue;
       const atSchool = pop.school[p] === id;
       const atClinic = pop.clinic[p] === id;
-      if (!atSchool && !atClinic) continue;
+      const atHospital = pop.hospital[p] === id;
+      if (!atSchool && !atClinic && !atHospital) continue;
       const home = city.homeAccess(p);
       const far = (max: number) => home < 0 || sim.world.manhattanMeters(home, access) > max;
       if (atSchool && far(maxSchool)) unenroll(city, p);
       if (atClinic && far(maxClinic)) unregisterClinic(city, p);
+      // O leito usa o alcance maior do hospital.
+      if (atHospital && far(maxHospital)) unregisterHospital(city, p);
     }
     city.markets.updateAll(id);
   }
@@ -67,6 +71,7 @@ export class RemovalSystem implements System {
       if (gone.has(pop.job[p]!)) fire(this.city, p, "prédio fechou");
       if (gone.has(pop.school[p]!)) unenroll(this.city, p);
       if (gone.has(pop.clinic[p]!)) unregisterClinic(this.city, p);
+      if (gone.has(pop.hospital[p]!)) unregisterHospital(this.city, p);
     }
     for (const b of gone) markets.updateAll(b);
   }

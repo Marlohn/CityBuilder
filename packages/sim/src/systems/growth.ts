@@ -28,6 +28,11 @@ export class GrowthSystem implements System {
   private startsBudget = 0;
   demand: Demand = { homes: 0, commercialJobs: 0, industrialJobs: 0 };
   census: Census | null = null;
+  blockedByWater = 0;
+  blockedByPower = 0;
+  /** Causa vista na tentativa atual (só vira contador se a obra não sair: o laço para na 1ª falha). */
+  private seenWater = false;
+  private seenPower = false;
   private byZone: Map<number, { type: BuildingType; idx: number }[]> = new Map();
 
   constructor(private city: City) {
@@ -44,6 +49,8 @@ export class GrowthSystem implements System {
   tick() {
     const { sim } = this.city;
     if (sim.clock.tick % EVERY !== 0) return;
+    this.blockedByWater = 0;
+    this.blockedByPower = 0;
     this.census = takeCensus(this.city);
     this.demand = this.computeDemand(this.census);
     const cfg = sim.config.growth;
@@ -161,10 +168,15 @@ export class GrowthSystem implements System {
     if (d.commercialJobs >= 1) options.push([ZONE_ID.commercial, d.commercialJobs]);
     if (d.industrialJobs >= 1) options.push([ZONE_ID.industrial, d.industrialJobs]);
     options.sort((a, b) => b[1] - a[1] || a[0] - b[0]);
+    this.seenWater = false;
+    this.seenPower = false;
     for (const [zone] of options) {
       if (this.lots[zone]!.size === 0) continue;
       if (this.tryBuild(zone)) return true;
     }
+    // A tentativa de obra foi barrada: conta uma vez por causa (o laço de obras para na 1ª falha).
+    if (this.seenWater) this.blockedByWater += 1;
+    if (this.seenPower) this.blockedByPower += 1;
     return false;
   }
 
@@ -205,7 +217,14 @@ export class GrowthSystem implements System {
         if (city.sim.config.growth.requiresOutsideConnection && network.exitFor(access) < 0) continue;
         // Sem água e luz sobrando nesta malha de ruas, a construtora não constrói (ninguém compraria).
         const u = city.utilities;
-        if (u && !u.canSupply(access, u.demandOf(type.homes, type.jobs), true)) continue;
+        if (u) {
+          const d = u.demandOf(type.homes, type.jobs);
+          if (!u.canSupply(access, d, true)) {
+            if (u.spareAt(access, "water") < d) this.seenWater = true;
+            else this.seenPower = true;
+            continue;
+          }
+        }
         const ready = clock.tick + Math.round((type.constructionMonths / 12) * clock.ticksPerDay);
         const variant = rng.int(65536);
         const id = buildings.add(idx, ax, ay, access, facing, ready, variant);
