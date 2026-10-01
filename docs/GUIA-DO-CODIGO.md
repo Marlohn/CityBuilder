@@ -184,6 +184,33 @@ O limite de tela (`DEFAULT_TRAFFIC_VISUALS.maxActive`, em `trafficVisuals.ts`) �
 3. Leitura em `view/report.ts` a partir de `city.lastYear`, com o helper `n()` (ponto de milhar).
 4. Não mexa em `packages/contract` nem no `StatsView`: contagem de ontem é dado do motor, não visão para a tela.
 
+### 3.13 Uma categoria financeira nova
+
+Para criar uma categoria de receita ou despesa (ex.: `taxa_lixo`), siga estas camadas:
+
+1. Lance o valor no motor em `packages/sim/src/systems/economy.ts` (custeio e receita anual)
+   ou em `packages/sim/src/commands/apply.ts` (obra pontual). Use `treasury.earn(valor, categoria)`
+   para receita, `treasury.charge(valor, categoria)` para custeio que acontece mesmo sem
+   dinheiro e `treasury.trySpend(valor, categoria)` para obra que só acontece com dinheiro.
+   Os três moram em `packages/sim/src/economy/treasury.ts` e guardam o breakdown do ano
+   corrente em `revenue`/`expenses` por categoria.
+2. Guarde no ano em `packages/sim/src/city.ts`: `YearCounters.revenueByCategory` e
+   `YearCounters.expensesByCategory` (ano corrente), mais `YearSummary` e
+   `City.yearlyHistory` (um resumo por ano fechado, com `moneyEnd`). O fechamento do ano
+   fica em `packages/sim/src/game.ts` (chama `treasury.closeYear()` e empurra em `yearlyHistory`).
+3. Classifique em `packages/sim/src/view/stats.ts`: se for custeio (repete todo ano, ex.:
+   `educacao`, `saude`, `agua_e_luz`, `manutencao_vias`), some em `operatingCost`; se for obra
+   (uma vez, ex.: `obras_vias`, `obras_servicos`), some em `investmentCost`. O `netOperating`
+   é receita menos custeio; o investimento fica separado em `investment`.
+4. Exponha no contrato em `packages/contract/src/view.ts`: `FinanceCategorySummary`
+   (`revenueByCategory`, `expensesByCategory`, `netOperating`, `investment`, `yearlyHistory`)
+   e `YearSummary`. Não mude o significado de campos que já existem (o save e a tela usam eles).
+5. Mostre no relatório em `packages/sim/src/view/report.ts`, na seção `## Prefeitura`, com os
+   helpers `money()`/`n()`. Receita usa `Receita — <categoria>`, despesa usa `Despesa — <categoria>`
+   sob o subtítulo de custeio ou de investimento, conforme a classificação do passo 3.
+6. Mostre na UI em `packages/ui` (painel de finanças): leia só do `StatsView.finance` do contrato,
+   sem importar o motor. Nada de lógica de conta na tela, só exibição.
+
 ---
 
 ## 4. Testes
