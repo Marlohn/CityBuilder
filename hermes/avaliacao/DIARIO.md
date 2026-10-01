@@ -18,6 +18,12 @@ pelo mesmo identificador. Duas vagas e modelos mantidos. Procedimento e reversã
 
 Resultados das primeiras entregas e eventuais intervenções serão registrados abaixo depois de observados.
 
+Durante a implantação, achado adicional no PR #129: a trava de aceitação reprovou
+`118-dados-hospital.test.ts` depois de um rebase, apesar de o arquivo ser idêntico nas branches QA e Dev.
+Confirmado com diff direto vazio e diff de três pontos listando o arquivo. A trava passa a comparar os conteúdos
+dos commits QA/Dev diretamente; alteração real continua barrada e arquivos idênticos à main continuam permitidos.
+Correção do fluxo no PR de infraestrutura, sem modificar o teste ou o código do hospital.
+
 **Pergunta do dono (29/09/2026):** isso funciona pros meus outros projetos, ou é perda de tempo?
 **Como medir:** números saem de `/opt/data/avaliacao/metricas.py` (kanban.db, state.db dos perfis e GitHub), com um
 `metricas-<data>.json` por coleta. O qualitativo fica neste diário, uma seção por rodada. Nada aqui é impressão sem número

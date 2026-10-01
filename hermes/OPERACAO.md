@@ -15,6 +15,8 @@ As regras abaixo substituem instruções antigas de rodar check completo em cada
   no ambiente comum do terminal; `npm run check` passa a informar `CHECK LOCAL OK`, nunca `TUDO OK` da suíte inteira.
   `--local` também ativa isso explicitamente. `--full` é diagnóstico excepcional. No CI o modo local é ignorado.
 - **GitHub CI:** continua rodando todas as verificações, simulações lentas e Playwright. Nenhuma cobertura removida.
+  A trava de aceitação compara conteúdo QA/Dev diretamente (dois commits, sem merge-base): o rebase do #129
+  produzia falso positivo mesmo com teste idêntico. Arquivo alterado de verdade segue reprovado.
 - **Sincronizador:** antes de criar revisão, verifica checks completos do HEAD e ancestralidade da main. Branch atrasada
   recebe update com SHA esperado e espera fora do kanban; conflito/CI vermelho voltam ao Dev com comentário. Check ausente,
   parcial ou mergeabilidade desconhecida não liberam revisão. Não há LLM dormindo à espera do GitHub.
