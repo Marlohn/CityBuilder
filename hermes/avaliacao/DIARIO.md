@@ -1,5 +1,22 @@
 # Diário da avaliação: agentes Hermes + kanban + LLM grátis (CityBuilder)
 
+## 01/10 13:25Z — diagnóstico terminou, mas não havia retorno ao Dev
+
+PR #165 implantado às 13:15:12Z; main `4324ded` e Pages verdes. Config e SOUL Dev conferidos, saúde OK.
+As sessões já ativas preservaram suas ferramentas antigas. Nenhuma entrega nova completa após esse deploy.
+
+Arquiteto concluiu `t_03460b00` às 13:19:10Z, após 46min41s. No comentário #156 registrou regressão do hospital:
+na medição dele, população 18.516 na main contra 8.586 no PR e caixa final negativo. O supervisor conferiu o
+registro e o encaminhamento; não repetiu a simulação nem implementou a correção. O agente manteve a issue
+`pronto-pra-dev`, mas as três chaves `dev-ajuste-pr-156-*` já estavam gastas. O sincronizador não criava outro Dev
+nem reabria a decisão do Arquiteto no mesmo SHA: diagnóstico concluído deixava o PR parado.
+
+Correção: autorização explícita `pronto-pra-dev` **no PR**, cartão do Arquiteto concluído para o SHA atual e uma
+única tentativa adicional por PR. Sem autorização, reencaminha ao Arquiteto com retomadas limitadas. Depois dessa
+tentativa, ele deve quebrar a tarefa e fechar o PR antigo. Não reinicia o orçamento de três nem contorna QA/CI.
+O caso #156 voltará ao Arquiteto para autorizar ou dividir; nenhum rótulo de encaminhamento é aplicado pelo Codex.
+JEV não agrega aqui: é estado de cartões e etiquetas, resolvido por regra determinística.
+
 ## 01/10 13:00Z — pesquisa do Dev sem ferramenta web
 
 PR de documentação #161 mesclado com os checks completos verdes e branch atualizada; não exige deploy funcional.

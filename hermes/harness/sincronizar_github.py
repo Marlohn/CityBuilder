@@ -245,12 +245,19 @@ def escalar_pr(pr, existentes, motivo):
     if aberto(existentes, f"arquiteto-destravar-pr-{pr['number']}-"):
         return
     chave = f"arquiteto-destravar-pr-{pr['number']}-{pr['headRefOid'][:7]}"
-    if chave not in existentes:
+    if chave in existentes:
+        chave = rodada(existentes, chave + "-retomar")
+        if chave is None:
+            return
+    if chave:
         criar(chave, f"Destravar PR #{pr['number']}: {pr['title']}", "arquiteto",
               f"O PR {pr['url']} continua aberto: {motivo}. Leia cartões e comentários, ache a causa e "
               "registre a decisão no PR. Não implemente a feature. Se a tarefa precisa ser quebrada, crie "
               "tarefas menores e feche o PR antigo com o motivo; se o teste está errado, encaminhe ao QA "
-              "pela etiqueta da issue. Não repita rodadas sem mudar a causa.", prioridade=25)
+              "pela etiqueta da issue. Causa no código comprovada e correção específica? Registre a evidência e "
+              "adicione pronto-pra-dev NO PR para autorizar uma única tentativa após diagnóstico. Se essa tentativa "
+              "já foi gasta, quebre em tarefas menores e feche o PR antigo; não autorize de novo. "
+              "Não conclua com comentário sem encaminhamento. Não repita rodadas sem mudar a causa.", prioridade=25)
 
 
 def revisoes(prs, existentes, esperando_qa=frozenset()):
@@ -292,7 +299,25 @@ def revisoes(prs, existentes, esperando_qa=frozenset()):
                       "`git merge origin/main` e resolva), rode validação LOCAL e o teste afetado, dê push e recoloque a etiqueta (o QA corrigiu o teste? traga com `git merge origin/qa/<issue>`): "
                       f"`gh pr edit {n} --add-label em-revisão`.", prioridade=25)
             elif sum(k.startswith(base) for k in existentes) >= MAX_RODADAS and not aberto(existentes, base):
-                escalar_pr(pr, existentes, "três ajustes do Dev terminaram sem entrega")
+                # Uma autorização explícita do Arquiteto não reinicia as três tentativas normais.
+                diagnostico = f"dev-diagnostico-pr-{n}"
+                if diagnostico in existentes and existentes[diagnostico] not in TERMINAIS:
+                    continue
+                autorizado = any(lb["name"] == "pronto-pra-dev" for lb in pr["labels"])
+                decidiu = existentes.get(f"arquiteto-destravar-pr-{n}-{sha}") == "done" or any(
+                    k.startswith(f"arquiteto-destravar-pr-{n}-{sha}-retomar-") and st == "done"
+                    for k, st in existentes.items())
+                if (autorizado and decidiu and diagnostico not in existentes
+                        and not aberto(existentes, f"arquiteto-destravar-pr-{n}-")):
+                    criar(diagnostico, f"Aplicar diagnóstico no PR #{n}: {pr['title']}", "dev",
+                          f"O Arquiteto diagnosticou o PR #{n} ({pr['url']}) e autorizou UMA tentativa adicional. "
+                          f"Leia a evidência e ajuste somente a causa no branch {pr['headRefName']}. "
+                          "Preserve o teste do QA; teste afetado + check LOCAL, push e em-revisão. "
+                          "Não espere CI. Se não resolver, registre o resultado; o Arquiteto deve quebrar a tarefa.",
+                          prioridade=25)
+                    gh_escrever("pr", "edit", str(n), "-R", REPO, "--remove-label", "pronto-pra-dev")
+                else:
+                    escalar_pr(pr, existentes, "tentativas esgotadas; encaminhamento após diagnóstico ainda pendente")
 
 
 def fechar_prs_qa(prs, abertas):

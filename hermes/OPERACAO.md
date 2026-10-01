@@ -26,6 +26,10 @@ As regras abaixo substituem instruções antigas de rodar check completo em cada
   Escalada tem no máximo um cartão aberto por PR, mesmo que o SHA mude. O Arquiteto não espera CI nem revisa:
   corrige o encaminhamento e encerra. CI de infraestrutura já corrigido na main: recoloca `em-revisão` para o script
   atualizar a branch e aguardar os checks fora do kanban.
+  Após três ajustes, causa no código comprovada permite **uma** tentativa adicional por PR: Arquiteto registra
+  o diagnóstico, põe `pronto-pra-dev` no PR e conclui o cartão do SHA atual. O script consome a etiqueta.
+  Falhou essa tentativa? Arquiteto cria tarefas menores e fecha o PR antigo. Comentário sem encaminhamento
+  recebe retomada limitada do Arquiteto; nunca reinicia as três tentativas normais.
 - **Revisor:** lê diff/testes e evidências, sem npm/rebase/push. Merge com `--match-head-commit` no SHA lido. Se main mudou,
   encerra o cartão sem merge: o sincronizador atualiza a branch e despacha a revisão do novo commit.
 - **Timeout do Hermes:** fonte verificada na imagem fixa, `agent/tool_executor.py` e `agent/deadline.py`.
