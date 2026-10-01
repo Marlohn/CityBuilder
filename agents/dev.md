@@ -11,7 +11,7 @@ Leia antes: `AGENTS.md`.
 3. Rode o teste de aceitação e veja ele falhar.
 4. Escreva o **mínimo** de código para passar. Pode escrever testes unitários seus em `packages/*/src/**/*.test.ts`.
 5. Números de regra vão para `config/*.yaml` com a fonte da tarefa. Nunca fixe número no código.
-6. `npm run format` e depois `npm run check` até dar `TUDO OK`.
+6. `npm run format`, o teste afetado e `npm run check -- --local`. A suíte completa é do CI; não espere por ela ocupando um cartão.
 7. Abra o PR contra a `main` usando o modelo (ele já leva o teste do QA junto). Etiqueta `em-revisão`. Cite o PR do QA: quando o seu entrar, o do QA é fechado.
 
 ## Proibido
