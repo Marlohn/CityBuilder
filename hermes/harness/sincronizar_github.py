@@ -240,8 +240,19 @@ def preparar_revisao(pr):
     return estado_ci(pr) == "verde"
 
 
+def escalar_pr(pr, existentes, motivo):
+    """Rodadas gastas exigem uma decisão registrada, não um PR esquecido."""
+    chave = f"arquiteto-destravar-pr-{pr['number']}-{pr['headRefOid'][:7]}"
+    if chave not in existentes:
+        criar(chave, f"Destravar PR #{pr['number']}: {pr['title']}", "arquiteto",
+              f"O PR {pr['url']} continua aberto: {motivo}. Leia cartões e comentários, ache a causa e "
+              "registre a decisão no PR. Não implemente a feature. Se a tarefa precisa ser quebrada, crie "
+              "tarefas menores e feche o PR antigo com o motivo; se o teste está errado, encaminhe ao QA "
+              "pela etiqueta da issue. Não repita rodadas sem mudar a causa.", prioridade=25)
+
+
 def revisoes(prs, existentes, esperando_qa=frozenset()):
-    """PR em revisão -> cartão do revisor (1 aberto por PR, 1 por commit). Sem etiqueta -> o Dev ajusta (até 3)."""
+    """PR em revisão -> um cartão aberto por PR. Encerrar cartão sem decidir não encerra o PR."""
     for pr in prs:
         n, sha = pr["number"], pr["headRefOid"][:7]
         # Issue de volta no QA (teste errado): o Dev recoloca `em-revisão` no PR, mas revisar de novo só repete a devolução
@@ -252,8 +263,12 @@ def revisoes(prs, existentes, esperando_qa=frozenset()):
         if any(lb["name"] == "em-revisão" for lb in pr["labels"]):
             chave = f"revisar-pr-{n}-{sha}"
             # Commit novo com a revisão anterior ainda na fila: não cria outra, a que está aberta olha o PR como está.
-            if (chave not in existentes and not aberto(existentes, f"revisar-pr-{n}-")
-                    and preparar_revisao(pr)):
+            if not aberto(existentes, f"revisar-pr-{n}-") and preparar_revisao(pr):
+                if chave in existentes:
+                    chave = rodada(existentes, chave + "-retomar")
+                    if chave is None:
+                        escalar_pr(pr, existentes, "três retomadas de revisão terminaram sem decisão")
+                        continue
                 criar(chave, f"Revisar PR #{n}: {pr['title']}", "revisor",
                       f"Revise o PR #{n} ({pr['url']}). O sincronizador já conferiu CI e main. Leia o diff, "
                       "não rode npm/check/testes e não espere CI. Se o HEAD/main mudou, conclua o cartão sem merge: "
@@ -265,13 +280,17 @@ def revisoes(prs, existentes, esperando_qa=frozenset()):
                 continue
             # PR do Dev fora de revisão = a revisão pediu mudanças (tirou a etiqueta). Uma rodada por commit, no máximo 3.
             base = f"dev-ajuste-pr-{n}-"
-            if (sum(k.startswith(base) for k in existentes) < MAX_RODADAS and base + sha not in existentes
-                    and not aberto(existentes, base)):
-                criar(base + sha, f"Ajustar PR #{n} pedido na revisão: {pr['title']}", "dev",
+            if sum(k.startswith(base) for k in existentes) < MAX_RODADAS and not aberto(existentes, base):
+                chave = base + sha
+                if chave in existentes:
+                    chave = rodada(existentes, chave + "-retomar")
+                criar(chave, f"Ajustar PR #{n} pedido na revisão: {pr['title']}", "dev",
                       f"A revisão pediu mudanças no PR #{n} ({pr['url']}). Leia o último comentário de revisão "
                       f"(`gh pr view {n} --comments`), ajuste no MESMO branch {pr['headRefName']} (conflito com a main: "
                       "`git merge origin/main` e resolva), rode validação LOCAL e o teste afetado, dê push e recoloque a etiqueta (o QA corrigiu o teste? traga com `git merge origin/qa/<issue>`): "
                       f"`gh pr edit {n} --add-label em-revisão`.", prioridade=25)
+            elif sum(k.startswith(base) for k in existentes) >= MAX_RODADAS and not aberto(existentes, base):
+                escalar_pr(pr, existentes, "três ajustes do Dev terminaram sem entrega")
 
 
 def fechar_prs_qa(prs, abertas):
@@ -346,13 +365,23 @@ def tarefas(todas, prs, existentes):
                       # Terminar antes de começar: QA de tarefa que já tem PR do dev pronto destrava esse PR (30/09: o #79 esperava
                       # atrás de 3 tarefas novas, com o QA serializado). Passa na frente até de bug.
                       prioridade=prio + (5 if eh_bug else 0) + (15 if papel == "qa" and n in com_pr else 0))
-            elif esgotada(existentes, base) and f"arquiteto-quebrar-{n}" not in existentes:
-                criar(f"arquiteto-quebrar-{n}", f"Quebrar a tarefa #{n} ({MAX_RODADAS} rodadas sem entrega)", "arquiteto",
+            elif esgotada(existentes, base) and existentes.get(f"arquiteto-quebrar-{n}", "done") in TERMINAIS:
+                if aberto(existentes, f"arquiteto-quebrar-{n}-retomar-"):
+                    continue
+                chave = f"arquiteto-quebrar-{n}"
+                if chave in existentes:
+                    chave = rodada(existentes, chave + "-retomar")
+                    if chave is None:
+                        continue
+                criar(chave, f"Destravar a tarefa #{n} ({MAX_RODADAS} rodadas sem entrega)", "arquiteto",
                       f"A tarefa #{n} gastou {MAX_RODADAS} rodadas de {papel} sem entregar. Não repita: leia o que cada "
                       "rodada fez (`hermes kanban list`, PRs e comentários) e ache o porquê. Se for tamanho, quebre em "
                       "Tarefas menores (máx. ~3 arquivos cada, `Depende de #N` quando precisar) e etiquete a primeira. "
                       "Se a definição estiver errada, corrija-a. Comente na issue o que decidiu e feche-a se foi toda "
-                      "substituída.", prioridade=15)
+                      "substituída. Comentário sozinho não encaminha tarefa: execute e confira as etiquetas. "
+                      "QA já corrigiu o teste e fez push? Remova pronto-pra-teste e adicione pronto-pra-dev. "
+                      "PR precisa de ajuste? Registre o motivo nele e remova em-revisão. Não conclua o cartão "
+                      "apenas dizendo que outro papel deve agir.", prioridade=15)
                 gh_escrever("issue", "comment", str(n), "-R", REPO, "--body-file", "-",
                             texto=f"Sincronizador: {MAX_RODADAS} rodadas de {papel} sem entregar esta tarefa. Chamei o "
                                   f"Arquiteto para quebrá-la (cartão arquiteto-quebrar-{n}).")
