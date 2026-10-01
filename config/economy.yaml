@@ -4,9 +4,32 @@ economy:
   mode: budget
   # PENDENTE: valor de jogo. Dá para ruas, uma escola e uma UBS no começo.
   startingMoney: 40000000
-  # Receita corrente dos municípios: R$ 1,077 trilhão em 2023 (Anuário Multi Cidades/FNP)
-  # para ~203 milhões de habitantes (Censo 2022) = ~R$ 5.300 por habitante por ano.
-  revenuePerResidentPerYear: 5300
+  # Receita por habitante por ano varia com o porte da cidade (população -> R$ por
+  # habitante por ano). Fora das pontas o valor repete a ponta (comportamento do
+  # makeTableLookup): cidade até o primeiro ponto usa o primeiro valor, acima do
+  # último ponto usa o último. A receita continua só em `impostos_e_repasses`.
+  # Pontos poucos e bem espalhados porque o FPM é distribuído por coeficiente de
+  # população escalonado por faixa e a interpolação linear faz o meio.
+  # - "0": 10886 -> até ~5 mil habitantes: R$ 10.886 por habitante/ano de receita
+  #   externa, a maior parte FPM. Fonte: Gazeta do Povo, coluna de Paulo Übel:
+  #   https://www.gazetadopovo.com.br/vozes/paulo-uebel/numero-de-municipios-no-brasil-deve-beneficiar-os-cidadaos-nao-os-politicos/
+  #   (leitura de apoio: Jornal da USP/Rádio USP sobre municípios pequenos receberem
+  #   mais recursos per capita que metrópoles:
+  #   https://jornal.usp.br/radio-usp/municipios-pequenos-recebem-mais-recursos-per-capita-que-metropoles-com-maiores-desafios-urbanos/).
+  # - "20000": PENDENTE, valor de jogo 8693 (média entre 10886 e 5300). O FPM é
+  #   distribuído por coeficiente de população escalonado por faixa (Lei nº 8.443/1992,
+  #   art. 88, 18 faixas do FPM-Interior; IBGE avisa que perder 1 habitante pode custar
+  #   uma faixa inteira:
+  #   https://www.ibge.gov.br/component/rsfiles/download-file/files.html?Itemid=6702&path=novoportal%252Fdocumentos_institucionais%252FEsclarecimentos_prestados_pela_DPE_estimativas_das_populacoes_municipais_20241018.pdf).
+  # - "50000": PENDENTE, valor de jogo 6997 (média entre o ponto de 20.000 e o de 100.000).
+  # - "100000": 5300 -> referência da média nacional: receita corrente R$ 1,077 trilhão
+  #   em 2023 (Anuário Multi Cidades/FNP) para ~203 milhões de habitantes (Censo 2022)
+  #   = ~R$ 5.300 por habitante por ano.
+  revenuePerResidentByPopulation:
+    "0": 10886
+    "20000": 8693
+    "50000": 6997
+    "100000": 5300
   income:
     # Rendimento médio mensal por escolaridade (PNAD 2024): sem instrução R$ 1.999; fundamental
     # completo R$ 2.660; superior completo R$ 6.177. PENDENTE: fundamental incompleto e médio
