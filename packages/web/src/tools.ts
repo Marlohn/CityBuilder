@@ -24,6 +24,7 @@ export function toolDefs(config: GameConfig, catalog: BuildingType[]): ToolDef[]
       group: "Vias",
       hint: `Via local, ${config.roads.street.speedKmh} km/h. Arraste em linha reta.`,
       cost: config.roads.street.costPerTile,
+      upkeepPerYear: config.roads.street.costPerTile * config.roads.maintenanceShareOfCostPerYear,
     },
     {
       id: "road:avenue",
@@ -32,6 +33,7 @@ export function toolDefs(config: GameConfig, catalog: BuildingType[]): ToolDef[]
       group: "Vias",
       hint: `Via arterial, ${config.roads.avenue.speedKmh} km/h, mais faixas. Arraste em linha reta.`,
       cost: config.roads.avenue.costPerTile,
+      upkeepPerYear: config.roads.avenue.costPerTile * config.roads.maintenanceShareOfCostPerYear,
     },
     {
       id: "zone:residential_low",
@@ -71,6 +73,7 @@ export function toolDefs(config: GameConfig, catalog: BuildingType[]): ToolDef[]
           ? ` Abastece ~${Math.round(b.serves).toLocaleString("pt-BR")} pessoas na mesma malha de ruas.`
           : ""),
       cost: b.cost,
+      upkeepPerYear: b.upkeepPerYear,
     });
   }
   tools.push({

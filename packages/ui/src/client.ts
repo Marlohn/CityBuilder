@@ -25,4 +25,6 @@ export interface ToolDef {
   hint: string;
   /** Custo em reais (por quadradinho para vias). */
   cost?: number;
+  /** Custo anual de manutenção em reais (quando houver). */
+  upkeepPerYear?: number;
 }

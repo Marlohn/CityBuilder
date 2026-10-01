@@ -18,7 +18,7 @@ export function Toolbar({ ui, store, tools }: { ui: UiState; store: Store; tools
                   type="button"
                   key={t.id}
                   className={ui.tool === t.id ? "active" : ""}
-                  title={`${t.label}${t.cost ? ` — ${money(t.cost)}` : ""}\n${t.hint}`}
+                  title={`${t.label}${t.cost !== undefined ? ` — Obra: ${money(t.cost)}` : ""}${t.upkeepPerYear !== undefined ? ` · Ano: ${money(t.upkeepPerYear)}` : ""}\n${t.hint}`}
                   onClick={() => store.set({ tool: ui.tool === t.id ? "inspect" : t.id })}
                 >
                   <span className="icon">{t.icon}</span>
@@ -31,7 +31,8 @@ export function Toolbar({ ui, store, tools }: { ui: UiState; store: Store; tools
       {active && active.id !== "inspect" ? (
         <div className="tool-hint">
           <b>{active.label}</b>
-          {active.cost ? ` · ${money(active.cost)}` : ""}
+          {active.cost !== undefined ? ` · Obra: ${money(active.cost)}` : ""}
+          {active.upkeepPerYear !== undefined ? ` · Ano: ${money(active.upkeepPerYear)}` : ""}
           <br />
           {active.hint}
           <br />
