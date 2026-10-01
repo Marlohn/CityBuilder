@@ -1,5 +1,54 @@
 # Diário da avaliação: agentes Hermes + kanban + LLM grátis (CityBuilder)
 
+## 01/10 — reserva automática entre provedores, após #206
+
+O dono pediu conferir fallback e desempenho por mais algumas rodadas, sem dependência futura do Codex.
+Config real: Dev/QA coordenados por Zen `space-bunny-free`, sem fallback; outros três papéis Kilo Nemotron Ultra
+grátis com reserva Zen. O CLI OpenCode usa Muse e não herda a reserva do Hermes. #206 expôs a recusa e evitou
+espera infinita, mas a decisão de trocar ainda dependia do agente. Essa lacuna motivou tornar a recuperação
+determinística no guard já existente e preencher a reserva nativa Dev/QA, mantendo os principais atuais.
+
+OpenCode tem provedor Kilo nativo no catálogo (`KILO_API_KEY`), diferente do nome da credencial do Hermes
+(`KILOCODE_API_KEY`). Sem instalar plugin, uma chamada curta sem ferramentas respondeu OK em 4,83s;
+retomar uma sessão de supervisão recusada anteriormente respondeu OK em 5,42s. Catálogo confirmou custo zero
+do Nemotron Ultra `:free` e Space Bunny grátis. Isso valida interface/retomada, não qualidade de código ou
+ganho de desempenho entre modelos. Nenhuma tarefa do jogo foi repetida.
+
+Uma verificação conjunta em 22:00:49Z encontrou Muse recusado e Kilo sobrecarregado com 503. O formato nativo
+`error.error.code=503` não tinha `AI_APICallError` e escapava à detecção; a verificação terminou pelo limite
+de 45s, não com sucesso. Corrigida a detecção desse log real e definida a sequência Muse→Kilo→Space Bunny,
+no máximo três chamadas. Partindo de Kilo ou Space Bunny há uma reserva, sem retorno ao primeiro modelo.
+O harness verifica trocas na mesma sessão, encerra cada grupo antes do seguinte, limita o total, ignora reserva
+com custo não zero/credencial ausente e conserva os cenários de #206. Erro de teste não aciona reserva.
+Após essa correção, uma chamada curta em 22:08:56Z recebeu a recusa do Muse, mudou automaticamente para Kilo
+na mesma sessão `ses_f067c955dffeJ2tkEQpsbF82SK` e respondeu OK: exit 0 em 11,27s no total. Sem ferramentas ou
+alterações. O terceiro passo fica validado pelo cenário simulado de falhas consecutivas; não houve nova falha
+503 nessa chamada. Isso verifica recuperação do transporte, não tempo de entrega de feature.
+O Hermes instalado normaliza a lista em `_init_fallback_chain` e aciona a troca em `route_classified_error`
+para limite de uso; não alterar o core do Hermes. O comportamento real do coordenador com a nova config
+ainda depende de novas sessões e falhas observadas. Deploy somente após CI completo verde e merge atual.
+
+## 01/10 21:34Z — vaga Dev ocupada por OpenCode recusado pelo provedor
+
+Depois das três entregas autônomas #191/#195/#199, o Dev #111 (`t_aba7ae20`, sessão Hermes
+`20261001_203151_2880e2`) iniciou às 20:31:49Z. O OpenCode 1.18.33 registrou recusa do Muse
+às 20:36:06.628Z e, após relançamento, 20:51:12.401Z: `AI_APICallError: Rate limit exceeded`.
+As sessões OpenCode `ses_f06d19164ffeqGSg6AlF0TWTcK` e `ses_f06c3beaeffejexBNf8s0kHQFx`
+tinham zero tokens e nenhum passo de ferramenta. O log entregue ao Hermes tinha só a abertura do modelo.
+O processo 217840 continuava vivo; o coordenador repetiu esperas de cerca de 15 minutos, mantendo a vaga
+única do perfil Dev ocupada e outros cartões prontos. Não é evidência de CPU insuficiente ou defeito da feature.
+
+Uma chamada curta sem ferramentas, no clone seguro de supervisão, confirmou que `--print-logs --log-level ERROR`
+expõe a recusa em stderr enquanto o CLI permanece aberto. O guard encerrou somente seu grupo de processos e
+devolveu exit 75 em 3,24s. Uma chamada curta com `opencode/space-bunny-free` respondeu `OK` em 4,21s; custo
+zero confirmado no catálogo local. São verificações de protocolo/acesso, não benchmarks nem repetição do jogo.
+
+O harness reproduziu o comportamento anterior com processo simulado; após a mudança, falha rápida, isolamento
+de stdout/título, preservação dos códigos de saída, timeout e encerramento de filhos passaram. O guard é
+determinístico; Dev/QA recebem orientação para conferir o diff e fazer uma tentativa gratuita reserva.
+Não escolhe modelo automaticamente nem altera arquivos do agente. CI completo e merge ainda necessários
+antes do deploy. Melhora no tempo das próximas entregas ainda não medida. Nenhum worker foi interrompido.
+
 ## 01/10 15:43Z — preparação do navegador no CI
 
 Nos jobs de tela dos runs `36881805274` (#181) e `36882075526` (#180), a instalação de Chromium e

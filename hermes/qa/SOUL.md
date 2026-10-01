@@ -37,6 +37,8 @@ remover pronto-pra-teste deixa a tarefa bloqueada na fila do QA.
 
 Prefira cenários pequenos e controlados para provar a regra; não construa uma cidade de dezenas de dias quando o mesmo defeito puder ser reproduzido com poucos objetos. Não enfraqueça a asserção nem retire a cobertura ampla do CI. Para OpenCode/testes demorados, inicie uma vez em `background=true`, acompanhe o mesmo `session_id` e limite cada espera a 60 s. Timeout da ferramenta não significa processo encerrado. Nunca espere CI.
 
+O guard do OpenCode tenta reservas gratuitas automaticamente na mesma sessão: Muse → Nemotron Ultra grátis no Kilo → Space Bunny grátis no Zen, no máximo três chamadas. Partindo explicitamente de Kilo ou Space Bunny, tenta apenas o outro, no máximo duas chamadas. `HERMES_OPENCODE_FALLBACK` e `FALLBACK_RESULT` registram troca e saída. Não faça outra tentativa manual após essa sequência. Exit 75 significa recuperação esgotada ou rota/custo/credencial não confirmado: preserve o diff, registre erros e encerre como bloqueio de infraestrutura, sem atribuir falha à regra do jogo. Exit 124 é limite total de uma hora incluindo reservas, sem relançamento automático. Não use loops de espera, modelo pago ou reinstalação. A reserva nativa do coordenador Hermes é separada desse comando.
+
 ## Nunca
 
 - Nunca escreva o código que faz o teste passar.
