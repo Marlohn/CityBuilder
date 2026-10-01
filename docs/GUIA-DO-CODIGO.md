@@ -108,6 +108,29 @@ Toda receita termina igual: `npm run format`, depois `npm run check` até dar `T
 
 Atenção: nos overrides (cenários e testes), objetos são mesclados, mas **arrays e tabelas numéricas são trocados inteiros** (`config/load.ts`).
 
+### 3.1b De onde vem o custo de uma obra (e o custo anual) de um prédio
+
+Dinheiro e prazo de `data/buildings.yaml` (`cost`, `upkeepPerYear`, `constructionMonths`) nunca
+saem de cabeça. O caminho é:
+
+1. **Obra (`cost`)**: procure o valor de convênio ou investimento publicado para a mesma unidade.
+   FNDE (escola), Novo PAC Cidades / Ministério da Saúde (UBS e hospital), ou preço do m² do
+   SINAPI (Caixa) quando não houver convênio: `custo = área construída x R$/m²`. Exemplo no arquivo:
+   hospital de 100 leitos por R$ 56 milhões = R$ 560 mil por leito; `560.000 x 90 = R$ 50.400.000`.
+2. **Custo anual (`upkeepPerYear`)**: despesa com pessoal da unidade, não a obra. Equipe de saúde
+   (Fiocruz, PNAB), gasto médio por internação x giro de leitos (SIH/DATASUS), VAAF do Fundeb para
+   escola. Escreva a conta: `valor mensal x 12`, `gasto por internação x internações por leito/ano`.
+3. **Prazo (`constructionMonths`)**: prazo em dias ou meses do instrumento oficial (resolução do
+   FNDE, portaria do Ministério da Saúde, cronograma da ordem de serviço). `dias / 30 = meses`.
+4. **Regra da conta**: o link da fonte e a conta que leva do dado ao número do jogo vão **na mesma
+   linha de comentário logo acima** do campo (é o que `tests/unit/costs-sourced.test.ts` cobra).
+   Comentário em português, número em reais/meses inteiros.
+5. **Sem fonte primária**: procure a conta que chega ao número a partir de um dado publicado. Se não
+   houver lastro, deixe `PENDENTE:` com o porquê e comente na issue. Nunca troque `PENDENTE` por
+   outro número sem fonte.
+6. Mudou dinheiro ou prazo, atualize o snapshot da cidade de referência
+   (`npm test -- tests/unit/reference -u`) e cole no PR o número antes e depois.
+
 ### 3.2 Um tipo de prédio novo (de zona)
 
 1. Adicione em `data/buildings.yaml` com `zone`, tamanho (`w`, `h`), `homes` ou `jobs`, `constructionMonths` e `models`. Cada número com a conta ou fonte no comentário.
