@@ -1,5 +1,21 @@
 # Diário da avaliação: agentes Hermes + kanban + LLM grátis (CityBuilder)
 
+## 01/10 15:12Z — teste local verde, mas código não enviado
+
+Na sessão Dev `20261001_145857_57bf5c` da tarefa #173, o teste afetado passou 3/3 e o check local
+passou após alterar contrato, stats e UI. O agente fez push sem `git add`/`git commit`: o PR #180
+ficou no SHA `c2f4394`, que continha apenas o teste do QA. O CI reprovou duas asserções porque
+`unmet.hospital` ainda era inexistente no código enviado. Isso não foi lentidão do hardware ou do GitHub.
+O sincronizador devolveu sozinho; Dev `t_d444334e` publicou a correção `bcf134d` às 15:09Z e concluiu
+às 15:11Z. O CI novo ainda estava em execução. O supervisor não escreveu a feature nem encaminhou cartões.
+
+O SOUL Dev passa a pedir commit explícito, árvore limpa e comparação do SHA local, branch remota e PR
+antes de concluir, registrando o SHA dos testes. É orientação, não trava nova: o benefício depende das
+próximas entregas reais. O deploy só acontece após merge validado e será registrado no PR.
+Também foi corrigida a afirmação antiga sobre capacidade: dois workers configurados não provam que
+três sejam inviáveis no fluxo atual. Coleta passiva temporária iniciada em 15:03:13Z, a cada 15 s,
+por 30 min, em `/opt/data/avaliacao/recursos-ciclo-rapido-20261001.jsonl`; não é parte da fábrica.
+
 ## 01/10 13:25Z — diagnóstico terminou, mas não havia retorno ao Dev
 
 PR #165 implantado às 13:15:12Z; main `4324ded` e Pages verdes. Config e SOUL Dev conferidos, saúde OK.
