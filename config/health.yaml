@@ -13,3 +13,12 @@ health:
   hospitalMaxDistanceMeters: 15000
   # PENDENTE: fração de redução da mortalidade de quem tem leito disponível. Usado 0,15.
   hospitalMortalityReduction: 0.15
+  # Porte mínimo para a cidade ter hospital: 8.000 habitantes, o mesmo minPopulation do item
+  # `hospital` em data/reference/cidade-real.yaml (Portaria GM/MS 1.101/2002: 2,5 a 3 leitos por
+  # 1.000 habitantes; 2,5 x 8.000/1.000 = 20 leitos, o menor porte da classificação).
+  hospitalMinPopulation: 8000
+  # PENDENTE: número de pessoas fora do raio de hospitalMaxDistanceMeters que faz o prefeito pedir
+  # hospital. Usado 500 (mesma ordem de grandeza do gatilho de UBS). A fonte oficial (Portaria
+  # GM/MS 1.101/2002) fixa leitos por 1.000 habitantes, não um raio de acesso: este número conta
+  # quem mora longe do hospital, não gente sem leito.
+  hospitalMinUncovered: 500
