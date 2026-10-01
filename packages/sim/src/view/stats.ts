@@ -29,6 +29,17 @@ export function statsView(game: Game, behind = false): StatsView {
   const d = game.growth.demand;
   // Totais de água e luz em pessoas equivalentes (inteiros, como a população).
   const u = game.utilities.totals();
+  // Leitos de hospital: soma em uma passada dos prédios ativos com vaga de paciente.
+  let bedsTotal = 0;
+  let bedsOccupied = 0;
+  for (let i = 0; i < city.sim.buildings.count; i++) {
+    if (!city.sim.buildings.isActive(i)) continue;
+    const cap = city.sim.buildings.patientsCapacity(i);
+    if (cap <= 0) continue;
+    bedsTotal += cap;
+    bedsOccupied += city.sim.buildings.patients[i]!;
+  }
+  if (bedsOccupied > bedsTotal) bedsOccupied = bedsTotal;
   return {
     tick: sim.clock.tick,
     day: sim.clock.day,
@@ -59,6 +70,7 @@ export function statsView(game: Game, behind = false): StatsView {
       school: c.childrenWithoutSchool,
       university: c.wantUniversity,
       health: c.withoutClinic,
+      hospital: c.withoutHospital,
       housing: c.householdsWaitingHome,
       job: c.byRole[ROLE.unemployed]!,
       transit: city.year.transitRefusals,
@@ -66,6 +78,7 @@ export function statsView(game: Game, behind = false): StatsView {
       water: c.withoutWater,
       power: c.withoutPower,
     },
+    hospitalBeds: { total: bedsTotal, occupied: bedsOccupied },
     utilities: {
       enabled: game.utilities.enabled,
       water: {

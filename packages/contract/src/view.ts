@@ -50,6 +50,8 @@ export interface UnmetDesireCounts {
   school: number;
   university: number;
   health: number;
+  /** Pessoas sem leito de hospital (cadastradas em nenhum). */
+  hospital: number;
   housing: number;
   job: number;
   transit: number;
@@ -94,6 +96,8 @@ export interface StatsView {
   vacantJobs: number;
   demand: { residential: number; commercial: number; industrial: number };
   unmet: UnmetDesireCounts;
+  /** Leitos de hospital da cidade (totais e ocupados). */
+  hospitalBeds: { total: number; occupied: number };
   /** Água e luz em pessoas equivalentes (mesma unidade de demandOf): quanto a cidade usa e quanto tem. */
   utilities: {
     enabled: boolean;

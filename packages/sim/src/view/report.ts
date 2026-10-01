@@ -57,8 +57,9 @@ export function reportText(game: Game): string {
   lines.push("");
   lines.push("## Desejos não atendidos");
   lines.push(
-    `Crianças sem escola: ${n(s.unmet.school)} · querem faculdade: ${n(s.unmet.university)} · sem UBS: ${n(s.unmet.health)} · famílias esperando casa: ${n(s.unmet.housing)} · desempregados: ${n(s.unmet.job)} · recusaram emprego por distância: ${n(s.unmet.transit)} · sem água: ${n(s.unmet.water)} · sem luz: ${n(s.unmet.power)}`,
+    `Crianças sem escola: ${n(s.unmet.school)} · querem faculdade: ${n(s.unmet.university)} · sem UBS: ${n(s.unmet.health)} · sem hospital: ${n(s.unmet.hospital)} · famílias esperando casa: ${n(s.unmet.housing)} · desempregados: ${n(s.unmet.job)} · recusaram emprego por distância: ${n(s.unmet.transit)} · sem água: ${n(s.unmet.water)} · sem luz: ${n(s.unmet.power)}`,
   );
+  lines.push(`Leitos de hospital: ${n(s.hospitalBeds.total)} (${n(s.hospitalBeds.occupied)} ocupados)`);
   lines.push("");
   lines.push("## Prefeitura");
   lines.push(

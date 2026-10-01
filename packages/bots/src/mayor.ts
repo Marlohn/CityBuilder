@@ -6,7 +6,8 @@
  * - Cresce a partir da estrada de acesso, bairro por bairro.
  * - Quarteirões com 2 lotes de profundidade (como os brasileiros): todo lote tem frente para a rua.
  * - Zoneia mais quando a demanda está alta e acabam os lotes livres.
- * - Coloca escola e UBS quando aparecem crianças sem escola ou pessoas sem UBS (os mesmos sinais do jogo).
+ * - Coloca escola, UBS e hospital quando aparecem crianças sem escola, pessoas sem UBS
+ *   ou pessoas sem leito (os mesmos sinais do jogo).
  */
 import { type Command, ROAD_ID, type ZoneKind } from "@city/contract";
 import { BSTATE, currentCensus, type Game, Rng } from "@city/sim";
@@ -20,6 +21,10 @@ export interface MayorOptions {
   highDensityShare: number;
   /** Constrói poço/subestação quando sobra menos que isto (pessoas) de água ou luz na cidade. */
   utilityReserve: number;
+  /** População mínima para construir hospital (minPopulation do hospital em data/reference/cidade-real.yaml). */
+  hospitalMinPopulation: number;
+  /** Constrói hospital quando mais que isto (pessoas) estão sem leito (PENDENTE, mesma ordem de grandeza do gatilho da UBS). */
+  hospitalMinWithoutBeds: number;
 }
 
 export const DEFAULT_MAYOR: MayorOptions = {
@@ -27,6 +32,8 @@ export const DEFAULT_MAYOR: MayorOptions = {
   district: 30,
   highDensityShare: 0.35,
   utilityReserve: 3000,
+  hospitalMinPopulation: 8000,
+  hospitalMinWithoutBeds: 500,
 };
 
 interface District {
@@ -76,7 +83,8 @@ export class AutoMayor {
     this.lastBuildingCount = count;
     const stalled = this.stalledActions >= 2;
     // Serviços primeiro (como um prefeito de verdade): escola quando ~150 crianças estão sem vaga,
-    // UBS quando ~500 pessoas estão sem UBS. Sem dinheiro para o serviço, guarda dinheiro (não abre bairro).
+    // UBS quando ~500 pessoas estão sem UBS, hospital quando ~500 pessoas estão sem leito
+    // (em cidade com pelo menos 8.000 hab). Sem dinheiro para o serviço, guarda dinheiro (não abre bairro).
     let saving = false;
     // Água e luz antes de tudo: sem sobra, a construtora para (poço é o jeito mais barato; 40% das
     // cidades brasileiras vivem só de água subterrânea, Atlas Águas/ANA).
@@ -96,6 +104,11 @@ export class AutoMayor {
       saving = !this.placeServiceNearDemand("escola", census.samples.school ?? []) || saving;
     if (census.withoutClinic > 500)
       saving = !this.placeServiceNearDemand("ubs", census.samples.health ?? []) || saving;
+    if (
+      census.population >= this.opts.hospitalMinPopulation &&
+      census.withoutHospital > this.opts.hospitalMinWithoutBeds
+    )
+      saving = !this.placeServiceNearDemand("hospital", census.samples.hospital ?? []) || saving;
     if (saving && this.districts.length > 0) return;
     // Abre bairro do tipo que está faltando: indústria separada (como manda o zoneamento) ou misto.
     if (this.districts.length === 0) this.buildDistrict("mixed");
@@ -281,7 +294,7 @@ export class AutoMayor {
    * Coloca o serviço perto de onde está a demanda (amostras de casas sem atendimento).
    * Devolve false só quando falta dinheiro (aí o prefeito guarda dinheiro em vez de abrir bairro).
    */
-  private placeServiceNearDemand(service: "escola" | "ubs", samples: number[]): boolean {
+  private placeServiceNearDemand(service: "escola" | "ubs" | "hospital", samples: number[]): boolean {
     if (samples.length === 0) return true;
     const sim = this.game.sim;
     const w = sim.world;
