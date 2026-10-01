@@ -121,7 +121,10 @@ saem de cabeça. O caminho é:
    (Fiocruz, PNAB), gasto médio por internação x giro de leitos (SIH/DATASUS), VAAF do Fundeb para
    escola. Escreva a conta: `valor mensal x 12`, `gasto por internação x internações por leito/ano`.
 3. **Prazo (`constructionMonths`)**: prazo em dias ou meses do instrumento oficial (resolução do
-   FNDE, portaria do Ministério da Saúde, cronograma da ordem de serviço). `dias / 30 = meses`.
+   FNDE, portaria do Ministério da Saúde, cronograma da ordem de serviço, prazo de execução do
+   chamamento público). Para edifício, o prazo sai do edital/termo de referência do órgão que publica
+   o cronograma físico-financeiro (CBOPC da Caixa, chamamento público estadual ou municipal);
+   `dias / 30 = meses`. No jogo 1 dia = 1 ano: 12 meses de prazo = 1 dia de jogo.
 4. **Regra da conta**: o link da fonte e a conta que leva do dado ao número do jogo vão **na mesma
    linha de comentário logo acima** do campo (é o que `tests/unit/costs-sourced.test.ts` cobra).
    Comentário em português, número em reais/meses inteiros.
