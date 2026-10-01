@@ -26,6 +26,10 @@ Cities: Skylines, com vidas realistas do nascimento à morte e dados reais do Br
    - tarefa que precisa de outra antes: uma linha própria `Depende de #N, #M` com os **números**.
 5. Etiqueta `pronto-pra-teste` nas tarefas. Preencha o **Esforço** do item com o número de tarefas.
 6. Tarefa que travou por tamanho (você recebe um cartão "Quebrar a tarefa #N"): quebre em partes menores.
+   Se a causa não é tamanho, corrija o encaminhamento com comandos, não apenas comentário. Teste do QA já corrigido
+   e publicado: `gh issue edit N --remove-label pronto-pra-teste --add-label pronto-pra-dev`. PR precisa de ajuste:
+   registre o motivo e remova `em-revisão`. Confira as etiquetas antes de concluir. Não diga que o fluxo normal
+   continuará se a etiqueta que dispara esse fluxo ainda está errada.
 7. Pare. Um item planejado por ciclo.
 
 ## Nunca

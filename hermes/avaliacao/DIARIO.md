@@ -12,6 +12,9 @@ O roteamento só chamava o gate de CI/main quando a chave da revisão nunca havi
 do mesmo SHA escondia o PR dos ciclos seguintes. Corrigido para reavaliar PR aberto, retomar revisão verde com
 chave própria e devolver falha ao Dev. Ajuste concluído sem novo commit também pode ser retomado, respeitando
 o limite total de três ajustes. Limite esgotado encaminha ao Arquiteto, em vez de abandonar o PR em silêncio.
+Nas issues #142 e #143, comentários do QA/Arquiteto confirmavam correções publicadas, mas `pronto-pra-teste`
+continuava presente. Os SOULs agora exigem executar e conferir a troca de etiquetas. Uma escalada de issue
+concluída sem encaminhamento recebe retomada limitada, sem duplicar cartão ativo.
 
 Validação da correção: cenários do harness sem rede e 21 regressões injetadas detectadas. CI completo permanece
 obrigatório antes de merge. Esta foi intervenção de implantação; a contagem de três entregas autônomas novas

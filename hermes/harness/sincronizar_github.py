@@ -365,13 +365,23 @@ def tarefas(todas, prs, existentes):
                       # Terminar antes de começar: QA de tarefa que já tem PR do dev pronto destrava esse PR (30/09: o #79 esperava
                       # atrás de 3 tarefas novas, com o QA serializado). Passa na frente até de bug.
                       prioridade=prio + (5 if eh_bug else 0) + (15 if papel == "qa" and n in com_pr else 0))
-            elif esgotada(existentes, base) and f"arquiteto-quebrar-{n}" not in existentes:
-                criar(f"arquiteto-quebrar-{n}", f"Quebrar a tarefa #{n} ({MAX_RODADAS} rodadas sem entrega)", "arquiteto",
+            elif esgotada(existentes, base) and existentes.get(f"arquiteto-quebrar-{n}", "done") in TERMINAIS:
+                if aberto(existentes, f"arquiteto-quebrar-{n}-retomar-"):
+                    continue
+                chave = f"arquiteto-quebrar-{n}"
+                if chave in existentes:
+                    chave = rodada(existentes, chave + "-retomar")
+                    if chave is None:
+                        continue
+                criar(chave, f"Destravar a tarefa #{n} ({MAX_RODADAS} rodadas sem entrega)", "arquiteto",
                       f"A tarefa #{n} gastou {MAX_RODADAS} rodadas de {papel} sem entregar. Não repita: leia o que cada "
                       "rodada fez (`hermes kanban list`, PRs e comentários) e ache o porquê. Se for tamanho, quebre em "
                       "Tarefas menores (máx. ~3 arquivos cada, `Depende de #N` quando precisar) e etiquete a primeira. "
                       "Se a definição estiver errada, corrija-a. Comente na issue o que decidiu e feche-a se foi toda "
-                      "substituída.", prioridade=15)
+                      "substituída. Comentário sozinho não encaminha tarefa: execute e confira as etiquetas. "
+                      "QA já corrigiu o teste e fez push? Remova pronto-pra-teste e adicione pronto-pra-dev. "
+                      "PR precisa de ajuste? Registre o motivo nele e remova em-revisão. Não conclua o cartão "
+                      "apenas dizendo que outro papel deve agir.", prioridade=15)
                 gh_escrever("issue", "comment", str(n), "-R", REPO, "--body-file", "-",
                             texto=f"Sincronizador: {MAX_RODADAS} rodadas de {papel} sem entregar esta tarefa. Chamei o "
                                   f"Arquiteto para quebrá-la (cartão arquiteto-quebrar-{n}).")
