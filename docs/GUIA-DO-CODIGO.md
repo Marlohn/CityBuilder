@@ -322,6 +322,7 @@ Mudou isto → atualize aquilo **no mesmo PR**:
 
 | Mudou | Atualize |
 |---|---|
+| Receita por porte de cidade (tabela `economy.revenuePerResidentByPopulation` em `config/economy.yaml`) | comentário de cada ponto com a fonte ao lado e `docs/VISAO.md` se muda o pressuposto |
 | Regra de jogo nova ou valor com fonte (ex.: rotina em `config/traffic.yaml`) | comentário no `config/*.yaml` e, se for grande, `docs/PLANO.md` |
 | Renomeou ou removeu um comando (save antigo com o nome velho) | receita 3.15: escreva a migração em `packages/sim/src/save/replay.ts`, nunca afrouxe o `CommandSchema`; a validação mora em `packages/sim/src/save/commandCompat.ts` |
 | Pasta ou pacote novo | seção 1 deste guia e o `AGENTS.md` do pacote |
