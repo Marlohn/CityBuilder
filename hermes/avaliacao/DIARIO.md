@@ -1,5 +1,22 @@
 # Diário da avaliação: agentes Hermes + kanban + LLM grátis (CityBuilder)
 
+## 01/10 13:00Z — pesquisa do Dev sem ferramenta web
+
+PR de documentação #161 mesclado com os checks completos verdes e branch atualizada; não exige deploy funcional.
+A primeira candidata nova é #162: QA iniciou às 12:34:30Z, terminou às 12:40:30Z e abriu o rascunho #164.
+Dev iniciou às 12:43:31Z. A tarefa pede cinco valores de custos/prazos com fontes. Não está publicada nem conta como entrega.
+
+Sessão `20261001_124333_70246b`: ao redor de 12:53Z já havia 48 chamadas, aproximadamente 51 mil tokens de entrada
+e 18 mil de saída. Houve pesquisa por `curl`, resposta 429 do FNDE e esperas `sleep 45` e `sleep 40`, depois buscas
+DuckDuckGo via Jina. O perfil Dev não tinha `web`; Designer e Arquiteto tinham. São fatos do config e das mensagens,
+não prova de que toda a demora vem disso. O container já oferece pesquisa e extração sem instalação adicional:
+uma consulta oficial retornou em 3,48 s. A disponibilidade dos provedores gratuitos pode variar.
+
+Correção proposta: liberar `web` no Dev e orientar pesquisa com as ferramentas do Hermes, sem repetir página bloqueada
+com sleeps/proxies. A fonte deve sustentar o número; pesquisa incompleta segue o tratamento de tarefa travada.
+Sem novo serviço, skill ou JEV. Ganho de tempo ainda não medido; avaliar nas próximas tarefas reais. A sessão ativa
+mantém sua configuração original e não será interrompida para aplicar esta mudança.
+
 ## 01/10 09:28 Brasília (12:28Z) — proteção nativa e acompanhamento retomado
 
 PR #160 implantado às 12:06:03Z. O Hermes publicou #153 (11:49:22Z, revisão 8min26s) e #154 (12:14:10Z,
