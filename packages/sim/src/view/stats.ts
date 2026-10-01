@@ -56,6 +56,21 @@ export function statsView(game: Game, behind = false): StatsView {
   const expensesByCategory = { ...city.lastYear.expensesByCategory };
   const operating = operatingCost(expensesByCategory);
   const investment = investmentCost(expensesByCategory);
+  let hospitalBedsTotal = 0;
+  for (let i = 0; i < sim.buildings.count; i++) {
+    if (sim.buildings.isActive(i) && sim.buildings.typeOf(i).id === "hospital") {
+      hospitalBedsTotal += sim.buildings.patientsCapacity(i);
+    }
+  }
+  let hospitalBedsOccupied = 0;
+  for (let p = 0; p < city.pop.count; p++) {
+    const bed = city.pop.hospital[p]!;
+    if (bed < 0) continue;
+    if (sim.buildings.isActive(bed) && sim.buildings.typeOf(bed).id === "hospital") {
+      hospitalBedsOccupied++;
+    }
+  }
+  hospitalBedsOccupied = Math.min(hospitalBedsOccupied, hospitalBedsTotal);
   return {
     tick: sim.clock.tick,
     day: sim.clock.day,
@@ -94,6 +109,7 @@ export function statsView(game: Game, behind = false): StatsView {
       water: c.withoutWater,
       power: c.withoutPower,
     },
+    hospitalBeds: { total: hospitalBedsTotal, occupied: hospitalBedsOccupied },
     utilities: {
       enabled: game.utilities.enabled,
       water: {
