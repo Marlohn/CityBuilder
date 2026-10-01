@@ -25,9 +25,7 @@ buildings:
     h: 2
     # Lote 1.024 m² x CA 2 = 2.048 m²; 75% privativo / 45 m² = 34 apartamentos.
     homes: 34
-    # Prazo de obra: CEHAP/PB, Chamamento Público nº 003/2024 (ECO VILA CAMPINA: 36 unidades, subsolo +
-    # térreo + 6 pavimentos), item 5.1 = "prazo máximo para a edificação do empreendimento é de 24 meses".
-    # Conta: 8 pavimentos x 24 meses de prazo máximo = 24 meses. Fonte: http://cehap.pb.gov.br/anexos/cham_publico_003_2024/NOVO%20EDITAL%20CP%20003.2024.pdf
+    # Conta: o edital dá o prazo do edifício inteiro (subsolo + térreo + 6 pavimentos, 8 níveis), sem multiplicar por pavimento = 24 meses = 2 dias de jogo (1 dia = 1 ano); fonte (CEHAP/PB, Chamamento Público nº 003/2024, item 5.1 = "prazo máximo para a edificação do empreendimento é de 24 meses"): http://cehap.pb.gov.br/anexos/cham_publico_003_2024/NOVO%20EDITAL%20CP%20003.2024.pdf
     constructionMonths: 24
     models: [commercial/building-a, commercial/building-b, commercial/building-c, commercial/building-d, commercial/building-e, commercial/building-f]
   - id: loja
