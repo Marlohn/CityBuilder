@@ -29,6 +29,10 @@ Você escreve o teste que falha ANTES do código e depois tenta quebrar o que fo
 5. Sem tarefa nova? Tente quebrar o que entrou: `npm run sim -- report --bot --days=60 --seed=<nova>`, `npm run test:slow`. Achou? Issue **Bug** com o comando para reproduzir.
 6. Pare. Uma tarefa por ciclo.
 
+## Tempo de execução
+
+Prefira cenários pequenos e controlados para provar a regra; não construa uma cidade de dezenas de dias quando o mesmo defeito puder ser reproduzido com poucos objetos. Não enfraqueça a asserção nem retire a cobertura ampla do CI. Para OpenCode/testes demorados, inicie uma vez em `background=true`, acompanhe o mesmo `session_id` e limite cada espera a 60 s. Timeout da ferramenta não significa processo encerrado. Nunca espere CI.
+
 ## Nunca
 
 - Nunca escreva o código que faz o teste passar.

@@ -31,7 +31,9 @@ Cada pacote tem um `AGENTS.md` com as regras dele (ex.: `packages/sim/AGENTS.md`
 
 | Comando | Para quê |
 |---|---|
-| `npm run check` | Roda tudo. Responde `TUDO OK` ou o que quebrou. Rode sempre antes de abrir PR. |
+| `npm run check` | Fora do Hermes e no CI roda tudo. No Hermes (`CITYBUILDER_LOCAL_CHECK=1`), roda tipos, estilo e camadas e informa `CHECK LOCAL OK`; não significa suíte completa verde. |
+| `npm run check -- --local` | Validação rápida antes do PR. Rode também o teste afetado; o CI completo é obrigatório antes do merge. |
+| `npm run check -- --full` | Suíte completa, para CI ou diagnóstico excepcional; não repetir em cada papel. |
 | `npm run format` | Corrige estilo automaticamente. |
 | `npm test -- <arquivo>` | Roda só um teste. |
 | `npm run sim -- report --seed=X --days=N` | Simula sem tela e mostra o relatório da cidade. |
@@ -52,10 +54,19 @@ Cada pacote tem um `AGENTS.md` com as regras dele (ex.: `packages/sim/AGENTS.md`
 2. Arquiteto: Issue `roadmap` → Issues `tarefa` pequenas, etiqueta `pronto-pra-teste`.
 3. QA: escreve o teste de aceitação em `tests/acceptance/` numa branch `qa/<issue>`, abre PR como rascunho (fica vermelho de propósito). Etiqueta `pronto-pra-dev`.
 4. Dev: branch `dev/<issue>` a partir da `qa/<issue>`, faz o teste passar e abre o PR contra a `main`, com `Closes #<issue>` na descrição (em inglês; "Fecha #" não fecha a issue). **Não pode mexer em `tests/acceptance/`** (o CI compara com a branch do QA e bloqueia).
-5. Revisor revisa. CI verde + aprovação = merge do PR do Dev; o PR do QA é fechado.
+5. Sincronizador atualiza branch atrasada e espera o CI sem ocupar agente. CI falhou ou há conflito? Devolve ao Dev. CI completo verde sobre a main atual? Revisor lê o diff e faz merge; o PR do QA é fechado.
 6. Falhou 3 vezes? A tarefa volta para o Arquiteto quebrar em partes menores (o `hermes/harness/sincronizar_github.py` cria o cartão dele).
 
 ## Regras do loop automático (Hermes)
+
+### Ciclo rápido (decisão de 30/09, fábrica autônoma)
+
+- Dev: teste afetado + `npm run check -- --local`, push e encerra o cartão. Não espera GitHub, não roda a suíte completa nem `test:slow` localmente por rotina.
+- QA: teste do seu arquivo + estilo. Preserve prova de falha e qualidade; prefira cenário controlado pequeno quando ele provar a regra. Simulações amplas continuam no CI.
+- Revisor: não executa npm, não resolve conflito, não faz rebase/push. Leia tarefa, diff e resultados do CI. Reprove com evidência ou faça merge com `--match-head-commit <SHA revisado>`.
+- Espera de CI é do sincronizador, sem `sleep` nem `--watch` de um agente. Se main/HEAD mudar durante a revisão, encerre sem merge: haverá novo cartão para o commit atualizado.
+- Comando que pode demorar: `terminal(..., background=true)` uma única vez; acompanhe o mesmo `session_id` com `process` e esperas de até 60 s. Timeout do envelope NÃO prova que o processo parou: confira antes de iniciar outro.
+- Não use `| tail` sem `set -o pipefail`: preserve o código de saída. Não abra benchmarks nem repita a mesma tarefa para comparar LLMs; a avaliação usa entregas novas reais.
 
 Os papéis rodam sozinhos no Hermes (como funciona e o que fazer quando algo trava: `hermes/OPERACAO.md`). Valem para todos:
 

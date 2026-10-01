@@ -11,7 +11,11 @@ MUTANTES = {
     "arquivado deixa de contar como cartão existente":
         ('        k = t[1:t.index("]")]\n', '        k = t[1:t.index("]")]\n        if c.get("status") == "archived":\n            continue\n'),
     "revisão cria 2º cartão aberto pro mesmo PR":
-        ('if chave not in existentes and not aberto(existentes, f"revisar-pr-{n}-"):', 'if chave not in existentes:'),
+        (' and not aberto(existentes, f"revisar-pr-{n}-")', ''),
+    "revisão aceita CI incompleto":
+        ('return "verde" if obrigatorios <= verdes else "aguardando"', 'return "verde"'),
+    "conflito chega ao revisor":
+        ('if pr.get("mergeStateStatus") == "DIRTY":', 'if False:'),
     "3 rodadas gastas não chamam o arquiteto":
         ('elif esgotada(existentes, base) and', 'elif False and esgotada(existentes, base) and'),
     "zelador esquece o motivo do bloqueio":

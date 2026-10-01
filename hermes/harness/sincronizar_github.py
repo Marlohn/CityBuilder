@@ -202,6 +202,44 @@ def main_vermelha(existentes):
               "pra ficar verde: se o teste estiver errado, explique no PR com número.", prioridade=40)
 
 
+CHECKS_CI = {"npm run check", "testes lentos (coorte IBGE e cidade de 50 mil)", "teste de tela (Playwright)"}
+
+
+def estado_ci(pr):
+    """Só libera a revisão com todos os checks do CI concluídos no HEAD consultado."""
+    checks = pr.get("statusCheckRollup") or []
+    obrigatorios = CHECKS_CI | ({"testes de aceitação protegidos"} if pr["headRefName"].startswith("dev/") else set())
+    if any(c.get("conclusion") in ("FAILURE", "TIMED_OUT", "ACTION_REQUIRED", "CANCELLED") for c in checks):
+        return "falhou"
+    verdes = {c.get("name") for c in checks if c.get("status") == "COMPLETED" and c.get("conclusion") == "SUCCESS"}
+    return "verde" if obrigatorios <= verdes else "aguardando"
+
+
+def preparar_revisao(pr):
+    """CI/atualização de branch são trabalho do script; nunca ocupam uma vaga de LLM."""
+    n = str(pr["number"])
+    if pr.get("isDraft") or pr.get("mergeStateStatus") == "UNKNOWN":
+        return False
+    motivo = None
+    if pr.get("mergeStateStatus") == "DIRTY":
+        motivo = "A branch tem conflito com a main. Resolva no mesmo branch, sem force-push, e publique novamente."
+    else:
+        atras = int(gh("api", f"repos/{REPO}/compare/main...{pr['headRefOid']}", "--jq", ".behind_by"))
+        if atras:
+            # O SHA esperado impede atualizar uma revisão que mudou durante a consulta.
+            gh_escrever("api", f"repos/{REPO}/pulls/{n}/update-branch", "-X", "PUT",
+                        "-f", f"expected_head_sha={pr['headRefOid']}")
+            return False
+        if estado_ci(pr) == "falhou":
+            motivo = "O CI deste commit falhou. Leia os logs, corrija só a causa e publique novamente; não repita a suíte completa no mini PC."
+    if motivo:
+        # Comentário primeiro: nunca encaminhar o Dev sem a evidência da devolução.
+        if gh_escrever("pr", "comment", n, "-R", REPO, "--body-file", "-", texto=f"Sincronizador: {motivo}"):
+            gh_escrever("pr", "edit", n, "-R", REPO, "--remove-label", "em-revisão")
+        return False
+    return estado_ci(pr) == "verde"
+
+
 def revisoes(prs, existentes, esperando_qa=frozenset()):
     """PR em revisão -> cartão do revisor (1 aberto por PR, 1 por commit). Sem etiqueta -> o Dev ajusta (até 3)."""
     for pr in prs:
@@ -214,9 +252,13 @@ def revisoes(prs, existentes, esperando_qa=frozenset()):
         if any(lb["name"] == "em-revisão" for lb in pr["labels"]):
             chave = f"revisar-pr-{n}-{sha}"
             # Commit novo com a revisão anterior ainda na fila: não cria outra, a que está aberta olha o PR como está.
-            if chave not in existentes and not aberto(existentes, f"revisar-pr-{n}-"):
+            if (chave not in existentes and not aberto(existentes, f"revisar-pr-{n}-")
+                    and preparar_revisao(pr)):
                 criar(chave, f"Revisar PR #{n}: {pr['title']}", "revisor",
-                      f"Revise o PR #{n} ({pr['url']}). Aprovou e o CI está verde? Faça o merge.", prioridade=30)
+                      f"Revise o PR #{n} ({pr['url']}). O sincronizador já conferiu CI e main. Leia o diff, "
+                      "não rode npm/check/testes e não espere CI. Se o HEAD/main mudou, conclua o cartão sem merge: "
+                      "o sincronizador atualizará e chamará novamente. Aprovou? Confira checks e faça merge "
+                      "com --match-head-commit no SHA revisado.", prioridade=30)
         elif pr["headRefName"].startswith(("dev/", "fix/main-")):
             # Issue de volta no QA (teste errado: o Dev não pode corrigir, o CI barra): o ajuste espera o QA (branch dev/N = issue N).
             if re.fullmatch(r"dev/(\d+)", pr["headRefName"]) and int(pr["headRefName"][4:]) in esperando_qa:
@@ -228,7 +270,7 @@ def revisoes(prs, existentes, esperando_qa=frozenset()):
                 criar(base + sha, f"Ajustar PR #{n} pedido na revisão: {pr['title']}", "dev",
                       f"A revisão pediu mudanças no PR #{n} ({pr['url']}). Leia o último comentário de revisão "
                       f"(`gh pr view {n} --comments`), ajuste no MESMO branch {pr['headRefName']} (conflito com a main: "
-                      "`git merge origin/main` e resolva), deixe `npm run check` verde, dê push e recoloque a etiqueta (o QA corrigiu o teste? traga com `git merge origin/qa/<issue>`): "
+                      "`git merge origin/main` e resolva), rode validação LOCAL e o teste afetado, dê push e recoloque a etiqueta (o QA corrigiu o teste? traga com `git merge origin/qa/<issue>`): "
                       f"`gh pr edit {n} --add-label em-revisão`.", prioridade=25)
 
 
@@ -366,7 +408,7 @@ def main():
     dia = dt.datetime.now(BRT).strftime("%Y%m%d")
     main_vermelha(existentes)
     prs = json.loads(gh("pr", "list", "-R", REPO, "--state", "open", "--json",
-                        "number,title,body,labels,headRefName,headRefOid,url", "--limit", "50"))
+                        "number,title,body,labels,headRefName,headRefOid,url,isDraft,mergeStateStatus,statusCheckRollup", "--limit", "50"))
     todas = json.loads(gh("issue", "list", "-R", REPO, "--state", "open", "--json", "number,labels", "--limit", "300"))
     mesclados = json.loads(gh("pr", "list", "-R", REPO, "--state", "merged", "--limit", "20",
                               "--json", "number,headRefName,mergedAt"))
