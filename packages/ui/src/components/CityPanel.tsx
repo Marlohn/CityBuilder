@@ -12,6 +12,7 @@ const UNMET_LABELS: Record<keyof StatsView["unmet"], string> = {
   parking: "Sem vaga para estacionar",
   water: "Morando sem água",
   power: "Morando sem luz",
+  sewer: "Morando sem esgoto",
 };
 
 function Bar({ label, value, color }: { label: string; value: number; color: string }) {
