@@ -76,7 +76,7 @@ GitHub (issues/etiquetas/PRs/CI) --lê a cada 2 min--> sincronizador (sem LLM)
 | `arquiteto` | **Só planeja**: quebra o próximo item da issue #2 em tarefas | medium | `web` | github, codebase-inspection |
 | `revisor` | **Só revisa** PRs: CI verde sobre a main atual + regras = merge, ou pede mudanças | medium | — | github, systematic-debugging, codebase-inspection |
 | `qa` | Teste de aceitação que falha antes do código; caça bug quando está sem fila | low | — | github, opencode, test-driven-development, systematic-debugging |
-| `dev` | Faz o teste passar (o código sai do OpenCode/muse); conserta a main vermelha | low | — | github, opencode, test-driven-development, systematic-debugging, node-inspect-debugger |
+| `dev` | Faz o teste passar (o código sai do OpenCode/muse); conserta a main vermelha | low | `web` | github, opencode, test-driven-development, systematic-debugging, node-inspect-debugger |
 
 - **Modelo principal por papel (30/09):**
   - **designer, arquiteto e revisor:** `nvidia/nemotron-3-ultra-550b-a55b:free` pelo **Kilo** (provedor nativo
