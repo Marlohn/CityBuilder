@@ -17,8 +17,10 @@ import { describe, expect, it } from "vitest";
 import { createTestGame } from "../helpers";
 
 /**
- * O bloco `finance` ainda não existe na main. O teste acessa por tipos locais opcionais
- * e falha com mensagem clara em português, sem `any` (só `unknown` + narrowing).
+ * Na main o bloco `finance` não existe; nas tarefas #142/#143 ele entra como obrigatório
+ * no contrato. O teste acessa por um tipo local opcional e falha com mensagem clara em
+ * português, sem `any` (só `unknown` + narrowing) e sem brigar com o `StatsView` real
+ * (daí o `Omit`, senão o tipo opcional não é compatível com o obrigatório do contrato).
  */
 interface FinanceViewLocal {
   revenueByCategory?: unknown;
@@ -28,9 +30,9 @@ interface FinanceViewLocal {
   yearlyHistory?: unknown;
 }
 
-interface StatsComFinanceLocal extends StatsView {
+type StatsComFinanceLocal = Omit<StatsView, "finance"> & {
   finance?: FinanceViewLocal;
-}
+};
 
 /** Um objeto simples de categoria -> valor, ou null quando não é isso. */
 function asRecord(v: unknown): Record<string, unknown> | null {
