@@ -22,7 +22,7 @@ PAPEIS = {
     "qa": {"ferr": BASE,
            "skills": ["software-development/github", "autonomous-ai-agents/opencode",
                       "software-development/test-driven-development", "software-development/systematic-debugging"]},
-    "dev": {"ferr": BASE,
+    "dev": {"ferr": BASE + ["web"],
             "skills": ["software-development/github", "autonomous-ai-agents/opencode",
                        "software-development/test-driven-development", "software-development/systematic-debugging",
                        "software-development/node-inspect-debugger"]},

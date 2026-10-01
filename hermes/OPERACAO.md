@@ -26,6 +26,10 @@ As regras abaixo substituem instruções antigas de rodar check completo em cada
   Escalada tem no máximo um cartão aberto por PR, mesmo que o SHA mude. O Arquiteto não espera CI nem revisa:
   corrige o encaminhamento e encerra. CI de infraestrutura já corrigido na main: recoloca `em-revisão` para o script
   atualizar a branch e aguardar os checks fora do kanban.
+  Após três ajustes, causa no código comprovada permite **uma** tentativa adicional por PR: Arquiteto registra
+  o diagnóstico, põe `pronto-pra-dev` no PR e conclui o cartão do SHA atual. O script consome a etiqueta.
+  Falhou essa tentativa? Arquiteto cria tarefas menores e fecha o PR antigo. Comentário sem encaminhamento
+  recebe retomada limitada do Arquiteto; nunca reinicia as três tentativas normais.
 - **Revisor:** lê diff/testes e evidências, sem npm/rebase/push. Merge com `--match-head-commit` no SHA lido. Se main mudou,
   encerra o cartão sem merge: o sincronizador atualiza a branch e despacha a revisão do novo commit.
 - **Timeout do Hermes:** fonte verificada na imagem fixa, `agent/tool_executor.py` e `agent/deadline.py`.
@@ -76,7 +80,7 @@ GitHub (issues/etiquetas/PRs/CI) --lê a cada 2 min--> sincronizador (sem LLM)
 | `arquiteto` | **Só planeja**: quebra o próximo item da issue #2 em tarefas | medium | `web` | github, codebase-inspection |
 | `revisor` | **Só revisa** PRs: CI verde sobre a main atual + regras = merge, ou pede mudanças | medium | — | github, systematic-debugging, codebase-inspection |
 | `qa` | Teste de aceitação que falha antes do código; caça bug quando está sem fila | low | — | github, opencode, test-driven-development, systematic-debugging |
-| `dev` | Faz o teste passar (o código sai do OpenCode/muse); conserta a main vermelha | low | — | github, opencode, test-driven-development, systematic-debugging, node-inspect-debugger |
+| `dev` | Faz o teste passar (o código sai do OpenCode/muse); conserta a main vermelha | low | `web` | github, opencode, test-driven-development, systematic-debugging, node-inspect-debugger |
 
 - **Modelo principal por papel (30/09):**
   - **designer, arquiteto e revisor:** `nvidia/nemotron-3-ultra-550b-a55b:free` pelo **Kilo** (provedor nativo
@@ -201,12 +205,29 @@ aconteceu e por quê?". A resposta tem que ser "está no alvo".
 
 - **O dono não faz nenhum passo manual e não aprova nada.** Contrato, save, schema e VISAO seguem CI verde + revisão = merge
   (o CODEOWNERS está sem efeito na prática; a regra está no `AGENTS.md`). A `main` **tem** proteção (ruleset): exige
-  `npm run check` e `testes de aceitação protegidos`, sem review obrigatório.
+  os quatro jobs do CI (`npm run check`, `testes de aceitação protegidos`,
+  `testes lentos (coorte IBGE e cidade de 50 mil)` e `teste de tela (Playwright)`), com branch atualizada antes
+  do merge (`strict_required_status_checks_policy=true`), sem bypass e sem review humano obrigatório.
 - **PR do supervisor (docs e harness) não passa pelo revisor:** CI verde e merge do supervisor. Deliberado: o revisor gastou
   47 min num PR só de documentação.
 - **Nada espera sem motivo:** gatilho é evento, não relógio. Todo intervalo precisa de motivo escrito ao lado.
 - **Nunca afirme "não dá" ou "não tem permissão" sem testar aquela operação.** O token dos agentes tem Contents, Issues,
-  PRs e Workflows de escrita, mas não tem Administration.
+  PRs e Workflows de escrita. Em 01/10 o dono adicionou Administration: write para corrigir o ruleset da fábrica.
+
+### Proteção nativa da main (conferida em 01/10)
+
+Ruleset `main`, ID `24212946`, ativo em `~DEFAULT_BRANCH`; GitHub Actions é a origem dos checks (`integration_id=15368`).
+Foram preservadas as regras de exclusão e de force-push. Não criar uma segunda proteção por cima: atualize o ruleset
+existente, preservando condições e bypass vazio. Confira com `gh api repos/Marlohn/CityBuilder/rules/branches/main`
+ou `gh api repos/Marlohn/CityBuilder/rulesets/24212946`. A API clássica `branches/main/protection` pode devolver 404
+mesmo quando há um ruleset ativo; 404 nessa rota não prova ausência de proteção.
+
+Antes, o ruleset exigia só check geral e aceitação, sem atualização da branch. No #154, o Revisor citou main `5f2eaf8`
+apesar de ela já estar em `e23d219`: todos os checks consultados estavam verdes, mas a main atual não foi considerada.
+A trava nativa agora recusa merge desatualizado, independentemente do prompt. A espera continua no sincronizador.
+Estado anterior guardado em `/opt/data/avaliacao/ruleset-main-antes-20261001.json`; mudanças no ruleset exigem
+Administration: write. A primeira tentativa deu 403, sem alteração; após ajuste do token pelo dono, PUT e GET
+confirmaram a configuração às 09:28:53 de Brasília (12:28:53Z). Registro de aplicação no PR #160.
 
 ## Armadilhas já pagas
 

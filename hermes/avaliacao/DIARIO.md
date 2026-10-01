@@ -1,5 +1,59 @@
 # Diário da avaliação: agentes Hermes + kanban + LLM grátis (CityBuilder)
 
+## 01/10 13:25Z — diagnóstico terminou, mas não havia retorno ao Dev
+
+PR #165 implantado às 13:15:12Z; main `4324ded` e Pages verdes. Config e SOUL Dev conferidos, saúde OK.
+As sessões já ativas preservaram suas ferramentas antigas. Nenhuma entrega nova completa após esse deploy.
+
+Arquiteto concluiu `t_03460b00` às 13:19:10Z, após 46min41s. No comentário #156 registrou regressão do hospital:
+na medição dele, população 18.516 na main contra 8.586 no PR e caixa final negativo. O supervisor conferiu o
+registro e o encaminhamento; não repetiu a simulação nem implementou a correção. O agente manteve a issue
+`pronto-pra-dev`, mas as três chaves `dev-ajuste-pr-156-*` já estavam gastas. O sincronizador não criava outro Dev
+nem reabria a decisão do Arquiteto no mesmo SHA: diagnóstico concluído deixava o PR parado.
+
+Correção: autorização explícita `pronto-pra-dev` **no PR**, cartão do Arquiteto concluído para o SHA atual e uma
+única tentativa adicional por PR. Sem autorização, reencaminha ao Arquiteto com retomadas limitadas. Depois dessa
+tentativa, ele deve quebrar a tarefa e fechar o PR antigo. Não reinicia o orçamento de três nem contorna QA/CI.
+O caso #156 voltará ao Arquiteto para autorizar ou dividir; nenhum rótulo de encaminhamento é aplicado pelo Codex.
+JEV não agrega aqui: é estado de cartões e etiquetas, resolvido por regra determinística.
+
+## 01/10 13:00Z — pesquisa do Dev sem ferramenta web
+
+PR de documentação #161 mesclado com os checks completos verdes e branch atualizada; não exige deploy funcional.
+A primeira candidata nova é #162: QA iniciou às 12:34:30Z, terminou às 12:40:30Z e abriu o rascunho #164.
+Dev iniciou às 12:43:31Z. A tarefa pede cinco valores de custos/prazos com fontes. Não está publicada nem conta como entrega.
+
+Sessão `20261001_124333_70246b`: ao redor de 12:53Z já havia 48 chamadas, aproximadamente 51 mil tokens de entrada
+e 18 mil de saída. Houve pesquisa por `curl`, resposta 429 do FNDE e esperas `sleep 45` e `sleep 40`, depois buscas
+DuckDuckGo via Jina. O perfil Dev não tinha `web`; Designer e Arquiteto tinham. São fatos do config e das mensagens,
+não prova de que toda a demora vem disso. O container já oferece pesquisa e extração sem instalação adicional:
+uma consulta oficial retornou em 3,48 s. A disponibilidade dos provedores gratuitos pode variar.
+
+Correção proposta: liberar `web` no Dev e orientar pesquisa com as ferramentas do Hermes, sem repetir página bloqueada
+com sleeps/proxies. A fonte deve sustentar o número; pesquisa incompleta segue o tratamento de tarefa travada.
+Sem novo serviço, skill ou JEV. Ganho de tempo ainda não medido; avaliar nas próximas tarefas reais. A sessão ativa
+mantém sua configuração original e não será interrompida para aplicar esta mudança.
+
+## 01/10 09:28 Brasília (12:28Z) — proteção nativa e acompanhamento retomado
+
+PR #160 implantado às 12:06:03Z. O Hermes publicou #153 (11:49:22Z, revisão 8min26s) e #154 (12:14:10Z,
+revisão 7min23s), com CI dos HEADs e Pages verdes, sem intervenção operacional nesses merges. Ambos são trabalho
+iniciado antes dos deploys; não contam como as três entregas novas. A meta de dez minutos não está comprovada.
+
+Ao auditar #154, o Revisor usou main antiga `5f2eaf8`; a main já tinha `e23d219`. A API de proteção clássica deu 404,
+mas a leitura de rulesets confirmou proteção ativa: só dois checks obrigatórios e strict=false. Corrigido o diagnóstico
+inicial de ausência de proteção. A tentativa de ajustar esse ruleset deu 403; o acompanhamento temporário foi removido
+por bloqueio de permissão, sem parar o Hermes. O dono adicionou Administration: write e autorizou continuar.
+
+PUT e GET confirmaram às 12:28:53Z: ruleset existente `24212946` com strict=true e quatro checks obrigatórios da
+GitHub Actions. Condições, bypass vazio e regras de exclusão/force-push preservados. Sem plugin ou serviço novo.
+Contagem de três entregas novas permanece em zero; acompanhamento retomado após a alteração de configuração.
+
+JEV: uma consulta de observação sobre #156 às 12:02Z respondeu `investigar` em 1,134 s. Havia CI do PR vermelho,
+alegação do Dev de falha também na main e CI da main verde. A resposta não mudou o fluxo nem comprova economia
+de tempo. Confiança retornada não é prova de acerto. Registro em `/opt/data/avaliacao/jev-observacoes.jsonl` e
+comentário no #159. Uso pontual, somente se poupar decisão/releitura custosa; sem plugins ou benchmarks repetidos.
+
 ## 01/10 11:45Z — retomada não pode virar espera de CI
 
 Após deploy do #159 às 11:30:05Z, o sincronizador criou retomadas e atualizou `dev/120` e `dev/144` sem LLM.
