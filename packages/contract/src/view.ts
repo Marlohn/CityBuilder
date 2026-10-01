@@ -120,6 +120,8 @@ export interface StatsView {
   vacantJobs: number;
   demand: { residential: number; commercial: number; industrial: number };
   unmet: UnmetDesireCounts;
+  /** Leitos de internação (hospital), não vaga de atenção básica da UBS. */
+  hospitalBeds: { total: number; occupied: number };
   /** Água e luz em pessoas equivalentes (mesma unidade de demandOf): quanto a cidade usa e quanto tem. */
   utilities: {
     enabled: boolean;
