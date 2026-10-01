@@ -17,24 +17,59 @@ O erro estava no log interno e não na saída entregue ao Hermes. Heartbeat rece
 Só envolve `run`: liga `--print-logs --log-level ERROR`, conserva a saída e devolve exit 75 ao detectar
 um erro estruturado da chamada principal do provedor. Erro de título e texto de teste não acionam esse corte.
 O processo e seus filhos são encerrados num grupo próprio; não encerra o worker Hermes ou outros agentes.
-Limite absoluto: uma hora por chamada (exit 124). Não altera arquivos nem escolhe modelo automaticamente.
+Limite absoluto: uma hora por chamada (exit 124). Não altera arquivos.
 
-Dev/QA conferem o diff e podem tentar uma vez `opencode/space-bunny-free`, incluindo o estado atual no pedido.
+### 01/10 — reserva automática nas duas camadas
+
+O fallback do coordenador Hermes não alcança o OpenCode chamado no terminal. São clientes separados.
+Na verificação após #206, Dev/QA tinham `fallback_providers` ausente; o CLI dependia de orientação no SOUL
+para relançar outra chamada. Essa troca passa a ser automática, no mecanismo já instalado:
+
+| Camada | Padrão | Reserva |
+|---|---|---|
+| Hermes Dev/QA | Zen `space-bunny-free` | Kilo `nvidia/nemotron-3-ultra-550b-a55b:free` |
+| Hermes Designer/Arquiteto/Revisor | Kilo Nemotron Ultra grátis | Zen `space-bunny-free` |
+| OpenCode CLI | Zen `muse-spark-1.3-contributor-free` | Kilo Nemotron Ultra grátis → Zen `space-bunny-free` |
+| OpenCode com Space Bunny escolhido explicitamente | Zen `space-bunny-free` | Kilo Nemotron Ultra grátis |
+| OpenCode com Kilo escolhido explicitamente | Kilo Nemotron Ultra grátis | Zen `space-bunny-free` |
+
+O Hermes usa sua lista nativa `fallback_providers`; os modelos principais continuam iguais. O guard tenta
+uma lista fixa após erro estruturado do provedor, encerra o grupo anterior e retoma o mesmo
+`session.id` com `--session`. Mantém o pedido/flags e instrui continuar do estado atual sem repetir ações.
+Timeout, erro de teste, falha desconhecida, sessão não confirmada e modelo fora das rotas não provocam troca.
+O catálogo local deve confirmar custo zero da reserva. Partindo de Muse são no máximo três chamadas;
+partindo de Kilo ou Space Bunny são duas. Se todas falharem, exit 75; o agente registra e para.
+Não há recursão, retorno ao primeiro modelo ou relançamento manual. O limite de uma hora inclui toda a sequência.
+
+O CLI exige `KILO_API_KEY`; o Hermes exige `KILOCODE_API_KEY`. O aplicador usa a mesma credencial já existente,
+sem gravar valores no repo; backups de `.env`/config antes da mudança. O ambiente do terminal lê a chave local
+e exporta só para o processo, sem imprimir. Os logs identificam `HERMES_OPENCODE_FALLBACK` com origem,
+destino e sessão, e `FALLBACK_RESULT` com saída. Não adiciona serviço, plugin, fila ou dependência do Codex.
+Uma chamada curta pelo Kilo nativo do CLI respondeu em 4,83s; retomar sessão anteriormente recusada respondeu
+em 5,42s. A rota direta do Hermes foi conferida no código instalado (`route_classified_error` e
+`_init_fallback_chain`); recuperação real do coordenador nas próximas sessões ainda precisa ser observada.
 Falha de provedor é infraestrutura, não prova de defeito do jogo. Sem espera com loops, reinstalação ou modelo pago.
 O catálogo local registra custo zero para esse reserva; uma chamada curta sem ferramentas respondeu em 4,21s.
 Com o guard, a recusa real do Muse devolveu exit 75 em 3,24s. Isso verifica acesso/erro, não qualidade de código ou
-ganho de entrega. Não foram repetidas tarefas do jogo. Não há recuperação ilimitada se ambos os modelos falharem.
+ganho de entrega. Não foram repetidas tarefas do jogo. Não há recuperação ilimitada se todos os modelos falharem.
+Uma verificação conjunta encontrou Kilo sobrecarregado (503) após a recusa do Muse. Seu log usa
+`error.error.code=503`, sem `AI_APICallError`; esse formato também precisa devolver controle ao guard.
+Depois da correção, uma chamada curta recebeu recusa do Muse e respondeu OK pelo Kilo automaticamente,
+na mesma sessão, em 11,27s totais. A terceira etapa foi verificada no harness, não usada nessa chamada real.
 
 Validação: `python3 hermes/harness/testar_opencode_guard.py`, também dentro do check existente do CI.
 Os cenários reproduzem o CLI vivo após recusa, stderr fragmentado, título, saída de teste, código de erro normal,
-timeout e filhos resistentes a SIGTERM. Sem rede, LLM ou clone de agente. Todos os checks e testes anteriores permanecem.
+timeout e filhos resistentes a SIGTERM. Também provam troca em ambos os sentidos, sessão preservada, limite de
+três chamadas, erro 503 nativo do Kilo, ausência de chave e rejeição de custo não zero. Sem rede, LLM ou clone de agente. Todos os checks anteriores permanecem.
 Fonte das flags: [CLI oficial](https://opencode.ai/docs/cli/#run); erro observado na versão instalada 1.18.33.
 
 Deploy após CI completo verde e merge: atualizar apenas Dev/QA no clone de distribuição, copiar o guard para
 a pasta acima e acrescentar ao final de `/opt/data/opencode/profile.sh`
-`PATH="/opt/data/opencode/guard/bin:$PATH"; export PATH`. O aplicador de perfis também instala isso.
+`PATH="/opt/data/opencode/guard/bin:$PATH"; export PATH`. O aplicador de perfis instala isso e a reserva nativa,
+com backups. Novos workers leem a configuração; sessões já ativas podem conservar a configuração anterior.
 Não substituir o executável real nem reiniciar gateway/worker. Chamadas já iniciadas não recebem o guard.
-Reversão: remover essa linha do PATH e atualizar os SOULs após reverter o PR; binário e sessões originais ficam preservados.
+Reversão: reverter o PR, repor guard/profile.sh e configs/.env dos backups `bak-20261001-reserva`, atualizar SOULs.
+Não reiniciar worker ativo; binário e sessões originais ficam preservados.
 
 ### Atualização de 30/09 à noite: ciclo rápido autônomo
 

@@ -1,5 +1,33 @@
 # Diário da avaliação: agentes Hermes + kanban + LLM grátis (CityBuilder)
 
+## 01/10 — reserva automática entre provedores, após #206
+
+O dono pediu conferir fallback e desempenho por mais algumas rodadas, sem dependência futura do Codex.
+Config real: Dev/QA coordenados por Zen `space-bunny-free`, sem fallback; outros três papéis Kilo Nemotron Ultra
+grátis com reserva Zen. O CLI OpenCode usa Muse e não herda a reserva do Hermes. #206 expôs a recusa e evitou
+espera infinita, mas a decisão de trocar ainda dependia do agente. Essa lacuna motivou tornar a recuperação
+determinística no guard já existente e preencher a reserva nativa Dev/QA, mantendo os principais atuais.
+
+OpenCode tem provedor Kilo nativo no catálogo (`KILO_API_KEY`), diferente do nome da credencial do Hermes
+(`KILOCODE_API_KEY`). Sem instalar plugin, uma chamada curta sem ferramentas respondeu OK em 4,83s;
+retomar uma sessão de supervisão recusada anteriormente respondeu OK em 5,42s. Catálogo confirmou custo zero
+do Nemotron Ultra `:free` e Space Bunny grátis. Isso valida interface/retomada, não qualidade de código ou
+ganho de desempenho entre modelos. Nenhuma tarefa do jogo foi repetida.
+
+Uma verificação conjunta em 22:00:49Z encontrou Muse recusado e Kilo sobrecarregado com 503. O formato nativo
+`error.error.code=503` não tinha `AI_APICallError` e escapava à detecção; a verificação terminou pelo limite
+de 45s, não com sucesso. Corrigida a detecção desse log real e definida a sequência Muse→Kilo→Space Bunny,
+no máximo três chamadas. Partindo de Kilo ou Space Bunny há uma reserva, sem retorno ao primeiro modelo.
+O harness verifica trocas na mesma sessão, encerra cada grupo antes do seguinte, limita o total, ignora reserva
+com custo não zero/credencial ausente e conserva os cenários de #206. Erro de teste não aciona reserva.
+Após essa correção, uma chamada curta em 22:08:56Z recebeu a recusa do Muse, mudou automaticamente para Kilo
+na mesma sessão `ses_f067c955dffeJ2tkEQpsbF82SK` e respondeu OK: exit 0 em 11,27s no total. Sem ferramentas ou
+alterações. O terceiro passo fica validado pelo cenário simulado de falhas consecutivas; não houve nova falha
+503 nessa chamada. Isso verifica recuperação do transporte, não tempo de entrega de feature.
+O Hermes instalado normaliza a lista em `_init_fallback_chain` e aciona a troca em `route_classified_error`
+para limite de uso; não alterar o core do Hermes. O comportamento real do coordenador com a nova config
+ainda depende de novas sessões e falhas observadas. Deploy somente após CI completo verde e merge atual.
+
 ## 01/10 21:34Z — vaga Dev ocupada por OpenCode recusado pelo provedor
 
 Depois das três entregas autônomas #191/#195/#199, o Dev #111 (`t_aba7ae20`, sessão Hermes

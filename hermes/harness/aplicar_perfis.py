@@ -32,6 +32,7 @@ PAPEIS = {
 # (~140/h juntos) ficam no Zen. Kilo falhou/429 => cai pro space-bunny do Zen (fallback provado com modelo quebrado).
 KILO = {"provider": "kilocode", "default": "nvidia/nemotron-3-ultra-550b-a55b:free"}
 RESERVA_ZEN = [{"provider": "custom:zen", "model": "space-bunny-free"}]
+RESERVA_KILO = [{"provider": "kilocode", "model": "nvidia/nemotron-3-ultra-550b-a55b:free"}]
 NO_KILO = {"designer", "arquiteto", "revisor"}
 FONTE_SKILLS = "/opt/hermes/skills"
 
@@ -40,17 +41,24 @@ for papel, cfg in PAPEIS.items():
     if not os.path.exists(f"{d}/config.yaml.bak-20260930-revisao"):
         shutil.copy(f"{d}/config.yaml", f"{d}/config.yaml.bak-20260930-revisao")
     c = yaml.safe_load(open(f"{d}/config.yaml")) or {}
+    if papel in ("dev", "qa"):
+        backup = f"{d}/config.yaml.bak-20261001-reserva"
+        if not os.path.exists(backup):
+            shutil.copy(f"{d}/config.yaml", backup)
+        c["fallback_providers"] = [dict(e) for e in RESERVA_KILO]
     # O envelope antigo abortava a espera em 420 s, antes do terminal (até 600 s),
     # enquanto o processo continuava vivo. Background + poll curto é a regra do SOUL.
     c.setdefault("timeouts", {}).setdefault("tools", {}).update(sequential_call=900, concurrent_batch=900)
     c["platform_toolsets"] = {"cli": cfg["ferr"]}
-    if papel in NO_KILO:
-        if not os.path.exists(f"{d}/.env.bak-20260930-kilo"):
-            shutil.copy(f"{d}/.env", f"{d}/.env.bak-20260930-kilo")
+    if papel in NO_KILO or papel in ("dev", "qa"):
+        backup_env = f"{d}/.env.bak-20261001-reserva"
+        if not os.path.exists(backup_env):
+            shutil.copy(f"{d}/.env", backup_env)
         env = [l for l in open(f"{d}/.env").read().splitlines() if not l.startswith("KILOCODE_API_KEY=")]
         env.append("KILOCODE_API_KEY=" + open("/opt/data/.kilo_key").read().strip())
         open(f"{d}/.env", "w").write("\n".join(env) + "\n")
         os.chmod(f"{d}/.env", 0o600)
+    if papel in NO_KILO:
         c["model"] = dict(KILO)
         c["fallback_providers"] = [dict(e) for e in RESERVA_ZEN]  # custom_providers (zen) continua definido
     yaml.safe_dump(c, open(f"{d}/config.yaml", "w"), allow_unicode=True, sort_keys=False)
@@ -83,10 +91,18 @@ os.makedirs(guard_dir, exist_ok=True)
 guard_path = f"{guard_dir}/opencode"
 if os.path.exists(guard_path):
     shutil.copy(guard_path, guard_path + ".bak-anterior")
-shutil.copy(os.path.join(os.path.dirname(__file__), "opencode_guard.py"), guard_path)
-os.chmod(guard_path, 0o755)
+shutil.copy(os.path.join(os.path.dirname(__file__), "opencode_guard.py"), guard_path + ".new")
+os.chmod(guard_path + ".new", 0o755)
+os.replace(guard_path + ".new", guard_path)
 linha_guard = f'PATH="{guard_dir}:$PATH"; export PATH'
 if linha_guard not in conteudo.splitlines():
     shutil.copy(ambiente, ambiente + ".bak-20261001-opencode-guard")
     with open(ambiente, "a") as f:
         f.write("\n# Falha rápida de provedor no OpenCode; demais comandos usam o binário real.\n" + linha_guard + "\n")
+linha_kilo = 'if [ -r /opt/data/.kilo_key ]; then KILO_API_KEY="$(cat /opt/data/.kilo_key)"; export KILO_API_KEY; fi'
+with open(ambiente) as f:
+    atual = f.read()
+if linha_kilo not in atual.splitlines():
+    shutil.copy(ambiente, ambiente + ".bak-20261001-reserva")
+    with open(ambiente, "a") as f:
+        f.write("\n# Credencial existente; nome exigido pelo provedor nativo do OpenCode. Nunca imprimir.\n" + linha_kilo + "\n")

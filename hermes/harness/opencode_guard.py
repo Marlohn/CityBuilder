@@ -2,10 +2,12 @@
 """Devolve ao Hermes erros de provedor que deixam `opencode run` aberto.
 
 Instalado como opencode em uma pasta anterior ao binário real no PATH. Outros
-comandos continuam no binário original. Não escolhe modelo nem altera arquivos.
+comandos continuam no binário original. Reservas gratuitas limitadas, na mesma sessão.
 """
 import codecs
 import os
+import re
+import json
 import selectors
 import signal
 import subprocess
@@ -15,14 +17,18 @@ import time
 REAL = "/opt/data/.local/bin/opencode"
 MAX_SECONDS = 3600
 PROVIDER_FAILURE = 75
+KILO = "kilo/nvidia/nemotron-3-ultra-550b-a55b:free"
+ZEN = "opencode/space-bunny-free"
+ROUTES = {"opencode/muse-spark-1.3-contributor-free": (KILO, ZEN), ZEN: (KILO,), KILO: (ZEN,)}
 
 
 def provider_error(line):
     # Somente o log de erro estruturado do processo, não texto de stdout/testes.
-    return all(marker in line for marker in (
+    structured = all(marker in line for marker in (
         "level=ERROR ", 'message="stream error"', "providerID=", "small=false ",
-        "error.error=", "AI_",
     ))
+    return structured and (('error.error=' in line and 'AI_' in line)
+                           or re.search(r'error\.error\.code=[45][0-9]{2}(?:\s|$)', line))
 
 
 def stop_group(process):
@@ -43,7 +49,7 @@ def stop_group(process):
     process.wait()
 
 
-def run(args, binary=REAL, max_seconds=MAX_SECONDS):
+def run(args, binary=REAL, max_seconds=MAX_SECONDS, failure=None):
     process = subprocess.Popen(
         [binary, "--print-logs", "--log-level", "ERROR", *args],
         stdout=subprocess.PIPE, stderr=subprocess.PIPE, start_new_session=True,
@@ -75,11 +81,15 @@ def run(args, binary=REAL, max_seconds=MAX_SECONDS):
                     if key.fileobj is process.stderr:
                         stderr_line += text
                         # Examinar também a linha ainda sem newline: erro não pode depender do flush final.
-                        if any(provider_error(line) for line in stderr_line.splitlines()):
-                            print("HERMES_OPENCODE_PROVIDER_ERROR: falha do provedor; encerrando esta execução (exit 75). "
-                                  "Preserve os arquivos e confira o diff. Não é falha do teste do jogo. "
-                                  "Tente no máximo uma vez opencode run -m opencode/space-bunny-free com o estado atual; "
-                                  "se já usou esse reserva ou ele também falhar, registre os erros e pare.",
+                        error = next((line for line in stderr_line.splitlines() if provider_error(line)), None)
+                        if error:
+                            if failure is not None:
+                                for field in ("providerID", "modelID", "session.id"):
+                                    match = re.search(re.escape(field) + r"=([A-Za-z0-9./:_-]+)(?:\s|$)", error)
+                                    if match:
+                                        failure[field] = match.group(1)
+                            print("HERMES_OPENCODE_PROVIDER_ERROR: chamada encerrada (exit 75); "
+                                  "preserve o diff. Falha do provedor, não do teste do jogo.",
                                   file=sys.stderr, flush=True)
                             return PROVIDER_FAILURE
                         stderr_line = stderr_line.rsplit("\n", 1)[-1][-65536:]
@@ -88,6 +98,71 @@ def run(args, binary=REAL, max_seconds=MAX_SECONDS):
         stop_group(process)
         process.stdout.close()
         process.stderr.close()
+
+
+def free_model(model):
+    """Falha fechada se não houver custo zero no catálogo local do CLI."""
+    try:
+        from pathlib import Path
+        catalog = json.loads((Path.home() / ".cache/opencode/models.json").read_text())
+        provider, identifier = model.split("/", 1)
+        cost = catalog[provider]["models"][identifier]["cost"]
+        return cost.get("input") == 0 and cost.get("output") == 0 and all(value == 0 for value in cost.values())
+    except (OSError, ValueError, KeyError, TypeError):
+        return False
+
+
+def resume_args(args, session, model):
+    # Não criar outro histórico nem deixar flags antigas vencerem o modelo reserva.
+    keep = []
+    i = 1
+    while i < len(args):
+        arg = args[i]
+        if arg in ("-m", "--model", "-s", "--session"):
+            i += 2
+            continue
+        if arg in ("-c", "--continue", "--fork") or arg.startswith(("--model=", "--session=")):
+            i += 1
+            continue
+        keep.append(arg)
+        i += 1
+    return ["run", "--session", session, "--model", model, *keep,
+            "Continue a partir do estado atual desta sessão; preserve os arquivos e não repita ações já concluídas."]
+
+
+def run_with_fallback(args, binary=REAL, max_seconds=MAX_SECONDS):
+    failure = {}
+    start = time.monotonic()
+    rc = run(args, binary=binary, max_seconds=max_seconds, failure=failure)
+    if rc != PROVIDER_FAILURE:
+        return rc
+    primary = failure.get("providerID", "") + "/" + failure.get("modelID", "")
+    backups = ROUTES.get(primary, ())
+    session = failure.get("session.id", "")
+    if not backups or not re.fullmatch(r"ses_[A-Za-z0-9]+", session) or any(
+            arg == '--attach' or arg.startswith('--attach=') for arg in args):
+        print("HERMES_OPENCODE_NO_FALLBACK: rota/sessão local não confirmada; registre o erro e pare.", file=sys.stderr)
+        return rc
+    for index, backup in enumerate(backups, 1):
+        if not free_model(backup) or (backup == KILO and not os.environ.get("KILO_API_KEY")):
+            print(f"HERMES_OPENCODE_NO_FALLBACK: custo/credencial não confirmado para {backup}; etapa ignorada.",
+                  file=sys.stderr, flush=True)
+            continue
+        remaining = max_seconds - (time.monotonic() - start)
+        if remaining <= 0:
+            return 124
+        print(f"HERMES_OPENCODE_FALLBACK: {primary} -> {backup}; session={session}; reserva {index}/{len(backups)}.",
+              file=sys.stderr, flush=True)
+        # O grupo anterior já foi encerrado. Lista fixa, sem recursão ou retorno ao primeiro modelo.
+        failure = {}
+        rc = run(resume_args(args, session, backup), binary=binary, max_seconds=remaining, failure=failure)
+        print(f"HERMES_OPENCODE_FALLBACK_RESULT: model={backup} exit={rc}", file=sys.stderr, flush=True)
+        if rc != PROVIDER_FAILURE:
+            return rc
+        actual = failure.get('providerID', '') + '/' + failure.get('modelID', '')
+        if actual != backup or failure.get('session.id') != session:
+            return rc
+    return rc
 
 
 def main():
@@ -99,7 +174,7 @@ def main():
     signal.signal(signal.SIGTERM, interrupted)
     signal.signal(signal.SIGINT, interrupted)
     try:
-        return run(args)
+        return run_with_fallback(args)
     except KeyboardInterrupt as exc:
         return 128 + (exc.args[0] if exc.args else signal.SIGINT)
     except OSError as exc:
