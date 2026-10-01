@@ -1,5 +1,19 @@
 # Diário da avaliação: agentes Hermes + kanban + LLM grátis (CityBuilder)
 
+## 01/10 15:43Z — preparação do navegador no CI
+
+Nos jobs de tela dos runs `36881805274` (#181) e `36882075526` (#180), a instalação de Chromium e
+dependências levou 5min26s e 5min19s; os testes levaram 7min24s e 5min06s. Logs mostram esperas nos
+downloads de fontes/Mesa no mirror Ubuntu. Isso é tempo externo ao mini PC, sem relação com mais vagas locais.
+
+O job passa a usar a [imagem oficial do Playwright](https://playwright.dev/docs/ci#via-containers),
+`mcr.microsoft.com/playwright:v1.63.0-noble`; o registro MCR respondeu 200 e o lock confirma versão 1.63.0.
+Conserva Node22, comando e todos os testes, nome do check e proteções. A imagem traz browsers e bibliotecas;
+a conferência de versão falha com mensagem direta se o pacote e a imagem divergem numa atualização futura.
+Nenhuma imagem ou ferramenta foi instalada no mini PC. O pull da imagem também custa tempo: só o CI real
+do PR e as próximas entregas podem confirmar economia. Sem benchmark repetindo tarefa e sem promessa de ganho.
+Fonte de configuração: [Docker oficial](https://playwright.dev/docs/docker), com `--init` e `--ipc=host`.
+
 ## 01/10 15:12Z — teste local verde, mas código não enviado
 
 Na sessão Dev `20261001_145857_57bf5c` da tarefa #173, o teste afetado passou 3/3 e o check local

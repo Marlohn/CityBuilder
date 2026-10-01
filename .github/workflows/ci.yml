@@ -39,6 +39,10 @@ jobs:
   e2e:
     name: teste de tela (Playwright)
     runs-on: ubuntu-latest
+    # Mesmo Playwright do package-lock.json; browsers e dependências já instalados.
+    container:
+      image: mcr.microsoft.com/playwright:v1.63.0-noble
+      options: --init --ipc=host
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
@@ -47,7 +51,9 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npx playwright install --with-deps chromium
+      - name: Conferir versão da imagem e do pacote
+        run: |
+          node -e 'const actual = require("@playwright/test/package.json").version; if (actual !== "1.63.0") throw new Error("Atualize também a imagem Playwright do CI: pacote " + actual); console.log("Playwright " + actual + ": imagem e pacote compatíveis");'
       - run: npm run test:e2e
       - uses: actions/upload-artifact@v4
         if: always()

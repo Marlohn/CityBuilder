@@ -298,6 +298,7 @@ A correção é escrever a migração, nunca afrouxar o `CommandSchema`:
 
 ## 6. Armadilhas conhecidas (já aconteceram)
 
+- **Atualizar Playwright sem a imagem do CI:** o job de tela usa `mcr.microsoft.com/playwright:v1.63.0-noble`, com navegador e dependências prontos. Ao atualizar `@playwright/test`/`package-lock.json`, atualize também a imagem e a conferência de versão em `.github/workflows/ci.yml`. O comando e todos os testes de tela continuam iguais; não reinstale dependências via apt em cada execução.
 - **Esconder o erro com `| tail`:** `npm run check | tail` devolve sucesso mesmo quando falha. Use `set -o pipefail` antes.
 - **Idade no aniversário:** quem faz aniversário hoje viveu `idade - 1` anos completos. Usar a idade nova zerou a mortalidade infantil.
 - **Ordem dos eventos:** registre a chegada antes de mover a família para a casa, senão o verificador acha alguém "surgindo do nada".
