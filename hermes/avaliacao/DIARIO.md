@@ -1,5 +1,17 @@
 # Diário da avaliação: agentes Hermes + kanban + LLM grátis (CityBuilder)
 
+## 01/10 11:45Z — retomada não pode virar espera de CI
+
+Após deploy do #159 às 11:30:05Z, o sincronizador criou retomadas e atualizou `dev/120` e `dev/144` sem LLM.
+O Dev ajustou #156 em 3min54s, mas o CI ainda estava vermelho (aceitação #48); não conta como entrega publicada.
+Main e Pages do #159 verdes. Nenhuma entrega nova completa contada nesta checagem.
+
+Falha confirmada na sessão `20261001_113021_948087` do Arquiteto: depois de atualizar #154, executou `sleep 60`
+e `sleep 420` esperando checks. A mudança de SHA também criou outro cartão de escalada para #154 enquanto o
+primeiro estava ativo. Correção: impedir segunda escalada ativa por PR e explicitar no SOUL que Arquiteto encaminha
+sem esperar CI; infraestrutura corrigida volta para o gate com `em-revisão`. Não alterar clones ativos nem cancelar
+o agente só para aplicar SOUL. Intervenção registrada; a meta das três entregas autônomas permanece pendente.
+
 ## 01/10 — deploy confirmado e correção de fila parada
 
 O PR #133 entrou em 01/10 às 00:46:16Z, com CI verde, mas o servidor ainda usava sincronizador e perfis anteriores.
