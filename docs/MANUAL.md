@@ -76,6 +76,7 @@ Ou seja: sem indústria (ou emprego na região), a cidade não cresce muito.
 
 - **Escola:** crianças de 6 a 17 anos precisam de uma escola a até 2 km de casa.
 - **UBS:** cada pessoa se cadastra numa UBS a até 2 km. Sem UBS, o risco de morrer é maior.
+- **Hospital:** interna quem precisa de leito, com até 90 leitos por hospital e atendimento num raio de 15 km (ainda sem fonte oficial, ver `config/health.yaml`). A conta é de 2,5 a 3 leitos para cada 1.000 habitantes (https://bvsms.saude.gov.br/bvs/saudelegis/gm/2002/prt1101_12_06_2002.html). A obra custa R$ 50.400.000 (Hospital Regional de Belo Jardim (PE), R$ 56 milhões por 100 leitos: https://belojardim.pe.gov.br/ordem-de-servico-e-assinada-para-inicio-das-obras-do-hospital-regional-de-belo-jardim-com-uti-100-leitos-e-investimento-de-r-56-milhoes/) e R$ 7.045.200 por ano de custeio (SIH/DATASUS 2025: https://drpap.com.br/indicadores-hospitalares). O relatório mostra a linha "Leitos de hospital" e o painel da cidade mostra quem está sem leito.
 
 ## Dinheiro
 
