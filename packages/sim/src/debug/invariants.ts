@@ -52,6 +52,9 @@ export function checkInvariants(city: City, maxReports = 20): string[] {
     if (s >= 0) students[s]!++;
     const c = pop.clinic[p]!;
     if (c >= 0) patients[c]!++;
+    // UBS e hospital dividem o mesmo contador de pacientes do prédio.
+    const hb = pop.hospital[p]!;
+    if (hb >= 0) patients[hb]!++;
     if (h >= 0 && hh.home[h]! >= 0) residents[hh.home[h]!]!++;
     if (city.age(p) < 0) add(`pessoa ${p}: idade negativa`);
   }

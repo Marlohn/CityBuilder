@@ -52,9 +52,15 @@ export function createGame(opts: SimOptions): Game {
   const game: Game = { sim, city, demo, growth, traffic, utilities, realism: [] };
   placeStartingRoad(sim);
   const onYearEnd = () => {
-    sim.treasury.closeYear();
+    const summary = sim.treasury.closeYear();
+    // Ano fechado: o calendário já virou, então o ano guardado é o anterior.
+    const year = sim.clock.year - 1;
+    // Guarda o breakdown financeiro junto dos contadores demográficos do ano.
+    city.year.revenueByCategory = { ...summary.revenueByCategory };
+    city.year.expensesByCategory = { ...summary.expensesByCategory };
     city.lastYear = city.year;
     city.year = emptyYear();
+    city.yearlyHistory.push({ year, ...summary, moneyEnd: sim.treasury.money });
     demo.closeYear();
     game.realism = computeRealism(city, demo, takeCensus(city));
   };

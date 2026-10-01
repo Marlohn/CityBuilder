@@ -38,11 +38,31 @@ export class Treasury {
     if (this.mode === "budget") this.money += amount;
   }
 
-  closeYear() {
-    this.lastYearRevenue = sum(this.revenue);
-    this.lastYearExpenses = sum(this.expenses);
+  closeYear(): {
+    revenue: number;
+    expenses: number;
+    balance: number;
+    revenueByCategory: Record<string, number>;
+    expensesByCategory: Record<string, number>;
+    selfFinanced: boolean;
+  } {
+    // Copia o breakdown antes de zerar: quem chama guarda na cidade.
+    const revenueByCategory = { ...this.revenue };
+    const expensesByCategory = { ...this.expenses };
+    const revenue = sum(this.revenue);
+    const expenses = sum(this.expenses);
+    this.lastYearRevenue = revenue;
+    this.lastYearExpenses = expenses;
     this.revenue = {};
     this.expenses = {};
+    return {
+      revenue,
+      expenses,
+      balance: revenue - expenses,
+      revenueByCategory,
+      expensesByCategory,
+      selfFinanced: revenue >= expenses,
+    };
   }
 }
 
