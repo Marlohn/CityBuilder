@@ -1,5 +1,22 @@
 # Diário da avaliação: agentes Hermes + kanban + LLM grátis (CityBuilder)
 
+## 01/10 — deploy confirmado e correção de fila parada
+
+O PR #133 entrou em 01/10 às 00:46:16Z, com CI verde, mas o servidor ainda usava sincronizador e perfis anteriores.
+As entregas da madrugada não são evidência do ciclo rápido. Deploy efetivo confirmado às **11:10:49Z**:
+clone de distribuição atualizado, cinco SOULs aplicados, timeouts de ferramentas em 900 s e ambiente local ativo.
+Nenhum clone de agente foi resetado pela supervisão.
+
+Logo após o deploy, não havia cartões ativos, apesar dos PRs #149, #151, #153 e #156 ainda abertos com `em-revisão`.
+O roteamento só chamava o gate de CI/main quando a chave da revisão nunca havia existido. Uma revisão concluída
+do mesmo SHA escondia o PR dos ciclos seguintes. Corrigido para reavaliar PR aberto, retomar revisão verde com
+chave própria e devolver falha ao Dev. Ajuste concluído sem novo commit também pode ser retomado, respeitando
+o limite total de três ajustes. Limite esgotado encaminha ao Arquiteto, em vez de abandonar o PR em silêncio.
+
+Validação da correção: cenários do harness sem rede e 21 regressões injetadas detectadas. CI completo permanece
+obrigatório antes de merge. Esta foi intervenção de implantação; a contagem de três entregas autônomas novas
+continua pendente, sem afirmar que a meta de dez minutos foi atingida.
+
 ## 30/09 à noite — ciclo rápido, entregas reais
 
 Pedido do dono: fábrica autônoma, buscando uma pequena entrega jogável a cada 10 minutos no conjunto dos projetos.
