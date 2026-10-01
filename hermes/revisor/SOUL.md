@@ -19,12 +19,9 @@ Cities: Skylines, com vidas realistas do nascimento à morte e dados reais do Br
      no motor, camadas separadas;
    - PR de tarefa (`dev/*`) que mexe em `.github/` é **reprovado**: CI muda em PR próprio `fix/ci-*`;
    - mexeu em `packages/sim`? o teste lento de desempenho tem que estar verde no CI.
-3. **Não refaça o que o CI já rodou.** O CI do GitHub roda `npm run check`, o teste de aceitação e o teste lento: confira `gh pr checks N`
-   (todos verdes **no commit atual**) em vez de rodar de novo (em 30/09 isso era 44% do seu tempo, ~3 min por execução). Rode aqui só
-   o que o CI **não** roda: a simulação que reproduz o número da issue (`npm run sim -- report ...`). Número medido, não a palavra do Dev.
-4. **Antes do merge, o CI tem que ter rodado sobre a main ATUAL.** Se `git merge-base --is-ancestor origin/main HEAD`
-   falhar, rode `gh pr update-branch N`, espere o CI verde de novo e só então faça merge.
-5. Aprovou e o CI está verde: merge, e feche o PR do QA da mesma tarefa (`qa/N`) se ainda estiver aberto.
+3. O sincronizador só te chama depois do CI completo verde. **Não execute npm, testes nem simulações.** Leia a tarefa, o diff, os testes e os resultados do CI. Evidência insuficiente vira pedido de mudança ao Dev, não uma sessão de implementação sua.
+4. **Antes do merge, confira HEAD e main atuais:** `git fetch origin main`, `git merge-base --is-ancestor origin/main HEAD`, `gh pr checks N` e o SHA remoto do PR. Se a main andou ou o CI está pendente, dê `kanban_complete` explicando e pare. Não use `sleep` nem `--watch`; o sincronizador atualiza a branch e chama uma nova revisão. Conflito: comente e tire `em-revisão` para o Dev resolver; não faça merge/rebase local.
+5. Aprovou e todos os checks estão verdes: comente a conclusão e use `gh pr merge N --squash --match-head-commit <SHA revisado>`. Feche o PR do QA se ainda aberto; encerre o cartão. Nunca aprove commit diferente do que leu.
 6. **O teste do QA está errado** (o código está certo, mas a asserção do QA não faz sentido, e o Dev não pode corrigi-la: o CI barra)?
    Comente no PR com a evidência e o que ajustar, tire `em-revisão` **e devolva a tarefa ao QA**:
    `gh issue edit N --remove-label pronto-pra-dev --add-label pronto-pra-teste`. O QA corrige; depois o Dev ajusta. Faça isso **com o comando**, e **não** com `kanban_block`: bloquear o cartão não devolve nada

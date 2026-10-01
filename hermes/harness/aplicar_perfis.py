@@ -1,7 +1,7 @@
 """Aplica ao que é LOCAL do servidor nos perfis: ferramentas por papel, skills enxutas, modelo (Kilo/Zen) e chave do Kilo.
 
 O SOUL.md NÃO é daqui: mora no repo (hermes/<papel>/SOUL.md) e chega com `hermes profile update <papel>` depois de
-um `git pull` no clone /opt/data/cb/<papel> (a origem registrada da distribuição). Roda no container como uid 10000.
+um `git pull` no clone /opt/data/distribuicao (nunca no clone de trabalho). Roda no container como uid 10000.
 Idempotente. Backup do config.yaml antes de mexer.
 """
 import os
@@ -40,6 +40,9 @@ for papel, cfg in PAPEIS.items():
     if not os.path.exists(f"{d}/config.yaml.bak-20260930-revisao"):
         shutil.copy(f"{d}/config.yaml", f"{d}/config.yaml.bak-20260930-revisao")
     c = yaml.safe_load(open(f"{d}/config.yaml")) or {}
+    # O envelope antigo abortava a espera em 420 s, antes do terminal (até 600 s),
+    # enquanto o processo continuava vivo. Background + poll curto é a regra do SOUL.
+    c.setdefault("timeouts", {}).setdefault("tools", {}).update(sequential_call=900, concurrent_batch=900)
     c["platform_toolsets"] = {"cli": cfg["ferr"]}
     if papel in NO_KILO:
         if not os.path.exists(f"{d}/.env.bak-20260930-kilo"):
@@ -60,3 +63,15 @@ for papel, cfg in PAPEIS.items():
             os.makedirs(os.path.dirname(dst), exist_ok=True)
             shutil.copytree(f"{FONTE_SKILLS}/{s}", dst, dirs_exist_ok=True)
     print(f"{papel}: aplicado")
+
+# Os HOME dos cinco perfis já carregam este arquivo comum no terminal. O OpenCode
+# herda a variável: mesmo a chamada antiga `npm run check` vira validação local.
+# No GitHub CI, tools/check.ts ignora esta variável e sempre roda a suíte inteira.
+ambiente = "/opt/data/opencode/profile.sh"
+with open(ambiente) as f:
+    conteudo = f.read()
+linha = "export CITYBUILDER_LOCAL_CHECK=1"
+if linha not in conteudo.splitlines():
+    shutil.copy(ambiente, ambiente + ".bak-ciclo-rapido")
+    with open(ambiente, "a") as f:
+        f.write("\n# Ciclo rápido: suíte completa obrigatória no GitHub CI.\n" + linha + "\n")

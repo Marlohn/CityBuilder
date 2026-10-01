@@ -6,3 +6,10 @@ health:
   # tiveram 36% menos mortes por doenças cardiovasculares (Rasella et al., BMJ 2014), e essas
   # doenças são ~30% dos óbitos no Brasil (Ministério da Saúde). 30% x 36% ≈ 11%.
   uncoveredMortalityMultiplier: 1.11
+  # Portaria GM/MS 1.101/2002: 2,5 a 3 leitos para cada 1.000 habitantes.
+  hospitalBedsPer1000: 2.5
+  # PENDENTE: distância máxima por rodovia até o hospital. Usado 15 km: cerca de 30 min de viagem a 30 km/h,
+  # o alvo de qualidade de acesso de cidades mediums.
+  hospitalMaxDistanceMeters: 15000
+  # PENDENTE: fração de redução da mortalidade de quem tem leito disponível. Usado 0,15.
+  hospitalMortalityReduction: 0.15

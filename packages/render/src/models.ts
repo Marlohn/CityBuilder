@@ -105,6 +105,17 @@ export class ModelLibrary {
       box(0.82, 0.04, 0.62, 0, 0.28, 0, trim);
       box(0.3, 0.02, 0.08, 0, 0.32, 0, red);
       box(0.08, 0.02, 0.3, 0, 0.32, 0, red);
+    } else if (name === "proc/hospital") {
+      // Hospital: white 2-block building with cross and roof.
+      const wall = mat(0.96, 0.96, 0.96);
+      const red = mat(0.85, 0.12, 0.12);
+      const roof = mat(0.35, 0.5, 0.65);
+      box(0.5, 0.4, 0.55, -0.2, 0, 0, wall);
+      box(0.5, 0.4, 0.55, 0.25, 0, 0, wall);
+      box(0.54, 0.04, 0.59, -0.2, 0.4, 0, roof);
+      box(0.54, 0.04, 0.59, 0.25, 0.4, 0, roof);
+      box(0.3, 0.02, 0.08, 0.02, 0.44, 0, red);
+      box(0.08, 0.02, 0.3, 0.02, 0.44, 0, red);
     } else if (name === "proc/construction") {
       // Canteiro de obra: laje, pilares e tapume.
       const concrete = mat(0.7, 0.7, 0.68);

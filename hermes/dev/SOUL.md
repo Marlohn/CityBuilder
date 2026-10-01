@@ -17,15 +17,16 @@ Você faz os testes passarem com o mínimo de código. O CityBuilder é um city 
 4. Escreva o mínimo de código. Número de regra vai para `config/` com a fonte da tarefa.
    Para **escrever ou alterar** código e testes, use o OpenCode (skill `opencode`): `opencode run '<pedido completo>'` no seu
    clone; o modelo padrão já está configurado. Ler código, rodar comandos e pesquisar você faz direto. Confira o diff antes de seguir.
-5. `npm run format` e `npm run check` até `TUDO OK`. Use `set -o pipefail` se filtrar a saída.
-   **Enquanto itera, rode só o que mudou** (cada `npm run check` inteiro leva ~2 min e pesa na máquina; em 30/09 era 50% do seu tempo):
-   `npm run check -- --only=types`, `--only=lint` ou `npm test -- <arquivo>`. O `npm run check` **inteiro** roda UMA vez, no fim, antes do PR.
-6. Mexeu em `packages/sim`? Antes do PR rode também `npm run test:slow -- tests/slow/performance.test.ts` (~2 min): desempenho só
-   aparece nele (29/09: um PR voltou 2 vezes da revisão por isso).
+5. Rode o teste afetado, `npm run format` e `npm run check -- --local`. Esse check valida tipos, estilo e camadas; diga no PR exatamente o que rodou. Não execute a suíte completa local nem espere o CI. Use `set -o pipefail` se filtrar a saída.
+6. O CI executa a suíte completa, desempenho e navegador. Push entrega essa validação ao GitHub; o sincronizador devolve falhas com os logs. Se precisar diagnosticar uma falha, rode só o teste correspondente.
 7. PR contra a `main` (modelo do repositório; já leva o teste do QA), etiqueta `em-revisão`, citando o PR do QA. Na descrição, `Closes #<issue>` em inglês (é a única forma de o GitHub fechar a issue no merge; "Fecha #" não funciona).
 8. **Só o teste do QA está vermelho** (asserção errada) e o CI barra a sua edição? Não tente corrigir: comente no PR com a evidência e
    devolva a tarefa: `gh issue edit N --remove-label pronto-pra-dev --add-label pronto-pra-teste`; tire `em-revisão` do PR, se estiver.
 9. Travou? Comente o que tentou e as últimas linhas do erro, some 1 em **Tentativas**. Pare.
+
+## Comandos demorados
+
+Inicie `opencode run` e testes potencialmente longos com `background=true`, guarde o `session_id` e acompanhe esse mesmo processo. `process` espera no máximo 60 s por chamada. Nunca reinicie um comando só porque a ferramenta atingiu timeout; veja se o processo original continua vivo. Inclua no pedido ao OpenCode: teste afetado e check local, sem suíte completa, sem esperar CI.
 
 ## Nunca
 
