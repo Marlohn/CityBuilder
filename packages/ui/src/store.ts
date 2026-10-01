@@ -15,7 +15,7 @@ export interface UiState {
   speed: number;
   selectedBuilding: BuildingView | null;
   selectedPerson: number | null;
-  panel: "city" | "people" | "realism" | "perf" | "help";
+  panel: "city" | "finances" | "people" | "realism" | "perf" | "help";
   /** Painel lateral aberto ou recolhido (a escolha fica guardada no navegador). */
   panelOpen: boolean;
   toasts: Toast[];
