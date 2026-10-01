@@ -70,6 +70,30 @@ export interface RealismItem {
   source: string;
 }
 
+/** Resumo de um ano fechado para o gráfico do saldo (só leitura para a tela). */
+export interface YearSummary {
+  year: number;
+  revenue: number;
+  expenses: number;
+  /** Receita menos o custeio (educação, saúde, água/luz e manutenção). */
+  netOperating: number;
+  /** Obras do ano (investimento, uma vez). */
+  investment: number;
+  /** Dinheiro em caixa no fim do ano. */
+  moneyEnd: number;
+}
+
+/** Finanças por categoria do último ano fechado, com o histórico anual. */
+export interface FinanceCategorySummary {
+  revenueByCategory: Record<string, number>;
+  expensesByCategory: Record<string, number>;
+  /** revenue - operating cost (custodia) */
+  netOperating: number;
+  /** obras do ano (investimento, uma vez) */
+  investment: number;
+  yearlyHistory: YearSummary[];
+}
+
 export interface StatsView {
   tick: number;
   /** Dia do jogo (= ano de vida). */
@@ -107,6 +131,8 @@ export interface StatsView {
   /** Obras barradas por falta de água/luz no último tick do growth (só informação). */
   construction: { blockedByWater: number; blockedByPower: number };
   realism: RealismItem[];
+  /** Finanças por categoria do último ano fechado, com o histórico anual. */
+  finance: FinanceCategorySummary;
   perf: PerfView;
 }
 
