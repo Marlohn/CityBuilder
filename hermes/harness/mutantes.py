@@ -11,7 +11,9 @@ MUTANTES = {
     "arquivado deixa de contar como cartão existente":
         ('        k = t[1:t.index("]")]\n', '        k = t[1:t.index("]")]\n        if c.get("status") == "archived":\n            continue\n'),
     "revisão cria 2º cartão aberto pro mesmo PR":
-        (' and not aberto(existentes, f"revisar-pr-{n}-")', ''),
+        ('if not aberto(existentes, f"revisar-pr-{n}-") and preparar_revisao(pr):', 'if preparar_revisao(pr):'),
+    "cartao concluido esconde PR ainda aberto":
+        ('if not aberto(existentes, f"revisar-pr-{n}-") and preparar_revisao(pr):', 'if chave not in existentes and not aberto(existentes, f"revisar-pr-{n}-") and preparar_revisao(pr):'),
     "revisão aceita CI incompleto":
         ('return "verde" if obrigatorios <= verdes else "aguardando"', 'return "verde"'),
     "conflito chega ao revisor":
