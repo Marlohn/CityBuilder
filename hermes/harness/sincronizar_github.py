@@ -250,13 +250,24 @@ def escalar_pr(pr, existentes, motivo):
         if chave is None:
             return
     if chave:
+        diagnostico = f"dev-diagnostico-pr-{pr['number']}"
+        if diagnostico in existentes:
+            orcamento = (
+                f"Orçamento apurado no kanban: [{diagnostico}], status={existentes[diagnostico]}; "
+                "tentativa adicional já utilizada. Não adicione pronto-pra-dev no PR: essa etiqueta não libera "
+                "outra tentativa. Mesmo um novo commit do QA não reinicia esse orçamento. "
+                "Se a tentativa não resolveu, crie tarefas menores com a evidência e feche o PR antigo com o motivo; "
+                "não conclua dizendo apenas que o Dev deve fazer merge ou aguardar.")
+        else:
+            orcamento = (
+                f"Orçamento apurado no kanban: [{diagnostico}] ausente; tentativa adicional ainda não utilizada. "
+                "Causa no código comprovada e correção específica? Registre a evidência e "
+                "adicione pronto-pra-dev NO PR para autorizar uma única tentativa após diagnóstico.")
         criar(chave, f"Destravar PR #{pr['number']}: {pr['title']}", "arquiteto",
               f"O PR {pr['url']} continua aberto: {motivo}. Leia cartões e comentários, ache a causa e "
               "registre a decisão no PR. Não implemente a feature. Se a tarefa precisa ser quebrada, crie "
               "tarefas menores e feche o PR antigo com o motivo; se o teste está errado, encaminhe ao QA "
-              "pela etiqueta da issue. Causa no código comprovada e correção específica? Registre a evidência e "
-              "adicione pronto-pra-dev NO PR para autorizar uma única tentativa após diagnóstico. Se essa tentativa "
-              "já foi gasta, quebre em tarefas menores e feche o PR antigo; não autorize de novo. "
+              "pela etiqueta da issue. " + orcamento + " "
               "Não conclua com comentário sem encaminhamento. Não repita rodadas sem mudar a causa.", prioridade=25)
 
 
