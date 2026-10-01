@@ -48,6 +48,8 @@ async function lockStats(
               utilities: { ...(frozen as { utilities: object }).utilities, ...locked },
             };
           }
+          const lockedC = store.__qaConstruction;
+          if (lockedC) frozen = { ...frozen, construction: lockedC };
         }
         orig({ ...patch, stats: frozen });
       };
@@ -56,6 +58,9 @@ async function lockStats(
     const cur = store.get().stats;
     if (incoming.utilities) {
       store.__qaUtilities = { ...cur.utilities, ...incoming.utilities };
+    }
+    if (incoming.construction) {
+      store.__qaConstruction = incoming.construction;
     }
     store.set({
       stats: {
