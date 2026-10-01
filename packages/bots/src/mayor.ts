@@ -23,7 +23,12 @@ export interface MayorOptions {
   utilityReserve: number;
   /** População mínima para construir hospital (minPopulation do hospital em data/reference/cidade-real.yaml). */
   hospitalMinPopulation: number;
-  /** Constrói hospital quando mais que isto (pessoas) estão sem leito (PENDENTE, mesma ordem de grandeza do gatilho da UBS). */
+  /**
+   * Constrói hospital quando mais que isto (pessoas) estão fora do raio de
+   * health.hospitalMaxDistanceMeters (config/health.yaml), não falta de leito.
+   * PENDENTE: a Portaria GM/MS 1.101/2002 (config/health.yaml, hospitalBedsPer1000: 2,5)
+   * fixa leitos por 1.000 hab e não um raio de acesso, então não dá fonte para este gatilho.
+   */
   hospitalMinWithoutBeds: number;
 }
 
@@ -83,8 +88,12 @@ export class AutoMayor {
     this.lastBuildingCount = count;
     const stalled = this.stalledActions >= 2;
     // Serviços primeiro (como um prefeito de verdade): escola quando ~150 crianças estão sem vaga,
-    // UBS quando ~500 pessoas estão sem UBS, hospital quando ~500 pessoas estão sem leito
-    // (em cidade com pelo menos 8.000 hab). Sem dinheiro para o serviço, guarda dinheiro (não abre bairro).
+    // UBS quando ~500 pessoas estão sem UBS, hospital quando ~500 pessoas estão fora do raio do
+    // hospital (em cidade com pelo menos 8.000 hab). PENDENTE: este gatilho de ~500 conta pessoas
+    // fora do raio de health.hospitalMaxDistanceMeters (config/health.yaml), não falta de leito;
+    // a Portaria GM/MS 1.101/2002 (hospitalBedsPer1000: 2,5) fixa leitos por 1.000 hab e não um
+    // raio de acesso, então não dá fonte para ele. Sem dinheiro para o serviço, guarda dinheiro
+    // (não abre bairro).
     let saving = false;
     // Água e luz antes de tudo: sem sobra, a construtora para (poço é o jeito mais barato; 40% das
     // cidades brasileiras vivem só de água subterrânea, Atlas Águas/ANA).
@@ -104,9 +113,14 @@ export class AutoMayor {
       saving = !this.placeServiceNearDemand("escola", census.samples.school ?? []) || saving;
     if (census.withoutClinic > 500)
       saving = !this.placeServiceNearDemand("ubs", census.samples.health ?? []) || saving;
+    // Hospital só sai quando o ano já fechou no azul com folga para a operação.
+    // Resolvido aqui em packages/bots/src/mayor.ts (gatilho do hospital no update):
+    // antes o prefeito construía com 8.000 hab só olhando o caixa do momento, o caixa
+    // ia a negativo e a cidade travava sem abrir bairro; agora espera a receita crescer.
     if (
       census.population >= this.opts.hospitalMinPopulation &&
-      census.withoutHospital > this.opts.hospitalMinWithoutBeds
+      census.withoutHospital > this.opts.hospitalMinWithoutBeds &&
+      this.canAffordHospitalUpkeep()
     )
       saving = !this.placeServiceNearDemand("hospital", census.samples.hospital ?? []) || saving;
     if (saving && this.districts.length > 0) return;
@@ -288,6 +302,19 @@ export class AutoMayor {
 
   private zone(zone: ZoneKind, x0: number, y0: number, x1: number, y1: number) {
     this.send({ type: "zone", zone, x0, y0, x1, y1 });
+  }
+
+  /**
+   * Hospital só com o ano fechado no azul e folga para operar (não olha o caixa do momento).
+   * Sem ano fechado ainda, espera a receita crescer em vez de guardar dinheiro.
+   * No modo livre o dinheiro é infinito, então não espera o ano fechar.
+   */
+  private canAffordHospitalUpkeep(): boolean {
+    const treasury = this.game.sim.treasury;
+    if (treasury.mode === "sandbox") return true;
+    if (treasury.lastYearRevenue === 0) return false;
+    const upkeep = this.game.sim.buildings.catalog.find((b) => b.id === "hospital")?.upkeepPerYear ?? 0;
+    return treasury.lastYearRevenue - treasury.lastYearExpenses >= upkeep;
   }
 
   /**
