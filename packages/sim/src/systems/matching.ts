@@ -5,7 +5,14 @@
 import type { City } from "../city";
 import type { IndexedSet } from "../core/indexedSet";
 import type { Candidate } from "../markets/markets";
-import { enroll, hire, householdLeavesCity, moveHouseholdTo, registerClinic } from "../people/actions";
+import {
+  enroll,
+  hire,
+  householdLeavesCity,
+  moveHouseholdTo,
+  registerClinic,
+  registerHospital,
+} from "../people/actions";
 import { EV, UNMET } from "../people/events";
 import { OUTSIDE_JOB, ROLE } from "../people/population";
 import type { System } from "../sim";
@@ -127,13 +134,22 @@ export class MatchingSystem implements System {
     const city = this.city;
     const { pop, markets } = city;
     const maxM = city.config.health.maxDistanceMeters;
+    const maxHospitalM = city.config.health.hospitalMaxDistanceMeters;
     this.take(city.seekClinic, "clinic", n, (p) => {
       if (pop.triedClinic[p] === markets.clinics.version) return;
       pop.triedClinic[p] = markets.clinics.version;
       const access = city.homeAccess(p);
       if (access < 0) return;
       const c = markets.clinics.findNear(city.rng.market, access, 8, maxM);
-      if (c) registerClinic(city, p, c.building);
+      if (c) {
+        registerClinic(city, p, c.building);
+        return;
+      }
+      // Sem UBS perto: tenta o hospital (segundo nível, alcance maior).
+      if (pop.hospital[p]! < 0) {
+        const hb = markets.hospitals.findNear(city.rng.market, access, 8, maxHospitalM);
+        if (hb) registerHospital(city, p, hb.building);
+      }
     });
   }
 

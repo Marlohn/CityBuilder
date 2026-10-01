@@ -63,6 +63,7 @@ export class Population {
   job = new Int32Array(0);
   school = new Int32Array(0);
   clinic = new Int32Array(0);
+  hospital = new Int32Array(0);
   eduYears = new Uint8Array(0);
   eduLevel = new Uint8Array(0);
   wantsUniversity = new Uint8Array(0);
@@ -125,6 +126,7 @@ export class Population {
     this.job[id] = -1;
     this.school[id] = -1;
     this.clinic[id] = -1;
+    this.hospital[id] = -1;
     this.lastEvent[id] = -1;
     this.unemployedSinceTick[id] = -1;
     this.triedJob[id] = -1;
@@ -153,6 +155,7 @@ export class Population {
     this.job = growTo(this.job, len);
     this.school = growTo(this.school, len);
     this.clinic = growTo(this.clinic, len);
+    this.hospital = growTo(this.hospital, len);
     this.eduYears = growTo(this.eduYears, len);
     this.eduLevel = growTo(this.eduLevel, len);
     this.wantsUniversity = growTo(this.wantsUniversity, len);
