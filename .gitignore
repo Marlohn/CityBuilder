@@ -12,3 +12,7 @@ out/
 # Chaves dos perfis do Hermes (nunca no git)
 hermes/**/.env
 hermes/**/auth.json
+
+# Cache Python do harness
+__pycache__/
+*.pyc

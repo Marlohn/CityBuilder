@@ -48,20 +48,83 @@ assert s.aberto({"revisar-pr-5-aaa": "ready"}, "revisar-pr-5-") and not s.aberto
 print("chaves/rodadas: ok")
 
 # ---- revisões e ajustes -----------------------------------------------------------------------------------------
+real_preparar = s.preparar_revisao
+s.preparar_revisao = lambda pr: True  # roteamento puro; o gate real é verificado abaixo
 s.revisoes([pr(10, "aaaaaaa", "dev/1", ["em-revisão"])], {}); cria("revisar-pr-10-aaaaaaa")
-s.revisoes([pr(10, "aaaaaaa", "dev/1", ["em-revisão"])], {"revisar-pr-10-aaaaaaa": "done"}); cria()
+s.revisoes([pr(10, "aaaaaaa", "dev/1", ["em-revisão"])], {"revisar-pr-10-aaaaaaa": "done"}); cria("revisar-pr-10-aaaaaaa-retomar-r1")
+_retomadas = {"revisar-pr-10-aaaaaaa": "done", **{f"revisar-pr-10-aaaaaaa-retomar-r{n}": "done" for n in (1, 2, 3)}}
+s.revisoes([pr(10, "aaaaaaa", "dev/1", ["em-revisão"])], _retomadas); cria("arquiteto-destravar-pr-10-aaaaaaa")
+s.revisoes([pr(10, "aaaaaaa", "dev/1", ["em-revisão"])], {**_retomadas, "arquiteto-destravar-pr-10-aaaaaaa": "done"}); cria("arquiteto-destravar-pr-10-aaaaaaa-retomar-r1")
 s.revisoes([pr(10, "aaaaaaa", "dev/1", ["em-revisão"])], {"revisar-pr-10-bbbbbbb": "ready"}); cria()  # 1 aberto por PR
 s.revisoes([pr(10, "aaaaaaa", "dev/1", ["em-revisão"])], {"revisar-pr-10-bbbbbbb": "done"}); cria("revisar-pr-10-aaaaaaa")
 s.revisoes([pr(10, "aaaaaaa", "dev/1")], {}); cria("dev-ajuste-pr-10-aaaaaaa")
 s.revisoes([pr(10, "aaaaaaa", "fix/main-x")], {}); cria("dev-ajuste-pr-10-aaaaaaa")
 s.revisoes([pr(10, "aaaaaaa", "qa/1")], {}); cria()  # PR do QA sem etiqueta não vai pro dev
 s.revisoes([pr(10, "aaaaaaa", "dev/1")], {"dev-ajuste-pr-10-bbbbbbb": "ready"}); cria()  # já tem um aberto
-s.revisoes([pr(10, "ccccccc", "dev/1")], {f"dev-ajuste-pr-10-{c}": "done" for c in "xyz"}); cria()  # 3 ajustes: acabou
+s.revisoes([pr(10, "ccccccc", "dev/1")], {f"dev-ajuste-pr-10-{c}": "done" for c in "xyz"}); cria("arquiteto-destravar-pr-10-ccccccc")
+_ajustes = {f"dev-ajuste-pr-10-{c}": "done" for c in "xyz"}
+s.revisoes([pr(10, "ccccccc", "dev/1")], {**_ajustes, "arquiteto-destravar-pr-10-bbbbbbb": "running"}); cria()
+s.revisoes([pr(10, "ccccccc", "dev/1")], {**_ajustes, "arquiteto-destravar-pr-10-bbbbbbb": "ready"}); cria()
+s.revisoes([pr(10, "ccccccc", "dev/1")], {**_ajustes, "arquiteto-destravar-pr-100-bbbbbbb": "running"}); cria("arquiteto-destravar-pr-10-ccccccc")
+s.revisoes([pr(10, "aaaaaaa", "dev/1")], {"dev-ajuste-pr-10-aaaaaaa": "done"}); cria("dev-ajuste-pr-10-aaaaaaa-retomar-r1")
 s.revisoes([pr(10, "aaaaaaa", "dev/10", ["em-revisão"])], {}, {10}); cria()  # em revisão, mas a issue espera o QA: sem revisão repetida
 s.revisoes([pr(10, "aaaaaaa", "dev/10", ["em-revisão"])], {}, {11}); cria("revisar-pr-10-aaaaaaa")  # outra issue esperando: revisa normal
 s.revisoes([pr(10, "aaaaaaa", "dev/10")], {}, {10}); cria()  # issue 10 esperando o QA corrigir o teste: sem ajuste do dev
 s.revisoes([pr(10, "aaaaaaa", "dev/10")], {}, {11}); cria("dev-ajuste-pr-10-aaaaaaa")  # outra issue esperando: não afeta
+
+# Diagnóstico não reinicia orçamento: autorização explícita + decisão do SHA atual, uma tentativa por PR.
+_decisao = {**_ajustes, "arquiteto-destravar-pr-10-ccccccc": "done"}
+_pdiag = pr(10, "ccccccc", "dev/10", ["pronto-pra-dev"])
+s.revisoes([_pdiag], _ajustes); cria("arquiteto-destravar-pr-10-ccccccc")  # etiqueta sozinha não basta
+s.revisoes([pr(10, "ccccccc", "dev/10")], _decisao); cria("arquiteto-destravar-pr-10-ccccccc-retomar-r1")
+s.revisoes([_pdiag], _decisao); cria("dev-diagnostico-pr-10")
+assert any(a[:3] == ("pr", "edit", "10") and "pronto-pra-dev" in a for a in ESCRITOS)
+ESCRITOS.clear()
+s.revisoes([_pdiag], {**_decisao, "arquiteto-destravar-pr-10-ccccccc-retomar-r1": "running"}); cria()
+s.revisoes([_pdiag], {**_decisao, "dev-diagnostico-pr-10": "running"}); cria()
+for _fim in s.TERMINAIS:
+    s.revisoes([_pdiag], {**_decisao, "dev-diagnostico-pr-10": _fim}); cria("arquiteto-destravar-pr-10-ccccccc-retomar-r1")
+s.revisoes([_pdiag], _decisao, {10}); cria()  # nunca contorna retorno ao QA
+s.revisoes([pr(10, "ddddddd", "dev/10", ["pronto-pra-dev"])], _decisao); cria("arquiteto-destravar-pr-10-ddddddd")
+s.revisoes([_pdiag], {**_decisao, "dev-diagnostico-pr-10": "done",
+                     **{f"arquiteto-destravar-pr-10-ccccccc-retomar-r{n}": "done" for n in (1, 2, 3)}}); cria()
 print("revisões/ajustes: ok")
+s.preparar_revisao = real_preparar
+
+# CI ausente, parcial, vermelho ou branch atrasada nunca gasta uma vaga de revisão.
+_p = pr(10, "aaaaaaa", "dev/1", ["em-revisão"])
+assert s.estado_ci(_p) == "aguardando"
+_p["statusCheckRollup"] = [{"name": n, "status": "COMPLETED", "conclusion": "SUCCESS"}
+                         for n in s.CHECKS_CI | {"testes de aceitação protegidos"}]
+assert s.estado_ci(_p) == "verde"
+_p["statusCheckRollup"][0]["conclusion"] = "FAILURE"
+assert s.estado_ci(_p) == "falhou"
+_p["statusCheckRollup"][0]["conclusion"] = "SKIPPED"
+assert s.estado_ci(_p) == "aguardando"
+_p["statusCheckRollup"][0]["conclusion"] = "SUCCESS"
+_gh_gate = s.gh
+s.gh = lambda *a: "0"
+assert s.preparar_revisao(_p)
+_p["statusCheckRollup"][0]["conclusion"] = "FAILURE"
+s.revisoes([_p], {"revisar-pr-10-aaaaaaa": "done"}); cria()
+assert any(a[:2] == ("pr", "edit") for a in ESCRITOS), "CI vermelho precisa voltar ao Dev mesmo após cartão concluído"
+ESCRITOS.clear()
+_p["statusCheckRollup"][0]["conclusion"] = "SUCCESS"
+_p["mergeStateStatus"] = "UNKNOWN"
+assert not s.preparar_revisao(_p)
+_p["mergeStateStatus"] = "DIRTY"
+assert not s.preparar_revisao(_p)
+assert any(a[:2] == ("pr", "comment") for a in ESCRITOS)
+assert any(a[:2] == ("pr", "edit") for a in ESCRITOS)
+ESCRITOS.clear()
+_p["mergeStateStatus"] = "CLEAN"
+s.gh = lambda *a: "1"
+assert not s.preparar_revisao(_p)
+assert ESCRITOS[0][0] == "api" and "update-branch" in ESCRITOS[0][1]
+assert any("expected_head_sha=" in a for a in ESCRITOS[0])
+s.gh = _gh_gate
+ESCRITOS.clear()
+print("gate de CI/main: ok")
 
 # ---- main vermelha ----------------------------------------------------------------------------------------------
 SHA = "1234567" + "0" * 33
@@ -104,17 +167,24 @@ s.gh = gh_issues(dev=[iss(1, ARQ), iss(2, ARQ), iss(3, "Depende de #4\n"), iss(4
 s.tarefas(todas, [], {}); cria("dev-issue-1-r1", "dev-issue-4-r1")  # #2 espera o arquivo, #3 espera a #4
 s.gh = gh_issues(dev=[iss(1, ARQ)])
 s.tarefas(todas, [pr(9, "aaaaaaa", "dev/1", corpo="Closes #1")], {}); cria()  # PR aberto já fecha a #1
+s.tarefas(todas, [pr(9, "aaaaaaa", "dev/1", corpo="Descrição atualizada sem fechamento")], {"dev-issue-1-r1": "done"}); cria()  # #180 perdeu Closes ao editar: ajuste do PR, não outra tarefa
+s.tarefas(todas, [pr(9, "aaaaaaa", "dev/1-extra", corpo="")], {}); cria("dev-issue-1-r1")  # nome parecido não reserva a issue
 s.tarefas(todas, [pr(9, "aaaaaaa", "qa/1", corpo="Closes #1 (rascunho)")], {}); cria("dev-issue-1-r1")  # rascunho do QA não segura o dev
 esg = {f"dev-issue-1-r{n}": "done" for n in (1, 2, 3)}
 s.tarefas(todas, [], esg); cria("arquiteto-quebrar-1")
 assert any(a[:2] == ("issue", "comment") for a in ESCRITOS), "tem que comentar na issue (rastro)"; ESCRITOS.clear()
-s.tarefas(todas, [], {**esg, "arquiteto-quebrar-1": "done"}); cria()  # só uma vez
+s.tarefas(todas, [], {**esg, "arquiteto-quebrar-1": "done"}); cria("arquiteto-quebrar-1-retomar-r1")
+s.tarefas(todas, [], {**esg, "arquiteto-quebrar-1": "running"}); cria()
+s.tarefas(todas, [], {**esg, "arquiteto-quebrar-1": "done", "arquiteto-quebrar-1-retomar-r1": "ready"}); cria()
+s.tarefas(todas, [], {**esg, "arquiteto-quebrar-1": "done", **{f"arquiteto-quebrar-1-retomar-r{n}": "done" for n in (1, 2, 3)}}); cria()
 s.tarefas(todas, [], {**esg, "dev-issue-1-r3": "running"}); cria()  # rodada aberta: não quebra ainda
 s.gh = gh_issues(dev=[iss(30, etiquetas=("roadmap", "pronto-pra-dev"))])
 s.tarefas(todas, [], {}); cria()  # item do roadmap com a etiqueta errada: nunca vira cartão
 s.gh = gh_issues(qa=[iss(1), iss(2)])
 s.tarefas(todas, [pr(9, "aaaaaaa", "dev/2", corpo="Closes #2")], {})
 assert [(c[0], c[2]) for c in CRIADOS] == [("qa-issue-1-r1", 10), ("qa-issue-2-r1", 25)], CRIADOS; CRIADOS.clear()  # QA que destrava PR pronto passa na frente
+s.tarefas(todas, [pr(9, "aaaaaaa", "dev/2", corpo="")], {})
+assert [(c[0], c[2]) for c in CRIADOS] == [("qa-issue-1-r1", 10), ("qa-issue-2-r1", 25)], CRIADOS; CRIADOS.clear()  # branch conserva prioridade mesmo sem Closes
 s.gh = gh_issues(qa=[iss(1)])
 s.tarefas(todas, [], {f"qa-issue-1-r{n}": "archived" for n in (1, 2, 3)}); cria("arquiteto-quebrar-1")  # arquivado também gasta rodada
 s.gh = real_gh; ESCRITOS.clear()

@@ -108,6 +108,29 @@ Toda receita termina igual: `npm run format`, depois `npm run check` até dar `T
 
 Atenção: nos overrides (cenários e testes), objetos são mesclados, mas **arrays e tabelas numéricas são trocados inteiros** (`config/load.ts`).
 
+### 3.1b De onde vem o custo de uma obra (e o custo anual) de um prédio
+
+Dinheiro e prazo de `data/buildings.yaml` (`cost`, `upkeepPerYear`, `constructionMonths`) nunca
+saem de cabeça. O caminho é:
+
+1. **Obra (`cost`)**: procure o valor de convênio ou investimento publicado para a mesma unidade.
+   FNDE (escola), Novo PAC Cidades / Ministério da Saúde (UBS e hospital), ou preço do m² do
+   SINAPI (Caixa) quando não houver convênio: `custo = área construída x R$/m²`. Exemplo no arquivo:
+   hospital de 100 leitos por R$ 56 milhões = R$ 560 mil por leito; `560.000 x 90 = R$ 50.400.000`.
+2. **Custo anual (`upkeepPerYear`)**: despesa com pessoal da unidade, não a obra. Equipe de saúde
+   (Fiocruz, PNAB), gasto médio por internação x giro de leitos (SIH/DATASUS), VAAF do Fundeb para
+   escola. Escreva a conta: `valor mensal x 12`, `gasto por internação x internações por leito/ano`.
+3. **Prazo (`constructionMonths`)**: prazo em dias ou meses do instrumento oficial (resolução do
+   FNDE, portaria do Ministério da Saúde, cronograma da ordem de serviço). `dias / 30 = meses`.
+4. **Regra da conta**: o link da fonte e a conta que leva do dado ao número do jogo vão **na mesma
+   linha de comentário logo acima** do campo (é o que `tests/unit/costs-sourced.test.ts` cobra).
+   Comentário em português, número em reais/meses inteiros.
+5. **Sem fonte primária**: procure a conta que chega ao número a partir de um dado publicado. Se não
+   houver lastro, deixe `PENDENTE:` com o porquê e comente na issue. Nunca troque `PENDENTE` por
+   outro número sem fonte.
+6. Mudou dinheiro ou prazo, atualize o snapshot da cidade de referência
+   (`npm test -- tests/unit/reference -u`) e cole no PR o número antes e depois.
+
 ### 3.2 Um tipo de prédio novo (de zona)
 
 1. Adicione em `data/buildings.yaml` com `zone`, tamanho (`w`, `h`), `homes` ou `jobs`, `constructionMonths` e `models`. Cada número com a conta ou fonte no comentário.
@@ -184,6 +207,66 @@ O limite de tela (`DEFAULT_TRAFFIC_VISUALS.maxActive`, em `trafficVisuals.ts`) �
 3. Leitura em `view/report.ts` a partir de `city.lastYear`, com o helper `n()` (ponto de milhar).
 4. Não mexa em `packages/contract` nem no `StatsView`: contagem de ontem é dado do motor, não visão para a tela.
 
+### 3.13 Uma categoria financeira nova
+
+Para criar uma categoria de receita ou despesa (ex.: `taxa_lixo`), siga estas camadas:
+
+1. Lance o valor no motor em `packages/sim/src/systems/economy.ts` (custeio e receita anual)
+   ou em `packages/sim/src/commands/apply.ts` (obra pontual). Use `treasury.earn(valor, categoria)`
+   para receita, `treasury.charge(valor, categoria)` para custeio que acontece mesmo sem
+   dinheiro e `treasury.trySpend(valor, categoria)` para obra que só acontece com dinheiro.
+   Os três moram em `packages/sim/src/economy/treasury.ts` e guardam o breakdown do ano
+   corrente em `revenue`/`expenses` por categoria.
+2. Guarde no ano em `packages/sim/src/city.ts`: `YearCounters.revenueByCategory` e
+   `YearCounters.expensesByCategory` (ano corrente), mais `YearSummary` e
+   `City.yearlyHistory` (um resumo por ano fechado, com `moneyEnd`). O fechamento do ano
+   fica em `packages/sim/src/game.ts` (chama `treasury.closeYear()` e empurra em `yearlyHistory`).
+3. Classifique em `packages/sim/src/view/stats.ts`: se for custeio (repete todo ano, ex.:
+   `educacao`, `saude`, `agua_e_luz`, `manutencao_vias`), some em `operatingCost`; se for obra
+   (uma vez, ex.: `obras_vias`, `obras_servicos`), some em `investmentCost`. O `netOperating`
+   é receita menos custeio; o investimento fica separado em `investment`.
+4. Exponha no contrato em `packages/contract/src/view.ts`: `FinanceCategorySummary`
+   (`revenueByCategory`, `expensesByCategory`, `netOperating`, `investment`, `yearlyHistory`)
+   e `YearSummary`. Não mude o significado de campos que já existem (o save e a tela usam eles).
+5. Mostre no relatório em `packages/sim/src/view/report.ts`, na seção `## Prefeitura`, com os
+   helpers `money()`/`n()`. Receita usa `Receita — <categoria>`, despesa usa `Despesa — <categoria>`
+   sob o subtítulo de custeio ou de investimento, conforme a classificação do passo 3.
+6. Mostre na UI em `packages/ui` (painel de finanças): leia só do `StatsView.finance` do contrato,
+   sem importar o motor. Nada de lógica de conta na tela, só exibição.
+
+### 3.14 Mudou uma regra que muda a cidade? Suba a versão do save
+
+O save é um replay (`packages/sim/src/save/replay.ts`): semente + comandos com o tick.
+Quando uma mudança de regra impede o save antigo de refazer a mesma cidade,
+suba `REPLAY_VERSION` em +1 e adicione um degrau em `MIGRATIONS` com a versão
+de destino como chave (ex.: `3: (r) => ({ ...r, version: 3 })`).
+
+1. Cada migração é uma função pura: recebe um `Replay` e devolve um `Replay` NOVO, sem mudar o original.
+2. A corrente é degrau por degrau: `applyMigrations` começa na versão do save e aplica `v -> v + 1` até a atual. Se faltar um degrau, recusa com erro em vez de abrir pela metade.
+3. Na escrita nada muda: `makeReplay` sempre grava na versão atual. A migração só acontece na leitura (`parseReplay`), sobre uma cópia.
+
+### 3.15 Renomeou ou tirou um comando? O que acontece com o save antigo
+
+O save antigo com o nome velho **é recusado** com mensagem em português
+(`comando inválido no tick <tick> (type "<type>")...`, em
+`packages/sim/src/save/commandCompat.ts`), em vez de abrir diferente ou pela
+metade. Abrir "do jeito que dá" refaria outra cidade com a mesma semente, e o
+replay deixaria de ser fiel: o certo é recusar e dizer tick, type e versão do
+save.
+
+A correção é escrever a migração, nunca afrouxar o `CommandSchema`:
+
+1. Suba `REPLAY_VERSION` e adicione o degrau em `MIGRATIONS`
+   (`packages/sim/src/save/replay.ts`) que renomeia/reescreve o comando velho
+   para o formato atual.
+2. A validação (`validateReplayCommands`) roda DEPOIS da migração, com o mesmo
+   `parseCommand` do contrato que a tela usa. Limite de regra em runtime (ex.:
+   `factor` da diretora fora da config) continua sendo recusado na hora de
+   jogar, não na abertura do save.
+3. Nunca remova nem renomeie um type no `CommandSchema`
+   (`packages/contract/src/commands.ts`) e nunca afrouxe o schema para o save
+   velho passar: saves antigos usam os nomes antigos.
+
 ---
 
 ## 4. Testes
@@ -215,6 +298,7 @@ O limite de tela (`DEFAULT_TRAFFIC_VISUALS.maxActive`, em `trafficVisuals.ts`) �
 
 ## 6. Armadilhas conhecidas (já aconteceram)
 
+- **Atualizar Playwright sem a imagem do CI:** o job de tela usa `mcr.microsoft.com/playwright:v1.63.0-noble`, com navegador e dependências prontos. Ao atualizar `@playwright/test`/`package-lock.json`, atualize também a imagem e a conferência de versão em `.github/workflows/ci.yml`. O comando e todos os testes de tela continuam iguais; não reinstale dependências via apt em cada execução.
 - **Esconder o erro com `| tail`:** `npm run check | tail` devolve sucesso mesmo quando falha. Use `set -o pipefail` antes.
 - **Idade no aniversário:** quem faz aniversário hoje viveu `idade - 1` anos completos. Usar a idade nova zerou a mortalidade infantil.
 - **Ordem dos eventos:** registre a chegada antes de mover a família para a casa, senão o verificador acha alguém "surgindo do nada".
@@ -222,6 +306,9 @@ O limite de tela (`DEFAULT_TRAFFIC_VISUALS.maxActive`, em `trafficVisuals.ts`) �
 - **Pedidos de rota em ganchos:** pedidos feitos dentro de `onBuildingRemoved` etc. também seguem a regra T+1. Não misture com as viagens do tick.
 - **Comprar sem vender:** qualquer coisa que as famílias adquirem (carro...) precisa de saída também, senão o número só sobe.
 - **Bot que para no meio:** o prefeito automático só abre uma etapa de bairro se tiver dinheiro para ela inteira. Rua solta = ninguém chega.
+- **Serviço caro esperando receita:** um serviço permanente (hospital) só entra quando a receita do último ano
+  fechado paga o `upkeepPerYear`; enquanto espera, o prefeito **não** marca `saving`, senão a cidade para de
+  abrir bairros e trava (`packages/bots/src/mayor.ts`).
 - **Formatador depois de editar por script:** o `npm run format` muda quebras de linha. Edite de novo só depois de reler o arquivo.
 
 ---
@@ -233,6 +320,7 @@ Mudou isto → atualize aquilo **no mesmo PR**:
 | Mudou | Atualize |
 |---|---|
 | Regra de jogo nova ou valor com fonte (ex.: rotina em `config/traffic.yaml`) | comentário no `config/*.yaml` e, se for grande, `docs/PLANO.md` |
+| Renomeou ou removeu um comando (save antigo com o nome velho) | receita 3.15: escreva a migração em `packages/sim/src/save/replay.ts`, nunca afrouxe o `CommandSchema`; a validação mora em `packages/sim/src/save/commandCompat.ts` |
 | Pasta ou pacote novo | seção 1 deste guia e o `AGENTS.md` do pacote |
 | Comando de terminal novo | tabela de comandos do `AGENTS.md` e o README |
 | Jeito novo de fazer algo comum | uma receita na seção 3 |

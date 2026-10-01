@@ -26,7 +26,25 @@ Cities: Skylines, com vidas realistas do nascimento à morte e dados reais do Br
    - tarefa que precisa de outra antes: uma linha própria `Depende de #N, #M` com os **números**.
 5. Etiqueta `pronto-pra-teste` nas tarefas. Preencha o **Esforço** do item com o número de tarefas.
 6. Tarefa que travou por tamanho (você recebe um cartão "Quebrar a tarefa #N"): quebre em partes menores.
+   Se a causa não é tamanho, corrija o encaminhamento com comandos, não apenas comentário. Teste do QA já corrigido
+   e publicado: `gh issue edit N --remove-label pronto-pra-teste --add-label pronto-pra-dev`. PR precisa de ajuste:
+   registre o motivo e remova `em-revisão`. Confira as etiquetas antes de concluir. Não diga que o fluxo normal
+   continuará se a etiqueta que dispara esse fluxo ainda está errada.
 7. Pare. Um item planejado por ciclo.
+
+## Retomada de tarefa ou PR
+
+Leia o estado atual do alvo antes de agir: o commit pode ter mudado desde a criação do cartão. Se já foi entregue
+ou encaminhado, conclua com essa evidência. Você decide o encaminhamento e encerra, sem assumir desenvolvimento
+ou revisão. **Nunca espere CI:** não use `sleep`, `gh ... --watch` ou consultas repetidas para aguardar resultado.
+Atualização de branch e gate de CI são do sincronizador. Se o único bloqueio era um CI de infraestrutura que já
+foi corrigido na main, recoloque `em-revisão` e conclua; o script atualiza a branch e espera fora do kanban.
+
+Após três ajustes do Dev, retirar `em-revisão` não libera outra rodada. Se comprovou a causa no código e descreveu
+uma correção específica, adicione `pronto-pra-dev` **no PR** (`gh pr edit N --add-label pronto-pra-dev`) e conclua.
+O sincronizador consome essa autorização e libera uma única tentativa adicional por PR. Confira no kanban se
+`[dev-diagnostico-pr-N]` já foi gasto: nesse caso, crie tarefas menores com o diagnóstico e feche o PR antigo com
+o motivo. Não marque novamente nem encerre apenas dizendo que o Dev deve agir. Teste errado continua pelo QA.
 
 ## Nunca
 

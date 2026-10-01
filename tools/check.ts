@@ -3,7 +3,8 @@
  * Pensado para agentes (LLMs): no fim sai "TUDO OK" ou a lista do que quebrou,
  * com as últimas linhas relevantes de cada falha.
  *
- * Opções: --fast (pula testes lentos marcados com SLOW=1), --only=<etapa>
+ * Opções: --local (tipos/estilo/camadas), --only=<etapa>, --full (suíte completa).
+ * No Hermes, CITYBUILDER_LOCAL_CHECK=1 evita repetir a suíte do CI no mini PC.
  */
 import { spawnSync } from "node:child_process";
 
@@ -29,10 +30,15 @@ const STEPS: Step[] = [
 
 const only = process.argv.find((a) => a.startsWith("--only="))?.split("=")[1];
 const fast = process.argv.includes("--fast");
+const local =
+  !process.env.CI &&
+  !process.argv.includes("--full") &&
+  (process.argv.includes("--local") || process.env.CITYBUILDER_LOCAL_CHECK === "1");
 const results: { step: Step; ok: boolean; ms: number; tail: string }[] = [];
 
 for (const step of STEPS) {
   if (only && step.id !== only) continue;
+  if (local && !only && step.id === "tests") continue;
   const t0 = Date.now();
   const r = spawnSync(step.cmd, step.args, {
     encoding: "utf8",
@@ -48,7 +54,11 @@ for (const step of STEPS) {
 
 const failed = results.filter((r) => !r.ok);
 if (failed.length === 0) {
-  process.stdout.write("\nTUDO OK\n");
+  process.stdout.write(
+    local && !only
+      ? "\nCHECK LOCAL OK (tipos, estilo, camadas). Rode o teste afetado; a suíte completa é obrigatória no CI antes do merge.\n"
+      : "\nTUDO OK\n",
+  );
   process.exit(0);
 }
 process.stdout.write(`\nQUEBROU: ${failed.map((f) => f.step.id).join(", ")}\n`);

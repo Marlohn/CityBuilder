@@ -105,3 +105,63 @@ describe("água e luz", () => {
     if (!far.ok) expect(far.reason).toMatch(/rio ou lago/);
   });
 });
+
+describe("totais de água e luz para o StatsView (issue #102)", () => {
+  // Soma manual do consumo em pessoas equivalentes (demolidos e abandonados fora, poço/ETA/subestação fora).
+  function manualUsed(game: Game): number {
+    const bs = game.sim.buildings;
+    let total = 0;
+    for (let b = 0; b < bs.count; b++) {
+      if (bs.state[b] === BSTATE.demolished || bs.state[b] === BSTATE.abandoned) continue;
+      const t = bs.typeOf(b);
+      if (t.service === "water" || t.service === "power") continue;
+      total += game.utilities.demandOf(t.homes, t.jobs);
+    }
+    return total;
+  }
+
+  it("used soma os prédios e capacity cobre o uso", () => {
+    const game = newCity("totais");
+    const s = game.sim;
+    s.step(3 * s.clock.ticksPerDay);
+    const totals = game.utilities.totals();
+    const manual = manualUsed(game);
+    expect(totals.water.used).toBe(manual);
+    expect(totals.power.used).toBe(manual);
+    expect(totals.water.capacity).not.toBeNull();
+    expect(totals.power.capacity).not.toBeNull();
+    expect(totals.water.capacity!).toBeGreaterThanOrEqual(totals.water.used);
+    expect(totals.power.capacity!).toBeGreaterThanOrEqual(totals.power.used);
+    // A visão arredonda para inteiro e diz que o sistema está ligado.
+    const view = statsView(game);
+    expect(view.utilities.enabled).toBe(true);
+    expect(view.utilities.water.used).toBe(Math.round(manual));
+    expect(view.utilities.power.used).toBe(Math.round(manual));
+    expect(view.utilities.water.capacity).toBe(Math.round(totals.water.capacity!));
+    expect(view.utilities.power.capacity).toBe(Math.round(totals.power.capacity!));
+  });
+
+  it("com o sistema desligado a capacity é null e o used continua", () => {
+    const { config, data } = loadDefaults({
+      world: { width: 128, height: 128, water: { enabled: false } },
+      economy: { mode: "sandbox" },
+      utilities: { enabled: false },
+    });
+    const game = createGame({ config, data, seed: "totais-desligado" });
+    const s = game.sim;
+    const mid = 64;
+    s.enqueue({ type: "buildRoad", kind: "street", x0: 30, y0: mid - 40, x1: 30, y1: mid });
+    s.enqueue({ type: "zone", zone: "residential_low", x0: 31, y0: mid - 40, x1: 32, y1: mid - 1 });
+    s.step(3 * s.clock.ticksPerDay);
+    const totals = game.utilities.totals();
+    expect(totals.water.capacity).toBeNull();
+    expect(totals.power.capacity).toBeNull();
+    expect(totals.water.used).toBe(manualUsed(game));
+    expect(totals.water.used).toBeGreaterThan(0);
+    const view = statsView(game);
+    expect(view.utilities.enabled).toBe(false);
+    expect(view.utilities.water.capacity).toBeNull();
+    expect(view.utilities.power.capacity).toBeNull();
+    expect(view.utilities.water.used).toBe(Math.round(totals.water.used));
+  });
+});

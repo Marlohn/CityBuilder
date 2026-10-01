@@ -50,6 +50,8 @@ export interface UnmetDesireCounts {
   school: number;
   university: number;
   health: number;
+  /** Pessoas sem leito de hospital. */
+  hospital: number;
   housing: number;
   job: number;
   transit: number;
@@ -68,6 +70,30 @@ export interface RealismItem {
   unit: string;
   status: "ok" | "low" | "high" | "insufficient-data";
   source: string;
+}
+
+/** Resumo de um ano fechado para o gráfico do saldo (só leitura para a tela). */
+export interface YearSummary {
+  year: number;
+  revenue: number;
+  expenses: number;
+  /** Receita menos o custeio (educação, saúde, água/luz e manutenção). */
+  netOperating: number;
+  /** Obras do ano (investimento, uma vez). */
+  investment: number;
+  /** Dinheiro em caixa no fim do ano. */
+  moneyEnd: number;
+}
+
+/** Finanças por categoria do último ano fechado, com o histórico anual. */
+export interface FinanceCategorySummary {
+  revenueByCategory: Record<string, number>;
+  expensesByCategory: Record<string, number>;
+  /** revenue - operating cost (custodia) */
+  netOperating: number;
+  /** obras do ano (investimento, uma vez) */
+  investment: number;
+  yearlyHistory: YearSummary[];
 }
 
 export interface StatsView {
@@ -94,11 +120,23 @@ export interface StatsView {
   vacantJobs: number;
   demand: { residential: number; commercial: number; industrial: number };
   unmet: UnmetDesireCounts;
+  /** Leitos de internação (hospital), não vaga de atenção básica da UBS. */
+  hospitalBeds: { total: number; occupied: number };
+  /** Água e luz em pessoas equivalentes (mesma unidade de demandOf): quanto a cidade usa e quanto tem. */
+  utilities: {
+    enabled: boolean;
+    water: { capacity: number | null; used: number };
+    power: { capacity: number | null; used: number };
+  };
   vehiclesMoving: number;
   /** Pessoas andando a pé agora (na tela). */
   peopleWalking: number;
   cars: number;
+  /** Obras barradas por falta de água/luz no último tick do growth (só informação). */
+  construction: { blockedByWater: number; blockedByPower: number };
   realism: RealismItem[];
+  /** Finanças por categoria do último ano fechado, com o histórico anual. */
+  finance: FinanceCategorySummary;
   perf: PerfView;
 }
 

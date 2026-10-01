@@ -115,6 +115,7 @@ export class Markets {
   readonly jobs: VacancyMarket;
   readonly schools: VacancyMarket;
   readonly clinics: VacancyMarket;
+  readonly hospitals: VacancyMarket;
 
   constructor(
     private buildings: Buildings,
@@ -150,11 +151,18 @@ export class Markets {
       (id) => b.patientsCapacity(id),
       (id) => b.patients[id]!,
     );
+    this.hospitals = new VacancyMarket(
+      b,
+      network,
+      world,
+      (id) => b.patientsCapacity(id),
+      (id) => b.patients[id]!,
+    );
   }
 
   /** Liga a regra "só recebe gente se tiver água e luz" em todos os mercados. */
   setServed(fn: (b: number) => boolean) {
-    for (const m of [this.housing, this.jobs, this.schools, this.clinics]) m.served = fn;
+    for (const m of [this.housing, this.jobs, this.schools, this.clinics, this.hospitals]) m.served = fn;
   }
 
   updateAll(b: number) {
@@ -162,6 +170,7 @@ export class Markets {
     this.jobs.update(b);
     this.schools.update(b);
     this.clinics.update(b);
+    this.hospitals.update(b);
   }
 
   /**

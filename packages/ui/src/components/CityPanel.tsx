@@ -5,6 +5,7 @@ const UNMET_LABELS: Record<keyof StatsView["unmet"], string> = {
   school: "Crianças sem vaga na escola",
   university: "Jovens querendo faculdade (não há)",
   health: "Pessoas sem UBS por perto",
+  hospital: "Pessoas sem hospital por perto",
   housing: "Queriam uma casa e não acharam",
   job: "Procurando emprego",
   transit: "Recusaram emprego (longe e sem carro)",

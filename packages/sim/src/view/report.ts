@@ -54,16 +54,46 @@ export function reportText(game: Game): string {
     else if (sim.buildings.state[i] === 0) building++;
   }
   lines.push(`Prédios: ${n(active)} funcionando, ${n(building)} em obra`);
+  lines.push(`Leitos de hospital: ${n(s.hospitalBeds.total)} (${n(s.hospitalBeds.occupied)} ocupados)`);
   lines.push("");
   lines.push("## Desejos não atendidos");
   lines.push(
-    `Crianças sem escola: ${n(s.unmet.school)} · querem faculdade: ${n(s.unmet.university)} · sem UBS: ${n(s.unmet.health)} · famílias esperando casa: ${n(s.unmet.housing)} · desempregados: ${n(s.unmet.job)} · recusaram emprego por distância: ${n(s.unmet.transit)} · sem água: ${n(s.unmet.water)} · sem luz: ${n(s.unmet.power)}`,
+    `Crianças sem escola: ${n(s.unmet.school)} · querem faculdade: ${n(s.unmet.university)} · sem UBS: ${n(s.unmet.health)} · sem hospital: ${n(s.unmet.hospital)} · famílias esperando casa: ${n(s.unmet.housing)} · desempregados: ${n(s.unmet.job)} · recusaram emprego por distância: ${n(s.unmet.transit)} · sem água: ${n(s.unmet.water)} · sem luz: ${n(s.unmet.power)}`,
   );
   lines.push("");
   lines.push("## Prefeitura");
   lines.push(
     `Saldo: ${money(s.money)} · receita no último ano: ${money(s.lastYearRevenue)} · despesa: ${money(s.lastYearExpenses)}`,
   );
+  // Receita por categoria do último ano fechado (chave do FinanceCategorySummary).
+  for (const [category, v] of Object.entries(s.finance.revenueByCategory)) {
+    lines.push(`Receita — ${category}: ${money(v)}`);
+  }
+  // Despesa separada como o motor separa (ver operatingCost/investmentCost em view/stats.ts).
+  const operating = ["educacao", "saude", "agua_e_luz", "manutencao_vias"];
+  const investment = ["obras_vias", "obras_servicos"];
+  // Subtítulo do custeio: gasto que se repete todo ano.
+  lines.push("Despesa de custeio (repete todo ano)");
+  for (const category of operating) {
+    const v = s.finance.expensesByCategory[category];
+    if (v === undefined) continue;
+    lines.push(`Despesa — ${category}: ${money(v)}`);
+  }
+  // Subtítulo do investimento: obra que acontece uma vez.
+  lines.push("Despesa de investimento (obras, uma vez)");
+  for (const category of investment) {
+    const v = s.finance.expensesByCategory[category];
+    if (v === undefined) continue;
+    lines.push(`Despesa — ${category}: ${money(v)}`);
+  }
+  // Categoria nova que não é nem custeio nem obra conhecida: mostra mesmo assim.
+  for (const [category, v] of Object.entries(s.finance.expensesByCategory)) {
+    if (operating.includes(category) || investment.includes(category)) continue;
+    lines.push(`Despesa — ${category}: ${money(v)}`);
+  }
+  lines.push(`A cidade se paga? ${money(s.finance.netOperating)}`);
+  const last = s.finance.yearlyHistory[s.finance.yearlyHistory.length - 1];
+  if (last) lines.push(`Saldo no fim do ano: ${money(last.moneyEnd)}`);
   const adjusted = Object.entries(sim.modifiers).filter(([, v]) => v !== 1);
   if (adjusted.length > 0)
     lines.push(`Ajustes da diretora (IA) em vigor: ${adjusted.map(([k, v]) => `${k}=${v}`).join(", ")}`);

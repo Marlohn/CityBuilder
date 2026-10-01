@@ -16,14 +16,18 @@ import type { City } from "../city";
 import type { System } from "../sim";
 import { BSTATE } from "../world/buildings";
 
-type Kind = "water" | "power";
+type Kind = "water" | "power" | "sewage";
 
 export class UtilitiesSystem implements System {
   readonly name = "utilities";
   private seenStructure = -1;
   private seenRoads = -1;
   /** Capacidade sobrando por componente da rede viária (depois de atender todos os prédios). */
-  private spare: Record<Kind, Map<number, number>> = { water: new Map(), power: new Map() };
+  private spare: Record<Kind, Map<number, number>> = {
+    water: new Map(),
+    power: new Map(),
+    sewage: new Map(),
+  };
 
   constructor(private city: City) {}
 
@@ -51,6 +55,7 @@ export class UtilitiesSystem implements System {
   served = (b: number): boolean => {
     if (!this.enabled) return true;
     const bs = this.city.sim.buildings;
+    // Falta de esgoto NAO tira o servico (decisao da issue #108).
     return bs.hasWater[b] === 1 && bs.hasPower[b] === 1;
   };
 
@@ -68,11 +73,27 @@ export class UtilitiesSystem implements System {
     const w = this.spare.water.get(comp) ?? 0;
     const p = this.spare.power.get(comp) ?? 0;
     if (w < demand || p < demand) return false;
+    const cfg = this.city.sim.config.utilities;
+    const sewageDemand = demand * cfg.sewageShareOfConsumption;
+    const s = this.spare.sewage.get(comp) ?? 0;
+    if (this.hasEteInComponent(net, comp) && s < sewageDemand) return false;
     if (reserve) {
       this.spare.water.set(comp, w - demand);
       this.spare.power.set(comp, p - demand);
+      if (this.hasEteInComponent(net, comp)) this.spare.sewage.set(comp, s - sewageDemand);
     }
     return true;
+  }
+
+  /** Tem ETE ativa nesta malha de ruas? Sem ETE a cidade usa fossa septica e o esgoto nao bloqueia. */
+  private hasEteInComponent(net: { component: Int32Array }, comp: number): boolean {
+    const bs = this.city.sim.buildings;
+    for (let b = 0; b < bs.count; b++) {
+      if (!bs.isActive(b)) continue;
+      if (bs.typeOf(b).service !== "sewage") continue;
+      if (net.component[bs.access[b]!] === comp) return true;
+    }
+    return false;
   }
 
   /** Capacidade sobrando na malha de ruas deste acesso (para o prefeito automático e a tela). */
@@ -85,6 +106,40 @@ export class UtilitiesSystem implements System {
     return comp < 0 ? 0 : (this.spare[kind].get(comp) ?? 0);
   }
 
+  /**
+   * Totais da cidade em pessoas equivalentes (para o StatsView).
+   * `used` soma o consumo de todos os prédios que não são poço/ETA/subestação
+   * (demolidos e abandonados ficam de fora); `capacity` é `used` mais as sobras.
+   */
+  totals(): {
+    water: { capacity: number | null; used: number };
+    power: { capacity: number | null; used: number };
+  } {
+    const bs = this.city.sim.buildings;
+    let used = 0;
+    for (let b = 0; b < bs.count; b++) {
+      const st = bs.state[b];
+      if (st === BSTATE.demolished || st === BSTATE.abandoned) continue;
+      const t = bs.typeOf(b);
+      if (t.service === "water" || t.service === "power") continue;
+      used += this.demandOf(t.homes, t.jobs);
+    }
+    if (!this.enabled)
+      return {
+        water: { capacity: null, used },
+        power: { capacity: null, used },
+      };
+    if (this.seenStructure < 0) this.recompute();
+    let spareWater = 0;
+    for (const v of this.spare.water.values()) spareWater += v;
+    let sparePower = 0;
+    for (const v of this.spare.power.values()) sparePower += v;
+    return {
+      water: { capacity: used + spareWater, used },
+      power: { capacity: used + sparePower, used },
+    };
+  }
+
   recompute() {
     const city = this.city;
     const { sim, markets } = city;
@@ -94,7 +149,11 @@ export class UtilitiesSystem implements System {
     net.refresh();
     this.seenStructure = bs.structureVersion;
     this.seenRoads = sim.world.roadVersion;
-    const cap: Record<Kind, Map<number, number>> = { water: new Map(), power: new Map() };
+    const cap: Record<Kind, Map<number, number>> = {
+      water: new Map(),
+      power: new Map(),
+      sewage: new Map(),
+    };
     const add = (kind: Kind, comp: number, v: number) => {
       if (comp >= 0) cap[kind].set(comp, (cap[kind].get(comp) ?? 0) + v);
     };
@@ -102,11 +161,12 @@ export class UtilitiesSystem implements System {
     for (const comp of net.componentsWithExit()) {
       add("water", comp, cfg.regionalWater);
       add("power", comp, cfg.regionalPower);
+      add("sewage", comp, cfg.regionalSewage);
     }
     for (let b = 0; b < bs.count; b++) {
       if (!bs.isActive(b)) continue;
       const t = bs.typeOf(b);
-      if (t.service === "water" || t.service === "power")
+      if (t.service === "water" || t.service === "power" || t.service === "sewage")
         add(t.service, net.component[bs.access[b]!]!, t.serves);
     }
     // Atende os prédios na ordem de criação (determinístico): quem chegou primeiro tem prioridade.
@@ -116,18 +176,22 @@ export class UtilitiesSystem implements System {
       const t = bs.typeOf(b);
       const demand = this.demandOf(t.homes, t.jobs);
       const comp = net.component[bs.access[b]!] ?? -1;
+      const sewageDemand = demand * cfg.sewageShareOfConsumption;
       const give = (kind: Kind): number => {
         if (t.service === kind || demand === 0) return 1;
+        const need = kind === "sewage" ? sewageDemand : demand;
         const c = comp >= 0 ? (cap[kind].get(comp) ?? 0) : 0;
-        if (c < demand) return 0;
-        cap[kind].set(comp, c - demand);
+        if (c < need) return 0;
+        cap[kind].set(comp, c - need);
         return 1;
       };
       const w = give("water");
       const p = give("power");
-      if (bs.hasWater[b] !== w || bs.hasPower[b] !== p) {
+      const g = give("sewage");
+      if (bs.hasWater[b] !== w || bs.hasPower[b] !== p || bs.hasSewage[b] !== g) {
         bs.hasWater[b] = w;
         bs.hasPower[b] = p;
+        bs.hasSewage[b] = g;
         markets.updateAll(b);
       }
     }
