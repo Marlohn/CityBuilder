@@ -358,6 +358,8 @@ def tarefas(todas, prs, existentes):
     # Issue com PR do DEV aberto que a fecha já está com alguém (29/09: a #38 seguia 'pronto-pra-dev' com o PR #43 em
     # revisão). O rascunho do QA (qa/N) também diz "Closes #N" e NÃO conta: em 30/09 ele escondeu a #49 do dev por 2 h.
     com_pr = {int(n) for pr in prs if not pr["headRefName"].startswith("qa/") for n in FECHA.findall(pr["body"] or "")}
+    # #180 perdeu Closes ao editar a descrição: dev/N continua sendo o trabalho da issue N.
+    com_pr |= {int(pr["headRefName"][4:]) for pr in prs if re.fullmatch(r"dev/(\d+)", pr["headRefName"])}
     bugs = {i["number"] for i in todas if any(lb["name"] == "bug" for lb in i["labels"])}  # PLANO 12.2: bug passa na frente
     for etiqueta, papel, prio in (("pronto-pra-dev", "dev", 20), ("pronto-pra-teste", "qa", 10)):
         lista = json.loads(gh("issue", "list", "-R", REPO, "--state", "open", "--label", etiqueta,
