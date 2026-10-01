@@ -9,6 +9,7 @@ import type { TimedCommand } from "@city/contract";
 import { checkInvariants } from "../debug/invariants";
 import type { Game } from "../game";
 import { statsView } from "../view/stats";
+import { validateReplayCommands } from "./commandCompat";
 
 export const REPLAY_FORMAT = "citybuilder-replay";
 export const REPLAY_VERSION = 2;
@@ -95,10 +96,18 @@ export function parseReplay(text: string): Replay {
   if (r.version !== undefined && (!Number.isInteger(r.version) || r.version <= 0)) {
     throw new Error(`versão de save inválida: ${r.version}`);
   }
-  return applyMigrations({ ...(r as Replay), version: typeof r.version === "number" ? r.version : 1 });
+  // Primeiro migra o save até a versão atual e SÓ DEPOIS valida os comandos:
+  // renomear ou reescrever um comando velho é trabalho da migração, nunca da validação.
+  const migrated = applyMigrations({
+    ...(r as Replay),
+    version: typeof r.version === "number" ? r.version : 1,
+  });
+  validateReplayCommands(migrated);
+  return migrated;
 }
 
 /** Refaz o jogo até o tick do save (aplica cada comando no tick em que foi dado). */
+// replayInto NÃO valida de novo: parseReplay já migrou e validou; aqui é só refazer a cidade.
 export function replayInto(game: Game, replay: Replay, onProgress?: (fraction: number) => void) {
   const sim = game.sim;
   const byTick = new Map<number, TimedCommand["command"][]>();
