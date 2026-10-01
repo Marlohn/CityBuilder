@@ -32,6 +32,7 @@ exports[`cidades de referência > cenário bairro-basico, 12 dias 1`] = `
   "unemployed": 63,
   "unmet": {
     "health": 0,
+    "hospital": 2063,
     "housing": 11,
     "job": 63,
     "parking": 0,
@@ -76,6 +77,7 @@ exports[`cidades de referência > prefeito automático, 12 dias 1`] = `
   "unemployed": 36,
   "unmet": {
     "health": 0,
+    "hospital": 970,
     "housing": 12,
     "job": 36,
     "parking": 0,
