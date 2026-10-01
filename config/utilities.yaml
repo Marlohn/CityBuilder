@@ -24,3 +24,6 @@ utilities:
   sewageShareOfConsumption: 0.8 # Fonte acima: ABNT NBR 9649 e IBGE PNSB 2017.
   # Recalcula a cada 60 ticks (1 hora do jogo).
   everyTicks: 60
+  # Pessoas sem esgoto que fazem o prefeito pedir a ETE.
+  # PENDENTE: limiar de jogo, sem fonte oficial.
+  sewageMinUncovered: 300

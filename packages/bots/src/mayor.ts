@@ -108,7 +108,7 @@ export class AutoMayor {
       const minUncovered = this.game.sim.config.health.hospitalMinUncovered;
       if (uncovered > minUncovered) {
         const t = this.game.sim.treasury;
-        const upkeep = this.hospitalUpkeep();
+        const upkeep = this.serviceUpkeep("hospital");
         const revenueCovers =
           t.mode === "sandbox" || (t.lastYearRevenue > 0 && t.lastYearRevenue - t.lastYearExpenses >= upkeep);
         if (revenueCovers)
@@ -118,10 +118,23 @@ export class AutoMayor {
     // ETE por último: é a obra mais cara da lista e só entra quando já tem escola, UBS, água e luz
     // resolvidas. A ETE despeja o efluente tratado no rio ou lago, então a colocação é a que respeita
     // `nearWater` do catálogo (mesma conta do comando `placeService`); o ponto só ordena a espiral.
-    // PENDENTE: limiar de jogo, sem fonte oficial.
-    if (census.withoutSewage > 300 && !this.underConstruction("ete")) {
-      const [px, py] = this.waterEdge();
-      saving = !this.placeNear("ete", px, py) || saving;
+    // Mesmo critério do hospital: só pede quando a receita do último ano fechado cobre o custeio
+    // anual da ETE (upkeepPerYear do catálogo). Enquanto a receita não fecha, o prefeito ESPERA
+    // (não marca `saving`: guardar dinheiro não resolve e `saving` parava a abertura de bairros —
+    // foi o que quebrou o teste 48). No modo sandbox o dinheiro é infinito e não há espera.
+    // Gatilho: config/utilities.yaml sewageMinUncovered (PENDENTE: limiar de jogo, sem fonte oficial).
+    if (
+      census.withoutSewage > this.game.sim.config.utilities.sewageMinUncovered &&
+      !this.underConstruction("ete")
+    ) {
+      const t = this.game.sim.treasury;
+      const upkeep = this.serviceUpkeep("ete");
+      const revenueCovers =
+        t.mode === "sandbox" || (t.lastYearRevenue > 0 && t.lastYearRevenue - t.lastYearExpenses >= upkeep);
+      if (revenueCovers) {
+        const [px, py] = this.waterEdge();
+        saving = !this.placeNear("ete", px, py) || saving;
+      }
     }
     if (saving && this.districts.length > 0) return;
     // Abre bairro do tipo que está faltando: indústria separada (como manda o zoneamento) ou misto.
@@ -308,9 +321,9 @@ export class AutoMayor {
    * Coloca o serviço perto de onde está a demanda (amostras de casas sem atendimento).
    * Devolve false só quando falta dinheiro (aí o prefeito guarda dinheiro em vez de abrir bairro).
    */
-  /** Custeio anual de um hospital do catálogo (data/buildings.yaml), ou 0 se não houver. */
-  private hospitalUpkeep(): number {
-    const t = this.game.sim.buildings.catalog.find((b) => b.id === "hospital");
+  /** Custeio anual de um serviço do catálogo (data/buildings.yaml), ou 0 se não houver. */
+  private serviceUpkeep(id: string): number {
+    const t = this.game.sim.buildings.catalog.find((b) => b.id === id);
     return t?.upkeepPerYear ?? 0;
   }
 
