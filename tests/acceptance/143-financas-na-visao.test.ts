@@ -32,9 +32,9 @@ interface FinanceView {
 interface YearSummaryView {
   [k: string]: unknown;
 }
-interface StatsComFinance extends StatsView {
+type StatsComFinance = Omit<StatsView, "finance"> & {
   finance?: FinanceView;
-}
+};
 
 function num(v: unknown): number | null {
   return typeof v === "number" && Number.isFinite(v) ? v : null;
