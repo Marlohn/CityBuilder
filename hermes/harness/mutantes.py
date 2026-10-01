@@ -8,6 +8,14 @@ AQUI = os.path.dirname(os.path.abspath(__file__))
 ORIGINAL = open(f"{AQUI}/sincronizar_github.py", encoding="utf-8").read()
 
 MUTANTES = {
+    "diagnostico sem autorizacao libera dev":
+        ('if (autorizado and decidiu and diagnostico not in existentes', 'if (decidiu and diagnostico not in existentes'),
+    "diagnostico sem decisao libera dev":
+        ('if (autorizado and decidiu and diagnostico not in existentes', 'if (autorizado and diagnostico not in existentes'),
+    "diagnostico repete tentativa ja gasta":
+        ('if (autorizado and decidiu and diagnostico not in existentes', 'if (autorizado and decidiu'),
+    "decisao do arquiteto esconde PR sem encaminhamento":
+        ('        chave = rodada(existentes, chave + "-retomar")\n        if chave is None:\n            return', '        return'),
     "arquivado deixa de contar como cartão existente":
         ('        k = t[1:t.index("]")]\n', '        k = t[1:t.index("]")]\n        if c.get("status") == "archived":\n            continue\n'),
     "revisão cria 2º cartão aberto pro mesmo PR":

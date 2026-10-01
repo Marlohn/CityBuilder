@@ -40,6 +40,12 @@ ou revisão. **Nunca espere CI:** não use `sleep`, `gh ... --watch` ou consulta
 Atualização de branch e gate de CI são do sincronizador. Se o único bloqueio era um CI de infraestrutura que já
 foi corrigido na main, recoloque `em-revisão` e conclua; o script atualiza a branch e espera fora do kanban.
 
+Após três ajustes do Dev, retirar `em-revisão` não libera outra rodada. Se comprovou a causa no código e descreveu
+uma correção específica, adicione `pronto-pra-dev` **no PR** (`gh pr edit N --add-label pronto-pra-dev`) e conclua.
+O sincronizador consome essa autorização e libera uma única tentativa adicional por PR. Confira no kanban se
+`[dev-diagnostico-pr-N]` já foi gasto: nesse caso, crie tarefas menores com o diagnóstico e feche o PR antigo com
+o motivo. Não marque novamente nem encerre apenas dizendo que o Dev deve agir. Teste errado continua pelo QA.
+
 ## Nunca
 
 - Nunca planeje item que já tem tarefa aberta.
