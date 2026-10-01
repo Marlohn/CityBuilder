@@ -70,8 +70,8 @@ const SEM_CHAVE =
   "nem no contrato StatsView (packages/contract/src/view.ts): sem ela a tela e o relatório " +
   "não mostram os leitos de internação";
 
-/** Semente fixa única das cidades com comandos (nada de relógio nem `Math.random`). */
-const SEED = "leitos-internacao";
+/** Semente fixa única das cidades com comandos (não pode conter "leito" porque o relatório mostra a semente no cabeçalho e o filtro do critério 1 casa com /leito/i). */
+const SEED = "internacao-hosp";
 /** Dias de jogo (o hospital leva 30 meses de obra = 2,5 dias, então 40 basta). */
 const DAYS = 40;
 /** Mesmos overrides do teste 173 (sandbox + saúde a 200 m, para o hospital registrar leito). */
@@ -193,7 +193,12 @@ describe("issue #174: leitos de internação no stats e no relatório (sem vaga 
     }
     const comNumeroDeLeito = texto
       .split("\n")
-      .filter((linha) => /leito/i.test(linha) && !/^Leitos de hospital: 0 \(0 ocupados\)$/.test(linha));
+      .filter(
+        (linha) =>
+          !linha.startsWith("# ") &&
+          /leito/i.test(linha) &&
+          !/^Leitos de hospital: 0 \(0 ocupados\)$/.test(linha),
+      );
     expect(
       comNumeroDeLeito,
       `o relatório de uma cidade sem hospital não deveria mostrar leito com número, mas mostrou: ` +
