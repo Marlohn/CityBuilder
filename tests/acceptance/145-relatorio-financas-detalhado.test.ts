@@ -82,6 +82,7 @@ function valoresNaLinha(linha: string): number[] {
   const re = /(-?)R\$\s*([\d.,]+)(\s*mi)?/g;
   let m: RegExpExecArray | null;
   while ((m = re.exec(linha)) !== null) {
+    if (m[2] === undefined) continue;
     const bruto = m[2].replace(/\./g, "").replace(",", ".");
     const numero = Number(bruto);
     if (!Number.isFinite(numero)) continue;
