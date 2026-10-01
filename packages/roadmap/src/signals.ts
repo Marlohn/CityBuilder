@@ -88,6 +88,8 @@ const DESIRES: {
     build: "Criar a faculdade (prédio, vagas, formação que muda renda e emprego).",
   },
   { key: "health", what: "pessoas sem UBS", ref: "ubs", impact: 3 },
+  // O hospital já existe no jogo (prédio `hospital`, service health): é desejo de balanceamento, não serviço faltante.
+  { key: "hospital", what: "pessoas sem leito de internação no hospital", ref: "hospital", impact: 3 },
   { key: "housing", what: "famílias esperando casa própria", impact: 1 },
   { key: "water", what: "pessoas morando em prédio sem água", ref: "agua", impact: 3 },
   { key: "power", what: "pessoas morando em prédio sem luz", ref: "energia", impact: 3 },
