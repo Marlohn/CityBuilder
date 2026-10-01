@@ -75,3 +75,18 @@ if linha not in conteudo.splitlines():
     shutil.copy(ambiente, ambiente + ".bak-ciclo-rapido")
     with open(ambiente, "a") as f:
         f.write("\n# Ciclo rápido: suíte completa obrigatória no GitHub CI.\n" + linha + "\n")
+
+# Guard do CLI: erro de provedor deve voltar ao agente, não deixar `run` aberto.
+# Não substitui binário nem interrompe chamadas já iniciadas. Aplicar só após CI/merge.
+guard_dir = "/opt/data/opencode/guard/bin"
+os.makedirs(guard_dir, exist_ok=True)
+guard_path = f"{guard_dir}/opencode"
+if os.path.exists(guard_path):
+    shutil.copy(guard_path, guard_path + ".bak-anterior")
+shutil.copy(os.path.join(os.path.dirname(__file__), "opencode_guard.py"), guard_path)
+os.chmod(guard_path, 0o755)
+linha_guard = f'PATH="{guard_dir}:$PATH"; export PATH'
+if linha_guard not in conteudo.splitlines():
+    shutil.copy(ambiente, ambiente + ".bak-20261001-opencode-guard")
+    with open(ambiente, "a") as f:
+        f.write("\n# Falha rápida de provedor no OpenCode; demais comandos usam o binário real.\n" + linha_guard + "\n")

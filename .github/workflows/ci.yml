@@ -21,6 +21,8 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - name: Cenários do guard OpenCode (sem rede ou LLM)
+        run: python3 hermes/harness/testar_opencode_guard.py
       - run: npm run check
 
   slow:

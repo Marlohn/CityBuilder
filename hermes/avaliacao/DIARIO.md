@@ -1,5 +1,26 @@
 # Diário da avaliação: agentes Hermes + kanban + LLM grátis (CityBuilder)
 
+## 01/10 21:34Z — vaga Dev ocupada por OpenCode recusado pelo provedor
+
+Depois das três entregas autônomas #191/#195/#199, o Dev #111 (`t_aba7ae20`, sessão Hermes
+`20261001_203151_2880e2`) iniciou às 20:31:49Z. O OpenCode 1.18.33 registrou recusa do Muse
+às 20:36:06.628Z e, após relançamento, 20:51:12.401Z: `AI_APICallError: Rate limit exceeded`.
+As sessões OpenCode `ses_f06d19164ffeqGSg6AlF0TWTcK` e `ses_f06c3beaeffejexBNf8s0kHQFx`
+tinham zero tokens e nenhum passo de ferramenta. O log entregue ao Hermes tinha só a abertura do modelo.
+O processo 217840 continuava vivo; o coordenador repetiu esperas de cerca de 15 minutos, mantendo a vaga
+única do perfil Dev ocupada e outros cartões prontos. Não é evidência de CPU insuficiente ou defeito da feature.
+
+Uma chamada curta sem ferramentas, no clone seguro de supervisão, confirmou que `--print-logs --log-level ERROR`
+expõe a recusa em stderr enquanto o CLI permanece aberto. O guard encerrou somente seu grupo de processos e
+devolveu exit 75 em 3,24s. Uma chamada curta com `opencode/space-bunny-free` respondeu `OK` em 4,21s; custo
+zero confirmado no catálogo local. São verificações de protocolo/acesso, não benchmarks nem repetição do jogo.
+
+O harness reproduziu o comportamento anterior com processo simulado; após a mudança, falha rápida, isolamento
+de stdout/título, preservação dos códigos de saída, timeout e encerramento de filhos passaram. O guard é
+determinístico; Dev/QA recebem orientação para conferir o diff e fazer uma tentativa gratuita reserva.
+Não escolhe modelo automaticamente nem altera arquivos do agente. CI completo e merge ainda necessários
+antes do deploy. Melhora no tempo das próximas entregas ainda não medida. Nenhum worker foi interrompido.
+
 ## 01/10 15:43Z — preparação do navegador no CI
 
 Nos jobs de tela dos runs `36881805274` (#181) e `36882075526` (#180), a instalação de Chromium e

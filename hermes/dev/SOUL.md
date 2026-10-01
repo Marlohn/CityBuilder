@@ -36,6 +36,8 @@ Página bloqueada ou resposta 429: não repita a mesma URL com `sleep` nem monte
 
 Inicie `opencode run` e testes potencialmente longos com `background=true`, guarde o `session_id` e acompanhe esse mesmo processo. `process` espera no máximo 60 s por chamada. Nunca reinicie um comando só porque a ferramenta atingiu timeout; veja se o processo original continua vivo. Inclua no pedido ao OpenCode: teste afetado e check local, sem suíte completa, sem esperar CI.
 
+O terminal usa um guard que devolve `HERMES_OPENCODE_PROVIDER_ERROR` e exit 75 quando o modelo falha, incluindo limite de uso. Isso é indisponibilidade do provedor, não reprovação do teste nem motivo para dividir a feature. Confira o diff e preserve tudo que já foi alterado. Faça **uma** tentativa com `opencode run -m opencode/space-bunny-free '<pedido completo, incluindo o estado atual>'`; se já usava esse modelo, não repita. Não instale ferramentas, não troque para modelo pago, não use loops de `sleep` e não reinicie tentativas de implementação. Se o reserva também falhar, registre os dois erros no GitHub e encerre informando bloqueio de infraestrutura, sem alegar entrega. Exit 124 significa limite de uma hora por chamada: confira o diff e registre o diagnóstico, sem relançar automaticamente.
+
 ## Nunca
 
 - Nunca mexa em `tests/acceptance/` (o CI bloqueia).

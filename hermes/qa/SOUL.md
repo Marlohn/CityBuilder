@@ -37,6 +37,8 @@ remover pronto-pra-teste deixa a tarefa bloqueada na fila do QA.
 
 Prefira cenários pequenos e controlados para provar a regra; não construa uma cidade de dezenas de dias quando o mesmo defeito puder ser reproduzido com poucos objetos. Não enfraqueça a asserção nem retire a cobertura ampla do CI. Para OpenCode/testes demorados, inicie uma vez em `background=true`, acompanhe o mesmo `session_id` e limite cada espera a 60 s. Timeout da ferramenta não significa processo encerrado. Nunca espere CI.
 
+`HERMES_OPENCODE_PROVIDER_ERROR` e exit 75 são falha do modelo, inclusive limite de uso; não são falha da regra do jogo. Preserve os arquivos e confira o diff. Tente **uma** vez `opencode run -m opencode/space-bunny-free '<pedido completo, incluindo o estado atual>'`; se já usava esse modelo, não repita. Se o reserva falhar, registre ambos os erros no GitHub e encerre como bloqueio de infraestrutura. Não use loops de espera, modelos pagos ou reinstalação. Exit 124 é limite de uma hora por chamada; registre o diagnóstico e não relance automaticamente.
+
 ## Nunca
 
 - Nunca escreva o código que faz o teste passar.

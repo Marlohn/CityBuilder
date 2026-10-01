@@ -6,6 +6,36 @@
 
 ## Em uma frase
 
+### 01/10 — OpenCode devolve falhas do provedor ao agente
+
+No Dev #111, o Muse recusou a chamada com `Rate limit exceeded` em 20:36:06Z e 20:51:12Z.
+O CLI permaneceu aberto, com zero tokens e sem alterações; o coordenador repetiu esperas longas.
+O erro estava no log interno e não na saída entregue ao Hermes. Heartbeat recente não provava progresso.
+
+`hermes/harness/opencode_guard.py` é instalado como `opencode` em
+`/opt/data/opencode/guard/bin`, antes do binário real `/opt/data/.local/bin/opencode` no PATH.
+Só envolve `run`: liga `--print-logs --log-level ERROR`, conserva a saída e devolve exit 75 ao detectar
+um erro estruturado da chamada principal do provedor. Erro de título e texto de teste não acionam esse corte.
+O processo e seus filhos são encerrados num grupo próprio; não encerra o worker Hermes ou outros agentes.
+Limite absoluto: uma hora por chamada (exit 124). Não altera arquivos nem escolhe modelo automaticamente.
+
+Dev/QA conferem o diff e podem tentar uma vez `opencode/space-bunny-free`, incluindo o estado atual no pedido.
+Falha de provedor é infraestrutura, não prova de defeito do jogo. Sem espera com loops, reinstalação ou modelo pago.
+O catálogo local registra custo zero para esse reserva; uma chamada curta sem ferramentas respondeu em 4,21s.
+Com o guard, a recusa real do Muse devolveu exit 75 em 3,24s. Isso verifica acesso/erro, não qualidade de código ou
+ganho de entrega. Não foram repetidas tarefas do jogo. Não há recuperação ilimitada se ambos os modelos falharem.
+
+Validação: `python3 hermes/harness/testar_opencode_guard.py`, também dentro do check existente do CI.
+Os cenários reproduzem o CLI vivo após recusa, stderr fragmentado, título, saída de teste, código de erro normal,
+timeout e filhos resistentes a SIGTERM. Sem rede, LLM ou clone de agente. Todos os checks e testes anteriores permanecem.
+Fonte das flags: [CLI oficial](https://opencode.ai/docs/cli/#run); erro observado na versão instalada 1.18.33.
+
+Deploy após CI completo verde e merge: atualizar apenas Dev/QA no clone de distribuição, copiar o guard para
+a pasta acima e acrescentar ao final de `/opt/data/opencode/profile.sh`
+`PATH="/opt/data/opencode/guard/bin:$PATH"; export PATH`. O aplicador de perfis também instala isso.
+Não substituir o executável real nem reiniciar gateway/worker. Chamadas já iniciadas não recebem o guard.
+Reversão: remover essa linha do PATH e atualizar os SOULs após reverter o PR; binário e sessões originais ficam preservados.
+
 ### Atualização de 30/09 à noite: ciclo rápido autônomo
 
 O dono autorizou mudar a fábrica e medir com tarefas novas reais, sem repetir tarefas em comparações de LLM.
