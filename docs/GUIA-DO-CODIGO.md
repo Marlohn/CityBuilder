@@ -305,6 +305,9 @@ A correção é escrever a migração, nunca afrouxar o `CommandSchema`:
 - **Pedidos de rota em ganchos:** pedidos feitos dentro de `onBuildingRemoved` etc. também seguem a regra T+1. Não misture com as viagens do tick.
 - **Comprar sem vender:** qualquer coisa que as famílias adquirem (carro...) precisa de saída também, senão o número só sobe.
 - **Bot que para no meio:** o prefeito automático só abre uma etapa de bairro se tiver dinheiro para ela inteira. Rua solta = ninguém chega.
+- **Serviço caro esperando receita:** um serviço permanente (hospital) só entra quando a receita do último ano
+  fechado paga o `upkeepPerYear`; enquanto espera, o prefeito **não** marca `saving`, senão a cidade para de
+  abrir bairros e trava (`packages/bots/src/mayor.ts`).
 - **Formatador depois de editar por script:** o `npm run format` muda quebras de linha. Edite de novo só depois de reler o arquivo.
 
 ---
