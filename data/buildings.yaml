@@ -73,7 +73,7 @@ buildings:
     cost: 9000000
     # Custo por aluno por ano: VAAF-MIN do Fundeb 2024 = R$ 5.357,06.
     upkeepPerStudentPerYear: 5357
-    # PENDENTE: prazo de obra.
+    # Prazo de obra com recurso federal: Resolução CD/FNDE nº 13/2011, art. 11 = 548 dias; 548 / 30 = 18,3 -> 18 meses - https://www.gov.br/fnde/pt-br/acesso-a-informacao/legislacao/resolucoes/2011/resolucao-cd-fnde-no-13-de-21-de-marco-de-2011
     constructionMonths: 18
     models: [proc/school]
   - id: ubs
@@ -88,8 +88,8 @@ buildings:
     jobs: 8
     # Convênio de UBS Porte 1 no Novo PAC (2024): R$ 2,01 milhões.
     cost: 2012826
-    # PENDENTE: custo anual da equipe e da unidade.
-    upkeepPerYear: 1200000
+    # Custo anual da equipe: custo médio mensal de 1 eSF de R$ 154.088,23 x 12 = R$ 1.849.059 (Fiocruz, 56 U.A.P. analisadas) - https://arca.fiocruz.br/items/45d8359a-df7f-4500-b3c7-7277a8d02087
+    upkeepPerYear: 1849059
     constructionMonths: 12
     models: [proc/clinic]
   - id: hospital
@@ -104,11 +104,11 @@ buildings:
     # PENDENTE: equipe mínima de hospital de ~100 leitos. Usado ~2 professionals por leito (médicos,
     # enfermeiros, técnicos e administrativo): 2 x 90 = 180.
     jobs: 180
-    # PENDENTE: custo de obra de hospital municipal pequeno. Usado R$ 60 milhões.
-    cost: 60000000
-    # PENDENTE: custo anual de operação. Usado R$ 200 mil por leito: 200.000 x 90 = R$ 18 milhões.
-    upkeepPerYear: 18000000
-    # PENDENTE: prazo de obra. Usado 30 meses.
+    # Custo de obra: Hospital Regional de Belo Jardim (PE), 100 leitos por R$ 56 mi = 560 mil/leito; 560.000 x 90 = R$ 50.400.000 - https://belojardim.pe.gov.br/ordem-de-servico-e-assinada-para-inicio-das-obras-do-hospital-regional-de-belo-jardim-com-uti-100-leitos-e-investimento-de-r-56-milhoes/
+    cost: 50400000
+    # Custo anual por leito no SUS: gasto médio/internação de R$ 2.826 x 27,7 internações/leito/ano = R$ 78.280/leito/ano; 78.280 x 90 = R$ 7.045.200 (SIH/DATASUS 2025) - https://drpap.com.br/indicadores-hospitalares
+    upkeepPerYear: 7045200
+    # Prazo de obra: cronograma inicial do Hospital Público Estadual de Franca (SP): 1 prédio = 30 meses (MPD busca 24) - https://www.jornaldafranca.com.br/empresa-responsavel-pelo-hospital-do-estado-quer-encurtar-tempo-de-obra-pra-24-meses/
     constructionMonths: 30
     models: [proc/hospital]
   # Água, luz e esgoto. Consumo médio de água: 154 litros por pessoa por dia (SNIS/ANA, citado pela CNM:
