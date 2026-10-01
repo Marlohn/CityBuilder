@@ -242,6 +242,8 @@ def preparar_revisao(pr):
 
 def escalar_pr(pr, existentes, motivo):
     """Rodadas gastas exigem uma decisão registrada, não um PR esquecido."""
+    if aberto(existentes, f"arquiteto-destravar-pr-{pr['number']}-"):
+        return
     chave = f"arquiteto-destravar-pr-{pr['number']}-{pr['headRefOid'][:7]}"
     if chave not in existentes:
         criar(chave, f"Destravar PR #{pr['number']}: {pr['title']}", "arquiteto",
