@@ -27,6 +27,8 @@ export interface Census {
   /** Pessoas morando em prédio sem água / sem luz. */
   withoutWater: number;
   withoutPower: number;
+  /** Pessoas morando em prédio sem coleta de esgoto. */
+  withoutSewage: number;
   householdsWithCar: number;
   pop14plus: number;
   pop60plus: number;
@@ -58,6 +60,7 @@ export function takeCensus(city: City): Census {
     householdsWaitingHome: 0,
     withoutWater: 0,
     withoutPower: 0,
+    withoutSewage: 0,
     householdsWithCar: 0,
     pop14plus: 0,
     pop60plus: 0,
@@ -73,6 +76,7 @@ export function takeCensus(city: City): Census {
       job: [],
       water: [],
       power: [],
+      sewer: [],
     },
   };
   const edu = city.config.education;
@@ -129,6 +133,10 @@ export function takeCensus(city: City): Census {
         if (!bs.hasPower[home]) {
           c.withoutPower++;
           sample("power", p);
+        }
+        if (!bs.hasSewage[home]) {
+          c.withoutSewage++;
+          sample("sewer", p);
         }
       }
     }
