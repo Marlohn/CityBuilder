@@ -201,12 +201,29 @@ aconteceu e por quê?". A resposta tem que ser "está no alvo".
 
 - **O dono não faz nenhum passo manual e não aprova nada.** Contrato, save, schema e VISAO seguem CI verde + revisão = merge
   (o CODEOWNERS está sem efeito na prática; a regra está no `AGENTS.md`). A `main` **tem** proteção (ruleset): exige
-  `npm run check` e `testes de aceitação protegidos`, sem review obrigatório.
+  os quatro jobs do CI (`npm run check`, `testes de aceitação protegidos`,
+  `testes lentos (coorte IBGE e cidade de 50 mil)` e `teste de tela (Playwright)`), com branch atualizada antes
+  do merge (`strict_required_status_checks_policy=true`), sem bypass e sem review humano obrigatório.
 - **PR do supervisor (docs e harness) não passa pelo revisor:** CI verde e merge do supervisor. Deliberado: o revisor gastou
   47 min num PR só de documentação.
 - **Nada espera sem motivo:** gatilho é evento, não relógio. Todo intervalo precisa de motivo escrito ao lado.
 - **Nunca afirme "não dá" ou "não tem permissão" sem testar aquela operação.** O token dos agentes tem Contents, Issues,
-  PRs e Workflows de escrita, mas não tem Administration.
+  PRs e Workflows de escrita. Em 01/10 o dono adicionou Administration: write para corrigir o ruleset da fábrica.
+
+### Proteção nativa da main (conferida em 01/10)
+
+Ruleset `main`, ID `24212946`, ativo em `~DEFAULT_BRANCH`; GitHub Actions é a origem dos checks (`integration_id=15368`).
+Foram preservadas as regras de exclusão e de force-push. Não criar uma segunda proteção por cima: atualize o ruleset
+existente, preservando condições e bypass vazio. Confira com `gh api repos/Marlohn/CityBuilder/rules/branches/main`
+ou `gh api repos/Marlohn/CityBuilder/rulesets/24212946`. A API clássica `branches/main/protection` pode devolver 404
+mesmo quando há um ruleset ativo; 404 nessa rota não prova ausência de proteção.
+
+Antes, o ruleset exigia só check geral e aceitação, sem atualização da branch. No #154, o Revisor citou main `5f2eaf8`
+apesar de ela já estar em `e23d219`: todos os checks consultados estavam verdes, mas a main atual não foi considerada.
+A trava nativa agora recusa merge desatualizado, independentemente do prompt. A espera continua no sincronizador.
+Estado anterior guardado em `/opt/data/avaliacao/ruleset-main-antes-20261001.json`; mudanças no ruleset exigem
+Administration: write. A primeira tentativa deu 403, sem alteração; após ajuste do token pelo dono, PUT e GET
+confirmaram a configuração às 09:28:53 de Brasília (12:28:53Z). Registro de aplicação no PR #160.
 
 ## Armadilhas já pagas
 

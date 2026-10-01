@@ -1,5 +1,25 @@
 # Diário da avaliação: agentes Hermes + kanban + LLM grátis (CityBuilder)
 
+## 01/10 09:28 Brasília (12:28Z) — proteção nativa e acompanhamento retomado
+
+PR #160 implantado às 12:06:03Z. O Hermes publicou #153 (11:49:22Z, revisão 8min26s) e #154 (12:14:10Z,
+revisão 7min23s), com CI dos HEADs e Pages verdes, sem intervenção operacional nesses merges. Ambos são trabalho
+iniciado antes dos deploys; não contam como as três entregas novas. A meta de dez minutos não está comprovada.
+
+Ao auditar #154, o Revisor usou main antiga `5f2eaf8`; a main já tinha `e23d219`. A API de proteção clássica deu 404,
+mas a leitura de rulesets confirmou proteção ativa: só dois checks obrigatórios e strict=false. Corrigido o diagnóstico
+inicial de ausência de proteção. A tentativa de ajustar esse ruleset deu 403; o acompanhamento temporário foi removido
+por bloqueio de permissão, sem parar o Hermes. O dono adicionou Administration: write e autorizou continuar.
+
+PUT e GET confirmaram às 12:28:53Z: ruleset existente `24212946` com strict=true e quatro checks obrigatórios da
+GitHub Actions. Condições, bypass vazio e regras de exclusão/force-push preservados. Sem plugin ou serviço novo.
+Contagem de três entregas novas permanece em zero; acompanhamento retomado após a alteração de configuração.
+
+JEV: uma consulta de observação sobre #156 às 12:02Z respondeu `investigar` em 1,134 s. Havia CI do PR vermelho,
+alegação do Dev de falha também na main e CI da main verde. A resposta não mudou o fluxo nem comprova economia
+de tempo. Confiança retornada não é prova de acerto. Registro em `/opt/data/avaliacao/jev-observacoes.jsonl` e
+comentário no #159. Uso pontual, somente se poupar decisão/releitura custosa; sem plugins ou benchmarks repetidos.
+
 ## 01/10 11:45Z — retomada não pode virar espera de CI
 
 Após deploy do #159 às 11:30:05Z, o sincronizador criou retomadas e atualizou `dev/120` e `dev/144` sem LLM.
