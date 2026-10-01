@@ -167,6 +167,8 @@ s.gh = gh_issues(dev=[iss(1, ARQ), iss(2, ARQ), iss(3, "Depende de #4\n"), iss(4
 s.tarefas(todas, [], {}); cria("dev-issue-1-r1", "dev-issue-4-r1")  # #2 espera o arquivo, #3 espera a #4
 s.gh = gh_issues(dev=[iss(1, ARQ)])
 s.tarefas(todas, [pr(9, "aaaaaaa", "dev/1", corpo="Closes #1")], {}); cria()  # PR aberto já fecha a #1
+s.tarefas(todas, [pr(9, "aaaaaaa", "dev/1", corpo="Descrição atualizada sem fechamento")], {"dev-issue-1-r1": "done"}); cria()  # #180 perdeu Closes ao editar: ajuste do PR, não outra tarefa
+s.tarefas(todas, [pr(9, "aaaaaaa", "dev/1-extra", corpo="")], {}); cria("dev-issue-1-r1")  # nome parecido não reserva a issue
 s.tarefas(todas, [pr(9, "aaaaaaa", "qa/1", corpo="Closes #1 (rascunho)")], {}); cria("dev-issue-1-r1")  # rascunho do QA não segura o dev
 esg = {f"dev-issue-1-r{n}": "done" for n in (1, 2, 3)}
 s.tarefas(todas, [], esg); cria("arquiteto-quebrar-1")
@@ -181,6 +183,8 @@ s.tarefas(todas, [], {}); cria()  # item do roadmap com a etiqueta errada: nunca
 s.gh = gh_issues(qa=[iss(1), iss(2)])
 s.tarefas(todas, [pr(9, "aaaaaaa", "dev/2", corpo="Closes #2")], {})
 assert [(c[0], c[2]) for c in CRIADOS] == [("qa-issue-1-r1", 10), ("qa-issue-2-r1", 25)], CRIADOS; CRIADOS.clear()  # QA que destrava PR pronto passa na frente
+s.tarefas(todas, [pr(9, "aaaaaaa", "dev/2", corpo="")], {})
+assert [(c[0], c[2]) for c in CRIADOS] == [("qa-issue-1-r1", 10), ("qa-issue-2-r1", 25)], CRIADOS; CRIADOS.clear()  # branch conserva prioridade mesmo sem Closes
 s.gh = gh_issues(qa=[iss(1)])
 s.tarefas(todas, [], {f"qa-issue-1-r{n}": "archived" for n in (1, 2, 3)}); cria("arquiteto-quebrar-1")  # arquivado também gasta rodada
 s.gh = real_gh; ESCRITOS.clear()
