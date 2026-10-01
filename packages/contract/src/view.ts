@@ -50,6 +50,8 @@ export interface UnmetDesireCounts {
   school: number;
   university: number;
   health: number;
+  /** Pessoas sem leito de hospital. */
+  hospital: number;
   housing: number;
   job: number;
   transit: number;
