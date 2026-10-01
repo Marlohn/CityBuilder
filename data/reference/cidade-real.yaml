@@ -34,7 +34,11 @@ items:
   - id: hospital
     label: Hospital (leitos de internação)
     category: construcao
-    # 2,5 leitos por mil habitantes: a partir de ~8 mil habitantes já seriam 20 leitos (um hospital pequeno). PENDENTE: porte mínimo.
+    # Porte mínimo: 8.000 habitantes. Cálculo pela fonte abaixo (Portaria GM/MS 1.101/2002,
+    # item 3.5: "Leitos Hospitalares Totais = 2,5 a 3 leitos para cada 1.000 habitantes"):
+    # 2,5 x 8.000 / 1.000 = 20 leitos, que já é o porte de um hospital pequeno (o mínimo da
+    # classificação por porte da mesma portaria é 20 leitos). Abaixo disso a cidade se
+    # resolve com UBS + pronto-socorro, então o hospital só faz falta a partir de 8 mil.
     minPopulation: 8000
     inGame: ""
     reach: population
