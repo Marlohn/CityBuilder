@@ -1,5 +1,6 @@
 import type { GameClient, ToolDef } from "./client";
 import { CityPanel } from "./components/CityPanel";
+import { FinancePanel } from "./components/FinancePanel";
 import { HelpPanel, PerfPanel, RealismPanel } from "./components/InfoPanels";
 import { BuildingPanel, PeopleList, PersonPanel } from "./components/PeoplePanels";
 import { Toolbar } from "./components/Toolbar";
@@ -8,6 +9,7 @@ import { type Store, type UiState, useUi } from "./store";
 
 const TABS: { id: UiState["panel"]; label: string }[] = [
   { id: "city", label: "Cidade" },
+  { id: "finances", label: "Finanças" },
   { id: "people", label: "Pessoas" },
   { id: "realism", label: "Realismo" },
   { id: "perf", label: "Desempenho" },
@@ -75,6 +77,7 @@ export function App({ store, client, tools, typeLabels }: AppProps) {
               ))}
             </div>
             {s && ui.panel === "city" ? <CityPanel s={s} /> : null}
+            {s && ui.panel === "finances" ? <FinancePanel s={s} /> : null}
             {ui.panel === "people" ? (
               <div className="panel-body">
                 <PeopleList client={client} store={store} refreshKey={refreshKey} />

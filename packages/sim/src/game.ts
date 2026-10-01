@@ -60,7 +60,7 @@ export function createGame(opts: SimOptions): Game {
     city.year.expensesByCategory = { ...summary.expensesByCategory };
     city.lastYear = city.year;
     city.year = emptyYear();
-    city.yearlyHistory.push({ year, ...summary });
+    city.yearlyHistory.push({ year, ...summary, moneyEnd: sim.treasury.money });
     demo.closeYear();
     game.realism = computeRealism(city, demo, takeCensus(city));
   };
