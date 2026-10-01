@@ -23,6 +23,9 @@ As regras abaixo substituem instruções antigas de rodar check completo em cada
 - **Cartão concluído não é entrega:** PR ainda aberto é reavaliado mesmo se já teve revisão do mesmo commit.
   Retomadas têm chaves próprias, sem dois cartões abertos para o mesmo PR. Depois de três retomadas de revisão ou
   três ajustes do Dev, o Arquiteto recebe o PR para decidir a causa e encaminhar QA ou tarefas menores.
+  Escalada tem no máximo um cartão aberto por PR, mesmo que o SHA mude. O Arquiteto não espera CI nem revisa:
+  corrige o encaminhamento e encerra. CI de infraestrutura já corrigido na main: recoloca `em-revisão` para o script
+  atualizar a branch e aguardar os checks fora do kanban.
 - **Revisor:** lê diff/testes e evidências, sem npm/rebase/push. Merge com `--match-head-commit` no SHA lido. Se main mudou,
   encerra o cartão sem merge: o sincronizador atualiza a branch e despacha a revisão do novo commit.
 - **Timeout do Hermes:** fonte verificada na imagem fixa, `agent/tool_executor.py` e `agent/deadline.py`.
