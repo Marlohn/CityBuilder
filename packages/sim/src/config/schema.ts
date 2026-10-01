@@ -224,6 +224,8 @@ export const GameConfigSchema = z.object({
       sewageShareOfConsumption: prob,
       /** A cada quantos ticks recalcula quem tem água e luz. */
       everyTicks: intPos,
+      /** Pessoas sem esgoto que fazem o prefeito pedir a ETE. */
+      sewageMinUncovered: nonneg,
     })
     .default({
       enabled: false,
@@ -234,6 +236,7 @@ export const GameConfigSchema = z.object({
       regionalSewage: 1e9,
       sewageShareOfConsumption: 0.8,
       everyTicks: 60,
+      sewageMinUncovered: 300,
     }),
   director: z
     .object({

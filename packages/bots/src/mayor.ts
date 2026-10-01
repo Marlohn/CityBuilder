@@ -108,11 +108,32 @@ export class AutoMayor {
       const minUncovered = this.game.sim.config.health.hospitalMinUncovered;
       if (uncovered > minUncovered) {
         const t = this.game.sim.treasury;
-        const upkeep = this.hospitalUpkeep();
+        const upkeep = this.serviceUpkeep("hospital");
         const revenueCovers =
           t.mode === "sandbox" || (t.lastYearRevenue > 0 && t.lastYearRevenue - t.lastYearExpenses >= upkeep);
         if (revenueCovers)
           saving = !this.placeServiceNearDemand("hospital", census.samples.hospital ?? []) || saving;
+      }
+    }
+    // ETE por último: é a obra mais cara da lista e só entra quando já tem escola, UBS, água e luz
+    // resolvidas. A ETE despeja o efluente tratado no rio ou lago, então a colocação é a que respeita
+    // `nearWater` do catálogo (mesma conta do comando `placeService`); o ponto só ordena a espiral.
+    // Mesmo critério do hospital: só pede quando a receita do último ano fechado cobre o custeio
+    // anual da ETE (upkeepPerYear do catálogo). Enquanto a receita não fecha, o prefeito ESPERA
+    // (não marca `saving`: guardar dinheiro não resolve e `saving` parava a abertura de bairros —
+    // foi o que quebrou o teste 48). No modo sandbox o dinheiro é infinito e não há espera.
+    // Gatilho: config/utilities.yaml sewageMinUncovered (PENDENTE: limiar de jogo, sem fonte oficial).
+    if (
+      census.withoutSewage > this.game.sim.config.utilities.sewageMinUncovered &&
+      !this.underConstruction("ete")
+    ) {
+      const t = this.game.sim.treasury;
+      const upkeep = this.serviceUpkeep("ete");
+      const revenueCovers =
+        t.mode === "sandbox" || (t.lastYearRevenue > 0 && t.lastYearRevenue - t.lastYearExpenses >= upkeep);
+      if (revenueCovers) {
+        const [px, py] = this.waterEdge();
+        saving = !this.placeNear("ete", px, py) || saving;
       }
     }
     if (saving && this.districts.length > 0) return;
@@ -300,9 +321,9 @@ export class AutoMayor {
    * Coloca o serviço perto de onde está a demanda (amostras de casas sem atendimento).
    * Devolve false só quando falta dinheiro (aí o prefeito guarda dinheiro em vez de abrir bairro).
    */
-  /** Custeio anual de um hospital do catálogo (data/buildings.yaml), ou 0 se não houver. */
-  private hospitalUpkeep(): number {
-    const t = this.game.sim.buildings.catalog.find((b) => b.id === "hospital");
+  /** Custeio anual de um serviço do catálogo (data/buildings.yaml), ou 0 se não houver. */
+  private serviceUpkeep(id: string): number {
+    const t = this.game.sim.buildings.catalog.find((b) => b.id === id);
     return t?.upkeepPerYear ?? 0;
   }
 
@@ -334,7 +355,9 @@ export class AutoMayor {
 
   /**
    * Coloca o serviço no lugar vazio mais perto do ponto, encostado numa via (busca em espiral).
-   * Devolve false só quando falta dinheiro.
+   * Quando o serviço precisa de rio ou lago (`nearWater` no catálogo), o lugar só vale se a água
+   * estiver a até `nearWater` quadradinhos do retângulo (mesma conta do `nearWater` do `placeService`,
+   * packages/sim/src/commands/apply.ts). Devolve false só quando falta dinheiro.
    */
   private placeNear(service: string, px: number, py: number): boolean {
     const sim = this.game.sim;
@@ -347,14 +370,27 @@ export class AutoMayor {
           if (Math.abs(dx) !== r && Math.abs(dy) !== r) continue;
           const x = px + dx;
           const y = py + dy;
-          if (this.fits(x, y, t.w, t.h) && sim.network.findAccess(x, y, t.w, t.h)[0] >= 0) {
+          if (!this.fits(x, y, t.w, t.h)) continue;
+          if (t.nearWater > 0 && !this.nearWater(x, y, t.w, t.h, t.nearWater)) continue;
+          if (sim.network.findAccess(x, y, t.w, t.h)[0] >= 0) {
             this.send({ type: "placeService", service, x, y });
             return true;
           }
         }
       }
     }
+    // Nenhum lugar válido na espiral (por exemplo, ETE sem água perto): o prefeito não trava a cidade
+    // e não manda comando; a próxima ação tenta de novo.
     return true;
+  }
+
+  /** Rio ou lago a até `d` quadradinhos do retângulo (mesma conta do `nearWater` do `placeService`). */
+  private nearWater(x: number, y: number, w: number, h: number, d: number): boolean {
+    const world = this.game.sim.world;
+    for (let ty = y - d; ty < y + h + d; ty++)
+      for (let tx = x - d; tx < x + w + d; tx++)
+        if (world.inBounds(tx, ty) && world.water[world.idx(tx, ty)]) return true;
+    return false;
   }
 
   /** Algum prédio deste tipo ainda em obra (espera ficar pronto antes de pedir outro). */
@@ -373,6 +409,30 @@ export class AutoMayor {
     if (!w.inBounds(x, y)) return -1;
     const i = w.idx(x, y);
     return w.roads[i] ? i : -1;
+  }
+
+  /**
+   * Ponto de partida da busca da ETE: a margem de água mais próxima do centro da cidade (como um
+   * prefeito de verdade, a estação vai para beira do rio). O ponto só ordena a espiral de `placeNear`,
+   * mas precisa cair na margem porque a água pode estar longe do centro da cidade.
+   */
+  private waterEdge(): [number, number] {
+    const w = this.game.sim.world;
+    const [cx, cy] = this.cityCenter();
+    let best = -1;
+    let px = cx;
+    let py = cy;
+    for (let y = 0; y < w.height; y++) {
+      for (let x = 0; x < w.width; x++) {
+        if (!w.water[w.idx(x, y)]) continue;
+        const d = Math.abs(x - cx) + Math.abs(y - cy);
+        if (best >= 0 && d >= best) continue;
+        best = d;
+        px = x;
+        py = y;
+      }
+    }
+    return [px, py];
   }
 
   /** Meio da parte construída (para os serviços da cidade inteira ficarem perto de todo mundo). */
