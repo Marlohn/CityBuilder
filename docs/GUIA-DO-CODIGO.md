@@ -245,6 +245,28 @@ de destino como chave (ex.: `3: (r) => ({ ...r, version: 3 })`).
 2. A corrente é degrau por degrau: `applyMigrations` começa na versão do save e aplica `v -> v + 1` até a atual. Se faltar um degrau, recusa com erro em vez de abrir pela metade.
 3. Na escrita nada muda: `makeReplay` sempre grava na versão atual. A migração só acontece na leitura (`parseReplay`), sobre uma cópia.
 
+### 3.15 Renomeou ou tirou um comando? O que acontece com o save antigo
+
+O save antigo com o nome velho **é recusado** com mensagem em português
+(`comando inválido no tick <tick> (type "<type>")...`, em
+`packages/sim/src/save/commandCompat.ts`), em vez de abrir diferente ou pela
+metade. Abrir "do jeito que dá" refaria outra cidade com a mesma semente, e o
+replay deixaria de ser fiel: o certo é recusar e dizer tick, type e versão do
+save.
+
+A correção é escrever a migração, nunca afrouxar o `CommandSchema`:
+
+1. Suba `REPLAY_VERSION` e adicione o degrau em `MIGRATIONS`
+   (`packages/sim/src/save/replay.ts`) que renomeia/reescreve o comando velho
+   para o formato atual.
+2. A validação (`validateReplayCommands`) roda DEPOIS da migração, com o mesmo
+   `parseCommand` do contrato que a tela usa. Limite de regra em runtime (ex.:
+   `factor` da diretora fora da config) continua sendo recusado na hora de
+   jogar, não na abertura do save.
+3. Nunca remova nem renomeie um type no `CommandSchema`
+   (`packages/contract/src/commands.ts`) e nunca afrouxe o schema para o save
+   velho passar: saves antigos usam os nomes antigos.
+
 ---
 
 ## 4. Testes
@@ -294,6 +316,7 @@ Mudou isto → atualize aquilo **no mesmo PR**:
 | Mudou | Atualize |
 |---|---|
 | Regra de jogo nova ou valor com fonte (ex.: rotina em `config/traffic.yaml`) | comentário no `config/*.yaml` e, se for grande, `docs/PLANO.md` |
+| Renomeou ou removeu um comando (save antigo com o nome velho) | receita 3.15: escreva a migração em `packages/sim/src/save/replay.ts`, nunca afrouxe o `CommandSchema`; a validação mora em `packages/sim/src/save/commandCompat.ts` |
 | Pasta ou pacote novo | seção 1 deste guia e o `AGENTS.md` do pacote |
 | Comando de terminal novo | tabela de comandos do `AGENTS.md` e o README |
 | Jeito novo de fazer algo comum | uma receita na seção 3 |
