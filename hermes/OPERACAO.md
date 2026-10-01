@@ -95,6 +95,9 @@ As regras abaixo substituem instruções antigas de rodar check completo em cada
   o diagnóstico, põe `pronto-pra-dev` no PR e conclui o cartão do SHA atual. O script consome a etiqueta.
   Falhou essa tentativa? Arquiteto cria tarefas menores e fecha o PR antigo. Comentário sem encaminhamento
   recebe retomada limitada do Arquiteto; nunca reinicia as três tentativas normais.
+  O cartão de escalada inclui a chave `dev-diagnostico-pr-N` e seu estado real no kanban. Se já existe, informa
+  explicitamente que a reserva foi utilizada e não instrui reautorizar. Novo commit do QA não repõe o orçamento.
+  A mudança deixa o estado disponível ao LLM; a trava de uma tentativa por PR continua igual.
 - **Revisor:** lê diff/testes e evidências, sem npm/rebase/push. Merge com `--match-head-commit` no SHA lido. Se main mudou,
   encerra o cartão sem merge: o sincronizador atualiza a branch e despacha a revisão do novo commit.
 - **Timeout do Hermes:** fonte verificada na imagem fixa, `agent/tool_executor.py` e `agent/deadline.py`.

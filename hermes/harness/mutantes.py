@@ -8,6 +8,8 @@ AQUI = os.path.dirname(os.path.abspath(__file__))
 ORIGINAL = open(f"{AQUI}/sincronizar_github.py", encoding="utf-8").read()
 
 MUTANTES = {
+    "diagnostico omite tentativa extra ja utilizada":
+        ('        if diagnostico in existentes:\n', '        if False:\n'),
     "PR dev sem Closes perde vinculo com tarefa":
         (r'com_pr |= {int(pr["headRefName"][4:]) for pr in prs if re.fullmatch(r"dev/(\d+)", pr["headRefName"])}', 'com_pr |= set()'),
     "diagnostico sem autorizacao libera dev":

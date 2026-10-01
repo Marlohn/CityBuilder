@@ -14,7 +14,15 @@ s = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(s)
 
 CRIADOS, ESCRITOS = [], []
-s.criar = lambda chave, titulo, papel, alvo, prioridade=0: CRIADOS.append((chave, papel, prioridade))
+ALVOS = {}
+
+
+def criar_simulado(chave, titulo, papel, alvo, prioridade=0):
+    CRIADOS.append((chave, papel, prioridade))
+    ALVOS[chave] = alvo
+
+
+s.criar = criar_simulado
 s.gh_escrever = lambda *a, texto=None: ESCRITOS.append(a) or True
 
 
@@ -90,6 +98,19 @@ s.revisoes([_pdiag], {**_decisao, "dev-diagnostico-pr-10": "done",
                      **{f"arquiteto-destravar-pr-10-ccccccc-retomar-r{n}": "done" for n in (1, 2, 3)}}); cria()
 print("revisões/ajustes: ok")
 s.preparar_revisao = real_preparar
+
+# O Arquiteto deve receber o orçamento real, não decidir por um comentário antigo do PR.
+s.escalar_pr(_pdiag, _decisao, "sem encaminhamento"); cria("arquiteto-destravar-pr-10-ccccccc-retomar-r1")
+_alvo = ALVOS["arquiteto-destravar-pr-10-ccccccc-retomar-r1"]
+assert "dev-diagnostico-pr-10" in _alvo and "ainda não utilizada" in _alvo
+for _fim in s.TERMINAIS:
+    s.escalar_pr(_pdiag, {**_decisao, "dev-diagnostico-pr-10": _fim}, "sem encaminhamento")
+    cria("arquiteto-destravar-pr-10-ccccccc-retomar-r1")
+    _alvo = ALVOS["arquiteto-destravar-pr-10-ccccccc-retomar-r1"]
+    assert f"[dev-diagnostico-pr-10], status={_fim}" in _alvo
+    assert "já utilizada" in _alvo and "Não adicione pronto-pra-dev" in _alvo
+    assert "adicione pronto-pra-dev NO PR para autorizar" not in _alvo
+print("orçamento no diagnóstico: ok")
 
 # CI ausente, parcial, vermelho ou branch atrasada nunca gasta uma vaga de revisão.
 _p = pr(10, "aaaaaaa", "dev/1", ["em-revisão"])
