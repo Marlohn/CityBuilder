@@ -51,6 +51,8 @@ export interface YearSummary {
   expensesByCategory: Record<string, number>;
   /** Verdadeiro quando a receita cobriu a despesa (a cidade se pagou). */
   selfFinanced: boolean;
+  /** Dinheiro em caixa logo após fechar o ano (para o gráfico do saldo). */
+  moneyEnd: number;
 }
 
 export function emptyYear(): YearCounters {
