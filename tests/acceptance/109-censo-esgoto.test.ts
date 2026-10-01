@@ -15,6 +15,13 @@
  * desconhecido: ete", que só chega com a #107/#108), o `it` afirma `ok` com o motivo lido
  * de `drainResults()` e volta com `return` explícito — ou seja, ele NÃO passa silenciosamente
  * na main, e PASSA quando #107+#108+#109 estiverem mergeadas e a ETE zerar o `unmet.sewer`.
+ *
+ * Correção do desenho do `it` da ETE (ciclo r2, o PR #199 do Dev mostrou a premissa errada):
+ * a malha de `montaMalhaDaEte` não tinha saída para a borda do mapa, então com
+ * `growth.requiresOutsideConnection` a construtora não crescia, a população ficava 0 e
+ * `unmet.sewer` era 0 antes da ETE por falta de gente, não por falta de esgoto. Agora a
+ * malha tem uma rua de apoio até a borda leste e o `residential_low` fica do lado oeste
+ * (deixando livre o canto onde a ETE é colocada). Nenhuma `expect` foi afrouxada.
  */
 import { type Game, reportText, statsView } from "@city/sim";
 import { describe, expect, it } from "vitest";
@@ -81,14 +88,24 @@ function achaPontoDaEte(game: Game): MalhaEte | null {
   return null;
 }
 
-/** A malha da ETE: rua vertical, zonas dos dois lados e rua de serviço no outro extremo. */
+/** The ETE mesh: vertical road, zones on both sides and service road on the other end. */
 function montaMalhaDaEte(s: Game["sim"], m: MalhaEte): void {
   s.enqueue({ type: "buildRoad", kind: "street", x0: m.X, y0: m.Y, x1: m.X, y1: m.y + 14 });
-  s.enqueue({ type: "zone", zone: "residential_low", x0: m.X + 1, y0: m.Y + 1, x1: m.X + 2, y1: m.y + 13 });
-  s.enqueue({ type: "zone", zone: "commercial", x0: m.X - 2, y0: m.Y + 1, x1: m.X - 1, y1: m.y + 13 });
+  s.enqueue({ type: "zone", zone: "residential_low", x0: m.X - 2, y0: m.Y + 1, x1: m.X - 1, y1: m.y + 13 });
+  s.enqueue({ type: "zone", zone: "commercial", x0: m.X + 1, y0: m.Y + 1, x1: m.X + 2, y1: m.y + 13 });
   s.enqueue({ type: "buildRoad", kind: "street", x0: m.X, y0: m.Y, x1: m.X + 6, y1: m.Y });
   s.enqueue({ type: "placeService", service: "poco", x: m.X + 1, y: m.Y + 1 });
   s.enqueue({ type: "placeService", service: "subestacao", x: m.X + 3, y: m.Y + 1 });
+  // Support road to the east map edge: without an outside connection nothing grows
+  // (growth.requiresOutsideConnection), so the city has no people and unmet.sewer is 0.
+  s.enqueue({
+    type: "buildRoad",
+    kind: "street",
+    x0: m.X,
+    y0: m.y + 14,
+    x1: s.world.width - 1,
+    y1: m.y + 14,
+  });
 }
 
 describe("censo do esgoto (issue #109)", () => {
