@@ -84,11 +84,24 @@ jobs:
           # O Dev pode trazer arquivos de teste que ja estao na main (merge da main na branch dele).
           # Isso nao e alteracao do Dev: e o mesmo arquivo, byte a byte, que ja passou pela revisao.
           # So conta como violacao o que o Dev mudou de verdade em relacao a main.
+          # O Dev pode trazer testes de OUTRAS branches qa/ (issue que depende de outra).
+          # Byte a byte igual a qualquer qa/* significa que ele nao editou: veio no merge.
+          git fetch origin "+refs/heads/qa/*:refs/remotes/origin/qa/*" || true
           VIOLACOES=""
           for f in $CHANGED; do
             if git diff --quiet "origin/${{ github.base_ref }}" "${HEAD_SHA}" -- "$f"; then
               echo "Ignorado (identico a main, veio no merge): $f"
-            else
+              continue
+            fi
+            VIOLADO=0
+            for q in $(git for-each-ref --format='%(refname:short)' refs/remotes/origin/qa/); do
+              if git diff --quiet "$q" "${HEAD_SHA}" -- "$f"; then
+                echo "Ignorado (identico a ${q}, veio no merge): $f"
+                VIOLADO=1
+                break
+              fi
+            done
+            if [ "$VIOLADO" -eq 0 ]; then
               VIOLACOES="${VIOLACOES} $f"
             fi
           done
