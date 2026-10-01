@@ -69,17 +69,15 @@ function cidade(comHospital: boolean): Game {
     seed: SEED,
     days: DAYS,
     scenario,
-    commands: [
-      { type: "bulldoze", x0: 73, y0: 141, x1: 74, y1: 142 },
-      ...(comHospital
-        ? [
-            { type: "placeService", service: "hospital", x: 76, y: 141 },
-            { type: "placeService", service: "hospital", x: 84, y: 141 },
-            { type: "placeService", service: "hospital", x: 92, y: 141 },
-            { type: "placeService", service: "hospital", x: 100, y: 141 },
-          ]
-        : []),
-    ],
+    commands: comHospital
+      ? [
+          { type: "bulldoze", x0: 73, y0: 141, x1: 74, y1: 142 },
+          { type: "placeService", service: "hospital", x: 76, y: 141 },
+          { type: "placeService", service: "hospital", x: 84, y: 141 },
+          { type: "placeService", service: "hospital", x: 92, y: 141 },
+          { type: "placeService", service: "hospital", x: 100, y: 141 },
+        ]
+      : [{ type: "bulldoze", x0: 73, y0: 141, x1: 74, y1: 142 }],
   });
   cidades.set(chave, game);
   return game;
