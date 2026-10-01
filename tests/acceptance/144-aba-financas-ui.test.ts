@@ -70,7 +70,7 @@ function financeDeExemplo(): FinanceData {
   // e obras em packages/sim/src/systems/construction.ts): 1 receita + 6 despesas = 7 linhas.
   return {
     revenueByCategory: {
-      impostos_e_repasses: 1500000,
+      impostos_e_repasses: 3000000,
     },
     expensesByCategory: {
       educacao: 900000,
@@ -81,7 +81,7 @@ function financeDeExemplo(): FinanceData {
       obras_servicos: 200000,
     },
     // Custeio = educacao + saude + agua_e_luz + manutencao_vias (todo ano).
-    netOperating: 1500000 - (900000 + 700000 + 300000 + 250000),
+    netOperating: 3000000 - (900000 + 700000 + 300000 + 250000),
     // Investimento = obras_vias + obras_servicos (uma vez).
     investment: 400000 + 200000,
     yearlyHistory: [
@@ -148,11 +148,8 @@ const tools = toolDefs(config, data.buildings);
 
 const game = createTestGame({ seed: "financas-aba", scenario: "bairro-basico", days: 6 });
 const base = statsView(game);
-const raw = base;
 const exemplo = financeDeExemplo();
-const stats: StatsWithFinance = (raw as { finance?: unknown }).finance
-  ? (raw as StatsWithFinance)
-  : { ...(raw as StatsView), finance: exemplo };
+const stats: StatsWithFinance = { ...(base as StatsView), finance: exemplo };
 
 const statsNegativo: StatsWithFinance = {
   ...stats,
