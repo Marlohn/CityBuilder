@@ -62,6 +62,15 @@ function UtilityStat({ name, used, capacity }: { name: string; used: number; cap
 
 export function TopBar({ ui, store, client }: { ui: UiState; store: Store; client: GameClient }) {
   const s = ui.stats;
+  const blockedByWater = s !== null && s.construction.blockedByWater > 0;
+  const blockedByPower = s !== null && s.construction.blockedByPower > 0;
+  const showBlockedWarning = s !== null && ui.speed !== 0 && (blockedByWater || blockedByPower);
+  const blockedMessage =
+    blockedByWater && blockedByPower
+      ? "⚠ obras paradas: falta água e luz"
+      : blockedByWater
+        ? "⚠ obras paradas: falta água"
+        : "⚠ obras paradas: falta luz";
   return (
     <div className="topbar">
       <div className="brand">CityBuilder</div>
@@ -107,6 +116,7 @@ export function TopBar({ ui, store, client }: { ui: UiState; store: Store; clien
           <UtilityStat name="Luz" used={s.utilities.power.used} capacity={s.utilities.power.capacity} />
         </>
       ) : null}
+      {showBlockedWarning ? <div className="blocked">{blockedMessage}</div> : null}
       <div className="speeds">
         {SPEEDS.map((sp) => (
           <button
