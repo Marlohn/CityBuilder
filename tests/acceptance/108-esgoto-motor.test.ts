@@ -8,7 +8,10 @@
  *
  * Este teste trava tres coisas que o desperdicio e a falta de esgoto precisam levar a serio:
  * - a rede de esgoto regional e a propria conta: com `regionalSewage` apertado existem
- *   predios com agua e sem esgoto ao mesmo tempo (e nao e por causa da agua que faltou);
+ *   predios com agua e sem esgoto ao mesmo tempo (e nao e por causa da agua que faltou).
+ *   O criterio e medido por predio e nao por sobra: a sobra e conta do `recompute` e sobra
+ *   residual nao diz se a malha encheu de esgoto (a regra da fossa septica, sem ETE na malha,
+ *   deixa o esgoto sem tocar na construtora, entao a sobra pode ficar maior que a da agua);
  * - a ETE serve a malha dela e so a malha dela: placing uma ETE liga o esgoto daquela malha,
  *   derrubar a ETE desliga de novo, e outra malha de ruas sem ETE e sem saida continua sem esgoto;
  * - `served()` NAO olha esgoto (decisao escrita na issue): falta de esgoto nao tira o servico.
@@ -164,7 +167,7 @@ function ativosLongeDaEte(game: Game, m: MalhaEte): number[] {
 }
 
 describe("esgoto no motor (issue #108)", () => {
-  it("a rede de esgoto regional e pequena: a sobra de esgoto nao acompanha a da agua", () => {
+  it("a rede de esgoto regional e pequena: o esgoto nao acompanha a da agua nos predios", () => {
     const cidade = (seed: string, regionalSewage: number): Game =>
       createTestGame({
         seed,
@@ -186,36 +189,46 @@ describe("esgoto no motor (issue #108)", () => {
     ruaPrincipal(folgada.sim);
     stepDays(apertada, 3);
     stepDays(folgada, 3);
-    const cApertada = conta(apertada);
-    const cFolgada = conta(folgada);
-    expect(cApertada.comAgua, "sanidade: a rede regional de agua liga predios").toBeGreaterThan(0);
-    expect(cApertada.comLuz, "sanidade: a rede regional de luz liga predios").toBeGreaterThan(0);
+    const cAbert = conta(apertada);
+    expect(cAbert.comAgua, "sanidade: a rede regional de agua liga predios").toBeGreaterThan(0);
+    expect(cAbert.comLuz, "sanidade: a rede regional de luz liga predios").toBeGreaterThan(0);
 
-    // O gargalo da cidade e o esgoto, nao a agua: sobra de esgoto <= sobra de agua e luz.
-    const acesso = (game: Game): number => {
-      const bs = game.sim.buildings;
-      for (let b = 0; b < bs.count; b++) if (bs.isActive(b)) return bs.access[b]!;
-      return -1;
-    };
-    const acc = acesso(apertada);
-    expect(acc, "sanidade: existe um acesso de rua para medir a sobra").toBeGreaterThanOrEqual(0);
-    if (acc < 0) return;
-    const sobraEsgoto = spareDe(apertada, acc, "sewage");
-    const sobraAgua = spareDe(apertada, acc, "water");
+    // O gargalo da cidade e o esgoto, nao a agua: a rede de agua e de luz tem sobra, mas a
+    // de esgoto e pequena demais para a cidade, entao existem predios COM agua e SEM esgoto.
+    // Medido por predio, nao por sobra: sobra residual e conta do `recompute` e o criterio
+    // fala em predios ligados. A sobra so e comparada entre as duas cidades (mesma semente,
+    // mesma malha): crescer a rede regional de esgoto aumenta a sobra.
+    const cAperto = conta(apertada, true);
+    expect(cAperto.comAgua, "sanidade: a cidade apertada tem predios com agua").toBeGreaterThan(0);
     expect(
-      sobraEsgoto,
-      `com regionalSewage ${REGIONAL_ESGOTO} a sobra de esgoto tem que ser menor que a de agua (${sobraAgua})`,
-    ).toBeLessThan(sobraAgua);
-    // Com a rede regional de esgoto do tamanho da de agua, a malha enche de esgoto.
+      cAperto.aguaSemEsgoto,
+      `com regionalSewage ${REGIONAL_ESGOTO} a rede de esgoto regional nao acompanha a de agua: ` +
+        "tem que existir predio com agua e sem esgoto",
+    ).toBeGreaterThan(0);
+    // Com a rede regional de esgoto do mesmo tamanho da de agua, a malha enche de esgoto.
     const c2 = conta(folgada, true);
     expect(c2.comAgua, "sanidade: a cidade folgada tem predios com agua").toBeGreaterThan(0);
     expect(c2.comEsgoto, "com regionalSewage do mesmo tamanho, todo predio com agua tem esgoto").toBe(
       c2.comAgua,
     );
+    const acesso = (game: Game): number => {
+      const bs = game.sim.buildings;
+      for (let b = 0; b < bs.count; b++) if (bs.isActive(b)) return bs.access[b]!;
+      return -1;
+    };
+    const accApertada = acesso(apertada);
+    const accFolgada = acesso(folgada);
+    expect(accApertada, "sanidade: existe acesso na cidade apertada").toBeGreaterThanOrEqual(0);
+    expect(accFolgada, "sanidade: existe acesso na cidade folgada").toBeGreaterThanOrEqual(0);
+    if (accApertada < 0 || accFolgada < 0) return;
     expect(
-      spareDe(folgada, acesso(folgada), "sewage"),
-      "a sobra de esgoto cresce quando a rede regional cresce",
-    ).toBeGreaterThanOrEqual(sobraEsgoto);
+      spareDe(folgada, accFolgada, "sewage"),
+      `a sobra de esgoto cresce quando a rede regional cresce (apertada: ${spareDe(
+        apertada,
+        accApertada,
+        "sewage",
+      )})`,
+    ).toBeGreaterThan(spareDe(apertada, accApertada, "sewage"));
   });
 
   it("com uma ETE na mesma malha todo predio ativo passa a ter esgoto", () => {
