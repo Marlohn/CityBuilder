@@ -62,6 +62,10 @@ s.revisoes([pr(10, "aaaaaaa", "fix/main-x")], {}); cria("dev-ajuste-pr-10-aaaaaa
 s.revisoes([pr(10, "aaaaaaa", "qa/1")], {}); cria()  # PR do QA sem etiqueta não vai pro dev
 s.revisoes([pr(10, "aaaaaaa", "dev/1")], {"dev-ajuste-pr-10-bbbbbbb": "ready"}); cria()  # já tem um aberto
 s.revisoes([pr(10, "ccccccc", "dev/1")], {f"dev-ajuste-pr-10-{c}": "done" for c in "xyz"}); cria("arquiteto-destravar-pr-10-ccccccc")
+_ajustes = {f"dev-ajuste-pr-10-{c}": "done" for c in "xyz"}
+s.revisoes([pr(10, "ccccccc", "dev/1")], {**_ajustes, "arquiteto-destravar-pr-10-bbbbbbb": "running"}); cria()
+s.revisoes([pr(10, "ccccccc", "dev/1")], {**_ajustes, "arquiteto-destravar-pr-10-bbbbbbb": "ready"}); cria()
+s.revisoes([pr(10, "ccccccc", "dev/1")], {**_ajustes, "arquiteto-destravar-pr-100-bbbbbbb": "running"}); cria("arquiteto-destravar-pr-10-ccccccc")
 s.revisoes([pr(10, "aaaaaaa", "dev/1")], {"dev-ajuste-pr-10-aaaaaaa": "done"}); cria("dev-ajuste-pr-10-aaaaaaa-retomar-r1")
 s.revisoes([pr(10, "aaaaaaa", "dev/10", ["em-revisão"])], {}, {10}); cria()  # em revisão, mas a issue espera o QA: sem revisão repetida
 s.revisoes([pr(10, "aaaaaaa", "dev/10", ["em-revisão"])], {}, {11}); cria("revisar-pr-10-aaaaaaa")  # outra issue esperando: revisa normal

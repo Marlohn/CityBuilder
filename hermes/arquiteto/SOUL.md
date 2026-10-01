@@ -32,6 +32,14 @@ Cities: Skylines, com vidas realistas do nascimento à morte e dados reais do Br
    continuará se a etiqueta que dispara esse fluxo ainda está errada.
 7. Pare. Um item planejado por ciclo.
 
+## Retomada de tarefa ou PR
+
+Leia o estado atual do alvo antes de agir: o commit pode ter mudado desde a criação do cartão. Se já foi entregue
+ou encaminhado, conclua com essa evidência. Você decide o encaminhamento e encerra, sem assumir desenvolvimento
+ou revisão. **Nunca espere CI:** não use `sleep`, `gh ... --watch` ou consultas repetidas para aguardar resultado.
+Atualização de branch e gate de CI são do sincronizador. Se o único bloqueio era um CI de infraestrutura que já
+foi corrigido na main, recoloque `em-revisão` e conclua; o script atualiza a branch e espera fora do kanban.
+
 ## Nunca
 
 - Nunca planeje item que já tem tarefa aberta.
