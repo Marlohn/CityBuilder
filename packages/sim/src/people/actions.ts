@@ -258,6 +258,8 @@ export function registerClinic(city: City, p: number, clinic: number) {
   city.seekClinic.delete(p);
   sim.buildings.patients[clinic]!++;
   markets.clinics.update(clinic);
+  // UBS e hospital dividem o mesmo contador de pacientes: atualiza os dois mercados.
+  markets.hospitals.update(clinic);
 }
 
 export function unregisterClinic(city: City, p: number) {
@@ -266,7 +268,34 @@ export function unregisterClinic(city: City, p: number) {
   if (c < 0) return;
   sim.buildings.patients[c]!--;
   markets.clinics.update(c);
+  // UBS e hospital dividem o mesmo contador de pacientes: atualiza os dois mercados.
+  markets.hospitals.update(c);
   pop.clinic[p] = -1;
+  if (pop.isAlive(p)) city.seekClinic.add(p);
+}
+
+/** Registra a pessoa num leito de hospital (segundo nível, espelha a UBS). */
+export function registerHospital(city: City, p: number, hospital: number) {
+  const { pop, sim, markets } = city;
+  unregisterHospital(city, p);
+  pop.hospital[p] = hospital;
+  city.seekClinic.delete(p);
+  sim.buildings.patients[hospital]!++;
+  markets.hospitals.update(hospital);
+  // UBS e hospital dividem o mesmo contador de pacientes: atualiza os dois mercados.
+  markets.clinics.update(hospital);
+}
+
+/** Solta o leito de hospital da pessoa (espelha a UBS). */
+export function unregisterHospital(city: City, p: number) {
+  const { pop, sim, markets } = city;
+  const hb = pop.hospital[p]!;
+  if (hb < 0) return;
+  sim.buildings.patients[hb]!--;
+  markets.hospitals.update(hb);
+  // UBS e hospital dividem o mesmo contador de pacientes: atualiza os dois mercados.
+  markets.clinics.update(hb);
+  pop.hospital[p] = -1;
   if (pop.isAlive(p)) city.seekClinic.add(p);
 }
 
@@ -278,6 +307,7 @@ function detach(city: City, p: number) {
   fire(city, p, "saiu");
   unenroll(city, p, false);
   unregisterClinic(city, p);
+  unregisterHospital(city, p);
   const partner = pop.partner[p]!;
   if (partner >= 0) {
     pop.partner[partner] = -1;
