@@ -199,9 +199,15 @@ describe("issue #107: dados do esgoto (fracao na config e predio ETE)", () => {
       "a ETE deveria ter serves maior que 0",
     ).toBe(true);
     expect(e.jobs, "a ETE deveria ter jobs 10").toBe(10);
-    expect(e.cost, "a ETE deveria ter cost 25000000").toBe(25000000);
-    expect(e.upkeepPerYear, "a ETE deveria ter upkeepPerYear 3000000").toBe(3000000);
-    expect(e.constructionMonths, "a ETE deveria ter constructionMonths 24").toBe(24);
+    expect(
+      e.cost,
+      "a ETE deveria ter cost 13802400 (obra com fonte, Plano Microrregional de Esgotamento de GO)",
+    ).toBe(13802400);
+    expect(e.upkeepPerYear, "a ETE deveria ter upkeepPerYear 1725340 (operacao com fonte)").toBe(1725340);
+    expect(
+      e.constructionMonths,
+      "a ETE deveria ter constructionMonths 28 (prazo com fonte, ETE Centenario/Samae)",
+    ).toBe(28);
     const models = e.models as unknown;
     expect(
       Array.isArray(models) && (models as string[]).includes("proc/eta"),
