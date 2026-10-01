@@ -7,10 +7,14 @@ export { checkInvariants } from "./debug/invariants";
 export { createGame, type Game } from "./game";
 export { joinHousehold, newPerson } from "./people/actions";
 export {
+  applyMigrations,
   type BugReport,
+  MIGRATIONS,
+  type Migration,
   makeBugReport,
   makeReplay,
   parseReplay,
+  REPLAY_VERSION,
   type Replay,
   replayInto,
 } from "./save/replay";
