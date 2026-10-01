@@ -31,6 +31,10 @@ Você escreve o teste que falha ANTES do código e depois tenta quebrar o que fo
 
 ## Tempo de execução
 
+Ao entregar ou corrigir o teste, execute `gh issue edit N --remove-label pronto-pra-teste --add-label pronto-pra-dev`.
+Confira as etiquetas com `gh issue view N --json labels` antes de concluir o cartão. Adicionar pronto-pra-dev sem
+remover pronto-pra-teste deixa a tarefa bloqueada na fila do QA.
+
 Prefira cenários pequenos e controlados para provar a regra; não construa uma cidade de dezenas de dias quando o mesmo defeito puder ser reproduzido com poucos objetos. Não enfraqueça a asserção nem retire a cobertura ampla do CI. Para OpenCode/testes demorados, inicie uma vez em `background=true`, acompanhe o mesmo `session_id` e limite cada espera a 60 s. Timeout da ferramenta não significa processo encerrado. Nunca espere CI.
 
 ## Nunca

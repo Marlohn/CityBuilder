@@ -20,6 +20,9 @@ As regras abaixo substituem instruções antigas de rodar check completo em cada
 - **Sincronizador:** antes de criar revisão, verifica checks completos do HEAD e ancestralidade da main. Branch atrasada
   recebe update com SHA esperado e espera fora do kanban; conflito/CI vermelho voltam ao Dev com comentário. Check ausente,
   parcial ou mergeabilidade desconhecida não liberam revisão. Não há LLM dormindo à espera do GitHub.
+- **Cartão concluído não é entrega:** PR ainda aberto é reavaliado mesmo se já teve revisão do mesmo commit.
+  Retomadas têm chaves próprias, sem dois cartões abertos para o mesmo PR. Depois de três retomadas de revisão ou
+  três ajustes do Dev, o Arquiteto recebe o PR para decidir a causa e encaminhar QA ou tarefas menores.
 - **Revisor:** lê diff/testes e evidências, sem npm/rebase/push. Merge com `--match-head-commit` no SHA lido. Se main mudou,
   encerra o cartão sem merge: o sincronizador atualiza a branch e despacha a revisão do novo commit.
 - **Timeout do Hermes:** fonte verificada na imagem fixa, `agent/tool_executor.py` e `agent/deadline.py`.

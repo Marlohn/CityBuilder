@@ -51,14 +51,18 @@ print("chaves/rodadas: ok")
 real_preparar = s.preparar_revisao
 s.preparar_revisao = lambda pr: True  # roteamento puro; o gate real é verificado abaixo
 s.revisoes([pr(10, "aaaaaaa", "dev/1", ["em-revisão"])], {}); cria("revisar-pr-10-aaaaaaa")
-s.revisoes([pr(10, "aaaaaaa", "dev/1", ["em-revisão"])], {"revisar-pr-10-aaaaaaa": "done"}); cria()
+s.revisoes([pr(10, "aaaaaaa", "dev/1", ["em-revisão"])], {"revisar-pr-10-aaaaaaa": "done"}); cria("revisar-pr-10-aaaaaaa-retomar-r1")
+_retomadas = {"revisar-pr-10-aaaaaaa": "done", **{f"revisar-pr-10-aaaaaaa-retomar-r{n}": "done" for n in (1, 2, 3)}}
+s.revisoes([pr(10, "aaaaaaa", "dev/1", ["em-revisão"])], _retomadas); cria("arquiteto-destravar-pr-10-aaaaaaa")
+s.revisoes([pr(10, "aaaaaaa", "dev/1", ["em-revisão"])], {**_retomadas, "arquiteto-destravar-pr-10-aaaaaaa": "done"}); cria()
 s.revisoes([pr(10, "aaaaaaa", "dev/1", ["em-revisão"])], {"revisar-pr-10-bbbbbbb": "ready"}); cria()  # 1 aberto por PR
 s.revisoes([pr(10, "aaaaaaa", "dev/1", ["em-revisão"])], {"revisar-pr-10-bbbbbbb": "done"}); cria("revisar-pr-10-aaaaaaa")
 s.revisoes([pr(10, "aaaaaaa", "dev/1")], {}); cria("dev-ajuste-pr-10-aaaaaaa")
 s.revisoes([pr(10, "aaaaaaa", "fix/main-x")], {}); cria("dev-ajuste-pr-10-aaaaaaa")
 s.revisoes([pr(10, "aaaaaaa", "qa/1")], {}); cria()  # PR do QA sem etiqueta não vai pro dev
 s.revisoes([pr(10, "aaaaaaa", "dev/1")], {"dev-ajuste-pr-10-bbbbbbb": "ready"}); cria()  # já tem um aberto
-s.revisoes([pr(10, "ccccccc", "dev/1")], {f"dev-ajuste-pr-10-{c}": "done" for c in "xyz"}); cria()  # 3 ajustes: acabou
+s.revisoes([pr(10, "ccccccc", "dev/1")], {f"dev-ajuste-pr-10-{c}": "done" for c in "xyz"}); cria("arquiteto-destravar-pr-10-ccccccc")
+s.revisoes([pr(10, "aaaaaaa", "dev/1")], {"dev-ajuste-pr-10-aaaaaaa": "done"}); cria("dev-ajuste-pr-10-aaaaaaa-retomar-r1")
 s.revisoes([pr(10, "aaaaaaa", "dev/10", ["em-revisão"])], {}, {10}); cria()  # em revisão, mas a issue espera o QA: sem revisão repetida
 s.revisoes([pr(10, "aaaaaaa", "dev/10", ["em-revisão"])], {}, {11}); cria("revisar-pr-10-aaaaaaa")  # outra issue esperando: revisa normal
 s.revisoes([pr(10, "aaaaaaa", "dev/10")], {}, {10}); cria()  # issue 10 esperando o QA corrigir o teste: sem ajuste do dev
@@ -80,6 +84,11 @@ _p["statusCheckRollup"][0]["conclusion"] = "SUCCESS"
 _gh_gate = s.gh
 s.gh = lambda *a: "0"
 assert s.preparar_revisao(_p)
+_p["statusCheckRollup"][0]["conclusion"] = "FAILURE"
+s.revisoes([_p], {"revisar-pr-10-aaaaaaa": "done"}); cria()
+assert any(a[:2] == ("pr", "edit") for a in ESCRITOS), "CI vermelho precisa voltar ao Dev mesmo após cartão concluído"
+ESCRITOS.clear()
+_p["statusCheckRollup"][0]["conclusion"] = "SUCCESS"
 _p["mergeStateStatus"] = "UNKNOWN"
 assert not s.preparar_revisao(_p)
 _p["mergeStateStatus"] = "DIRTY"
@@ -141,7 +150,10 @@ s.tarefas(todas, [pr(9, "aaaaaaa", "qa/1", corpo="Closes #1 (rascunho)")], {}); 
 esg = {f"dev-issue-1-r{n}": "done" for n in (1, 2, 3)}
 s.tarefas(todas, [], esg); cria("arquiteto-quebrar-1")
 assert any(a[:2] == ("issue", "comment") for a in ESCRITOS), "tem que comentar na issue (rastro)"; ESCRITOS.clear()
-s.tarefas(todas, [], {**esg, "arquiteto-quebrar-1": "done"}); cria()  # só uma vez
+s.tarefas(todas, [], {**esg, "arquiteto-quebrar-1": "done"}); cria("arquiteto-quebrar-1-retomar-r1")
+s.tarefas(todas, [], {**esg, "arquiteto-quebrar-1": "running"}); cria()
+s.tarefas(todas, [], {**esg, "arquiteto-quebrar-1": "done", "arquiteto-quebrar-1-retomar-r1": "ready"}); cria()
+s.tarefas(todas, [], {**esg, "arquiteto-quebrar-1": "done", **{f"arquiteto-quebrar-1-retomar-r{n}": "done" for n in (1, 2, 3)}}); cria()
 s.tarefas(todas, [], {**esg, "dev-issue-1-r3": "running"}); cria()  # rodada aberta: não quebra ainda
 s.gh = gh_issues(dev=[iss(30, etiquetas=("roadmap", "pronto-pra-dev"))])
 s.tarefas(todas, [], {}); cria()  # item do roadmap com a etiqueta errada: nunca vira cartão
