@@ -35,6 +35,22 @@ export interface YearCounters {
   tripsLeisure: number;
   /** Viagens de ontem feitas a pé (parte das de cima). */
   tripsWalk: number;
+  /** Receita do ano corrente por categoria (zerada na virada do ano). */
+  revenueByCategory: Record<string, number>;
+  /** Despesa do ano corrente por categoria (zerada na virada do ano). */
+  expensesByCategory: Record<string, number>;
+}
+
+/** Resumo financeiro de um ano fechado (guardado em `City.yearlyHistory`). */
+export interface YearSummary {
+  year: number;
+  revenue: number;
+  expenses: number;
+  balance: number;
+  revenueByCategory: Record<string, number>;
+  expensesByCategory: Record<string, number>;
+  /** Verdadeiro quando a receita cobriu a despesa (a cidade se pagou). */
+  selfFinanced: boolean;
 }
 
 export function emptyYear(): YearCounters {
@@ -54,6 +70,8 @@ export function emptyYear(): YearCounters {
     tripsHealth: 0,
     tripsLeisure: 0,
     tripsWalk: 0,
+    revenueByCategory: {},
+    expensesByCategory: {},
   };
 }
 
@@ -73,6 +91,8 @@ export class City {
   };
   year: YearCounters = emptyYear();
   lastYear: YearCounters = emptyYear();
+  /** Um resumo por ano fechado, do mais antigo ao mais recente. */
+  yearlyHistory: YearSummary[] = [];
   /** Pessoas por tick-do-dia do aniversário (atualização anual espalhada ao longo do dia). */
   readonly slots: number[][];
   readonly carOwnership: (monthlyIncome: number) => number;
