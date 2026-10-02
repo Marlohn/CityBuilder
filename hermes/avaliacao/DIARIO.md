@@ -1,5 +1,25 @@
 # Diário da avaliação: agentes Hermes + kanban + LLM grátis (CityBuilder)
 
+## 02/10 00:17Z — recuperação real e propagação da saída do CLI
+
+A sessão Dev209 `20261001_231719_1dffe7` chamou OpenCode às 23:31:42Z, depois da leitura anterior
+que encontrara zero chamadas às 23:26. O CLI `ses_f0630c0b2ffeHd1eweu0V2IONg` registrou Muse com
+zero tokens e depois Kilo Nemotron Ultra grátis, na mesma sessão, com `FALLBACK_RESULT exit=0`.
+Alterou os três arquivos publicados, terminou em 23:40:37Z e não foi relançado manualmente. É prova
+de recuperação207 numa implementação real, não apenas probe curto. O erro HTTP exato inicial não foi
+recuperado; não atribuir causa. Space Bunny reserva e fallback nativo Hermes não foram usados nesse caso.
+
+CLI8min53 inclui365,905s de tools e167,080s restantes (LLM e demais intervalos, não só LLM).
+Diagnóstico antes do CLI levou cerca de14min25; coordenação após levou7min23. CI sobrepõe parte dessas
+fases. Fila do ajuste19min31, início ajuste→Pages40min27: alvo10–15min ainda não alcançado.
+
+Comando real tinha `2>&1 | tail -60`, sem `pipefail` explícito. Login Bash com HOME real do Dev
+confirmou pipefail desligado; `(exit 75) | tail -60` devolveu0. A correção é uma opção no ambiente
+comum já existente, não um filtro de comandos ou componente novo. Só novas shells Bash recebem
+pipefail; sem errexit. O harness verifica códigos de sucesso/falha, saída preservada, erro do filtro,
+carregamento repetido e shell POSIX. Backup/reversão apenas do ambiente; publicar/aplicar após CI completo.
+Isso não prova que a falha mascarada ocorreu no caso209, que terminou com sucesso real.
+
 ## 01/10 23:52Z — decisão estruturada antes de outra rodada Dev
 
 Dev208 diagnosticou de 22:48:12 até 23:17:07 e bloqueou `needs_input` em 23:16:59, citando

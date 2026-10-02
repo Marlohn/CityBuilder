@@ -1,5 +1,6 @@
 """Cenários de falha do CLI, sem LLM, rede ou clone de agente. Linux/Python padrão."""
 import contextlib
+import ast
 import importlib.util
 import io
 import os
@@ -155,4 +156,28 @@ with tempfile.TemporaryDirectory() as directory:
     assert resumed[:5] == ['run', '--session', 'ses_current', '--model', guard.KILO]
     assert '--agent' in resumed and '/repo' in resumed and 'pedido' in resumed
 
-print("TESTE OK: falha rápida, filhos encerrados, reserva bidirecional na mesma sessão e limite/custo protegidos")
+# O comando real Dev209 filtrou a saída com tail. Sem pipefail, um guard75 vira0.
+# Lê só a constante do aplicador: jamais aplica perfis ou credenciais no harness.
+tree = ast.parse(Path(__file__).with_name("aplicar_perfis.py").read_text())
+pipeline = next(ast.literal_eval(node.value) for node in tree.body if isinstance(node, ast.Assign)
+                and any(isinstance(t, ast.Name) and t.id == "LINHA_PIPEFAIL" for t in node.targets))
+
+
+def shell(code, setup=""):
+    return subprocess.run(["bash", "--noprofile", "--norc", "-c", setup + "\n" + code],
+                          capture_output=True, text=True, timeout=5)
+
+
+assert shell("(printf 'guard-output\\n'; exit 75) 2>&1 | tail -60").returncode == 0
+for rc in (0, 1, 75, 124, 127):
+    result = shell(f"(printf 'guard-output\\n'; exit {rc}) 2>&1 | tail -60", pipeline)
+    assert result.returncode == rc and result.stdout == "guard-output\n"
+assert shell("printf 'ok\\n' | (cat >/dev/null; exit 7)", pipeline).returncode == 7
+assert shell("false; printf 'continua\\n'", pipeline).stdout == "continua\n", "não ligar errexit"
+assert shell("printf 'ok\\n' | tail -60", pipeline + "\n" + pipeline).returncode == 0
+env_sh = dict(os.environ)
+env_sh.pop("BASH_VERSION", None)
+assert subprocess.run(["sh", "-c", pipeline + "\nprintf ok"], env=env_sh,
+                      capture_output=True, text=True, timeout=5).stdout == "ok", "compatibilidade POSIX"
+
+print("TESTE OK: falha rápida, filhos encerrados, reserva bidirecional, limite/custo e saída em pipeline protegidos")

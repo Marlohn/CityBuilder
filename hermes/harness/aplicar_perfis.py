@@ -35,6 +35,7 @@ RESERVA_ZEN = [{"provider": "custom:zen", "model": "space-bunny-free"}]
 RESERVA_KILO = [{"provider": "kilocode", "model": "nvidia/nemotron-3-ultra-550b-a55b:free"}]
 NO_KILO = {"designer", "arquiteto", "revisor"}
 FONTE_SKILLS = "/opt/hermes/skills"
+LINHA_PIPEFAIL = 'if [ -n "${BASH_VERSION:-}" ]; then set -o pipefail; fi'
 
 for papel, cfg in PAPEIS.items():
     d = f"/opt/data/profiles/{papel}"
@@ -106,3 +107,12 @@ if linha_kilo not in atual.splitlines():
     shutil.copy(ambiente, ambiente + ".bak-20261001-reserva")
     with open(ambiente, "a") as f:
         f.write("\n# Credencial existente; nome exigido pelo provedor nativo do OpenCode. Nunca imprimir.\n" + linha_kilo + "\n")
+
+# A saída do guard não pode virar sucesso ao filtrar o log com `| tail`.
+# Só muda novas shells Bash. Sem errexit: o agente ainda pode tratar erros normalmente.
+with open(ambiente) as f:
+    atual = f.read()
+if LINHA_PIPEFAIL not in atual.splitlines():
+    shutil.copy(ambiente, ambiente + ".bak-20261002-pipefail")
+    with open(ambiente, "a") as f:
+        f.write("\n# Preserve falhas do produtor mesmo quando a saída passa por um filtro.\n" + LINHA_PIPEFAIL + "\n")
