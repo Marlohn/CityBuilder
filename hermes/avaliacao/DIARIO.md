@@ -1,5 +1,75 @@
 # Diário da avaliação: agentes Hermes + kanban + LLM grátis (CityBuilder)
 
+## 02/10 — PR sem execução não prende arquivos de outra tarefa
+
+QA223 publicou o teste, mas o Dev não começou. `tarefas()` reservava arquivos
+de todo PR Dev aberto. O PR201, com as rodadas do HEAD d29e5d9 gastas e a decisão
+final blocked, ainda reservava `packages/sim/src/config/schema.ts`, também listado
+na #223. Nenhum agente estava executando esse PR. Replay com metadados atuais,
+SQLite somente leitura e escritas/CLI proibidos criou zero cartões. No mock,
+suspender só a reserva da #196, mantendo PR201 aberto, liberou `dev-issue-223-r1`.
+
+A reserva de arquivos é suspensa somente para um PR dev/N com final/esgotado
+blocked, retomadas gastas no HEAD atual, sem em-revisão e sem atendimento ativo
+do PR. A issue original continua associada ao PR, sem outro Dev ou orçamento
+renovado. Worker Dev ready/running sempre reserva seus arquivos; revisão,
+atendimento ou novo HEAD retomam a reserva. Dependências abertas continuam
+segurando as tarefas. Serialização de trabalhos ativos e CI/merge não mudaram.
+Perfil Dev1 protege o clone compartilhado. Isso permite outra tarefa real avançar,
+não resolve nem esconde o PR201 ou autoriza seu merge vermelho.
+
+Checks: cenário parado/retomado, novo HEAD, revisão, diagnóstico, worker Dev,
+rodadas disponíveis e dependência; quatro mutantes preservam os 36 anteriores.
+Não altera cartões, branches de features, modelos, retries, timeouts ou vagas.
+Implantação após merge copia só o sincronizador, com backup e hash; reversão
+restaura só esse backup. A publicação real da #223 após implantação ainda precisa
+ser observada; replay não é entrega nem medida de economia.
+
+O PR230 de reduzir a recuperação nativa foi retirado: o segundo worker QA223
+recuperou o trabalho em 157s e publicou PR228. Não reabrir nem aplicar essa proposta.
+A demora da primeira execução e a escrita fora do OpenCode continuam pendentes.
+
+## 02/10 — bloqueio registra causa e destino, sem fingir entrega
+
+O novo Designer `t_90ca66fc` atingiu 902s para limite de 900s, como o atendimento
+final do Arquiteto `t_3d252ae8`. O agent.log confirma sobrecarga Nvidia nos dois,
+mas o percurso difere: o Designer continuou no Kilo, enquanto o Arquiteto usou
+fallback nativo para Zen. No Designer os intervalos de ferramentas somam 27,548s;
+o restante inclui chamadas de IA e intervalos, não só processamento do modelo.
+Não atribuir toda latência ao erro nem comparar modelos como benchmark.
+
+A causa de perda do diagnóstico foi reproduzida: o breaker emite `timed_out` e
+`gave_up`, sem `blocked`; `bloqueio()` só procurava `blocked`. O zelador também
+declarava `done` em tentativas sem entrega. Agora lê a última falha estruturada,
+registra no próprio cartão motivo, responsável, destino e condição de continuidade,
+uma vez por evento. Falha de leitura/escrita mantém o bloqueio. Nenhum texto é
+classificado por regex como erro de provedor; timeout não comprova sua causa.
+O show deve confirmar blocked sem PID/claim; antes de arquivar relê o estado e
+a mesma falha. Snapshot antigo não autoriza encerrar um worker que voltou a trabalhar.
+
+Dependência espera o mecanismo nativo. Decisão, falta de capacidade ou causa
+desconhecida de uma tentativa comum têm um atendimento único do Arquiteto,
+15min, primeira falha, duas rodadas de goal; deve executar e verificar o destino
+antes de arquivar a origem como não entregue. Ajuste Dev que pede decisão no
+HEAD atual conserva o encaminhamento existente por PR. Falha técnica comum é
+arquivada como tentativa falha, contando no orçamento anterior; não usa complete
+nem unblock para renovar contadores. Recuperação final, planejamento, reposição
+e atendimento de bloqueio que travam permanecem visíveis, sem recuperação recursiva.
+Isso não declara resolvidos os impedimentos atuais nem garante disponibilidade de IA.
+
+Uma issue bloqueada não enche a fila disponível; sua origem real pode chamar a
+busca independente já existente quando a fila está insuficiente. Falha do próprio
+planejamento/Designer/atendimento não entra no hash nem cria buscas de buscas.
+Sem mudar cadência, concorrência, modelos, limites Dev, proteções ou features.
+
+Checks: cenários offline de timeout real, evento mais recente, dependência,
+capacidade, diagnóstico desconhecido, falha de escrita, deduplicação, orçamento,
+SHA antigo, persistência e reposição independente. Os 30 mutantes anteriores
+continuam cobertos; seis novos verificam os defeitos deste ajuste. Nenhum teste,
+simulação ou conteúdo de jogo executado pelo supervisor. Deploy somente do
+sincronizador mesclado, backup e cópia atômica 644; reversão somente desse arquivo.
+Adoção deve ser conferida em eventos naturais, sem cartões ou labels manuais.
+
 ## 02/10 — reposição não espera outro planejamento terminar
 
 O atendimento final de #201 (`t_3d252ae8`) foi bloqueado pelo limite nativo: 902s

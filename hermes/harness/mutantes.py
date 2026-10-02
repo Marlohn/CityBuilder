@@ -8,12 +8,32 @@ AQUI = os.path.dirname(os.path.abspath(__file__))
 ORIGINAL = open(f"{AQUI}/sincronizar_github.py", encoding="utf-8").read()
 
 MUTANTES = {
+    "PR parado ainda reserva arquivos da fila":
+        ('reserva_pr_ativa(pr, existentes)])', 'True])'),
+    "HEAD novo perde reserva pelo limite antigo":
+        ('if not esgotada(existentes, base + pr["headRefOid"][:7] + "-retomar"):', 'if False:'),
+    "PR em revisao perde reserva":
+        ('if any(lb["name"] == "em-revisão" for lb in pr["labels"]):\n        return True', 'if False:\n        return True'),
+    "worker de PR retomado perde reserva":
+        ('and (k.startswith(prefixos) or k == f"dev-diagnostico-pr-{n}")', 'and False'),
     "decisao pendente repete dev":
         ('            if aberto(existentes, f"arquiteto-destravar-pr-{n}-"):\n', '            if False:\n'),
     "needs_input perde encaminhamento":
         ('c.get("assignee") == "dev" and dados.get("kind") == "needs_input"', 'False'),
     "bloqueio de SHA antigo encaminha decisao atual":
-        ('pr["headRefOid"][:7] == ajuste[2] and', 'True and'),
+        ('pr["headRefOid"][:7] == ajuste[2]', 'True'),
+    "timeout nativo perde motivo":
+        ('("blocked", "gave_up", "timed_out")', '("blocked",)'),
+    "dependencia recebe retry cego":
+        ('if kind != "dependency":', 'if True:'),
+    "recuperacao bloqueada repete atendimento":
+        ('"arquiteto-bloqueio-")))', '"prefixo-inexistente")))'),
+    "sem registro arquiva mesmo assim":
+        ('if r.returncode:\n                continue  # nunca arquivar', 'if False:\n                continue  # nunca arquivar'),
+    "mesmo evento repete comentarios":
+        ('if not dados.get("registrado"):', 'if True:'),
+    "issue bloqueada enche fila disponivel":
+        ('t["number"] not in bloqueadas and', 'True and'),
     "diagnostico omite tentativa extra ja utilizada":
         ('        if diagnostico in existentes:\n', '        if False:\n'),
     "PR dev sem Closes perde vinculo com tarefa":

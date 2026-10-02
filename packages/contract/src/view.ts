@@ -124,11 +124,13 @@ export interface StatsView {
   unmet: UnmetDesireCounts;
   /** Leitos de internação (hospital), não vaga de atenção básica da UBS. */
   hospitalBeds: { total: number; occupied: number };
-  /** Água e luz em pessoas equivalentes (mesma unidade de demandOf): quanto a cidade usa e quanto tem. */
+  /** Água, esgoto e luz em pessoas equivalentes (mesma unidade de demandOf): quanto a cidade usa e quanto tem. */
   utilities: {
     enabled: boolean;
     water: { capacity: number | null; used: number };
     power: { capacity: number | null; used: number };
+    /** Esgoto em pessoa equivalente, mesma de water/power: fração do consumo (sewageShareOfConsumption), não litros nem m³. */
+    sewage: { capacity: number | null; used: number };
   };
   vehiclesMoving: number;
   /** Pessoas andando a pé agora (na tela). */
