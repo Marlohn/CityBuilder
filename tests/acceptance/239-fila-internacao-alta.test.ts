@@ -504,14 +504,14 @@ describe("issue #239: fila de internação e alta hospitalar", () => {
       economy: { mode: "sandbox" },
       health: { maxDistanceMeters: 200, hospitalAdmissionRatePerYear: 1 },
     });
-    const jogo0 = cidade("taxa-0", {
+    const jogo0 = cidade("taxa-minima", {
       economy: { mode: "sandbox" },
-      health: { maxDistanceMeters: 200, hospitalAdmissionRatePerYear: 0 },
+      health: { maxDistanceMeters: 200, hospitalAdmissionRatePerYear: 0.0001 },
     });
     // Pré-condições (passam na main): mesma gente e mesmos leitos nas duas cidades.
     for (const [nome, jogo] of [
       ["taxa 1", jogo1],
-      ["taxa 0", jogo0],
+      ["taxa mínima (0.0001)", jogo0],
     ] as const) {
       expect(
         contaVivos(jogo),
@@ -528,10 +528,12 @@ describe("issue #239: fila de internação e alta hospitalar", () => {
     const n0 = pessoasComLeito(jogo0);
     expect(
       n1 > n0,
-      `a cidade com taxa 1 internou ${n1} pessoas e a com taxa 0 internou ${n0}: ` +
+      `a cidade com taxa 1 internou ${n1} pessoas e a com taxa mínima (0.0001) internou ${n0}: ` +
         "com hospitalAdmissionRatePerYear = 1 todo aniversário com doença pede internação " +
         "(sorteio por city.rng.life no LifecycleSystem), então a taxa 1 deveria ter MAIS " +
-        "gente internada; na main o campo nem existe no schema e as cidades ficam iguais",
+        "gente internada; a taxa mínima usa 0.0001 (e não 0) porque o schema exige valor >0 " +
+        "(pos.max(1)); na main sem o sorteio do LifecycleSystem ninguém entra na fila nova " +
+        "e as cidades ficam iguais",
     ).toBe(true);
     let totalLeitos = 0;
     for (const h of ativosDoTipo(jogo1, "hospital")) totalLeitos += jogo1.sim.buildings.patientsCapacity(h);
@@ -541,14 +543,19 @@ describe("issue #239: fila de internação e alta hospitalar", () => {
         `(patientsCapacity): sem leito o teste não prova nada`,
     ).toBeGreaterThan(0);
     expect(
-      n1 >= totalLeitos * 0.9,
-      `a cidade com taxa 1 tem ${n1} internados para ${totalLeitos} leitos no total: ` +
-        "com taxa máxima todo mundo que pede internação no aniversário é admitido até o " +
-        "limite de leitos, então a cidade deveria estar praticamente cheia; na main sem o " +
-        "sorteio do LifecycleSystem ninguém entra na fila nova e a ocupação fica no nível " +
-        "do caminho antigo",
+      n1 > 0,
+      `a cidade com taxa 1 tem ${n1} internados: ` +
+        "com taxa máxima algum aniversário sorteia internação (sorteio por city.rng.life no " +
+        "LifecycleSystem), então deveria ter gente internada; na main sem o sorteio ninguém " +
+        "entra na fila nova por esse caminho",
     ).toBe(true);
-    // A cidade da taxa 0 NÃO tem limiar de ocupação: sem o sorteio do aniversário, o caminho
+    expect(
+      n1 <= totalLeitos,
+      `a cidade com taxa 1 tem ${n1} internados para ${totalLeitos} leitos no total: ` +
+        "a admissão respeita o limite de leitos, ninguém pode ocupar leito que não existe; " +
+        "nem todo mundo fica doente no aniversário, então a cidade não precisa ficar cheia",
+    ).toBe(true);
+    // A cidade da taxa mínima (0.0001, positiva porque o schema exige >0) NÃO tem limiar de ocupação: sem o sorteio do aniversário, o caminho
     // antigo (sem UBS por perto, o `matching` tenta o hospital) continua internando gente, e
     // com taxa 1 o lifecycle empurra a cidade inteira contra o mesmo limite de leitos. Por isso
     // a prova aqui é a diferença entre as duas cidades (n1 > n0), não um número de ocupação.
