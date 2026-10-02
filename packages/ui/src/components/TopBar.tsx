@@ -42,12 +42,23 @@ function utilityColor(fraction: number): string {
   return "var(--accent)";
 }
 
-function UtilityStat({ name, used, capacity }: { name: string; used: number; capacity: number | null }) {
+function UtilityStat({
+  name,
+  used,
+  capacity,
+  hint,
+}: {
+  name: string;
+  used: number;
+  capacity: number | null;
+  hint?: string;
+}) {
   const value = `${int(used)} / ${capacity === null ? "—" : int(capacity)}`;
-  const title =
+  const base =
     capacity === null
       ? `${name}: ${int(used)} pessoas equivalentes usando; serviço sem limite (desligado)`
       : `${name}: ${int(used)} de ${int(capacity)} pessoas equivalentes usando (${pct(capacity > 0 ? used / capacity : 0)})`;
+  const title = hint ? `${base}${hint}` : base;
   const fraction = capacity && capacity > 0 ? used / capacity : 0;
   return (
     <div className="stat" title={title}>
@@ -113,6 +124,12 @@ export function TopBar({ ui, store, client }: { ui: UiState; store: Store; clien
       {s ? (
         <>
           <UtilityStat name="Água" used={s.utilities.water.used} capacity={s.utilities.water.capacity} />
+          <UtilityStat
+            name="Esgoto"
+            used={s.utilities.sewage.used}
+            capacity={s.utilities.sewage.capacity}
+            hint=" (coleta de esgoto tratada na ETE)"
+          />
           <UtilityStat name="Luz" used={s.utilities.power.used} capacity={s.utilities.power.capacity} />
         </>
       ) : null}
