@@ -90,6 +90,8 @@ export class City {
     migration: Rng;
     growth: Rng;
     traits: Rng;
+    /** Fluxo só da alta hospitalar (a internação usa `life`). */
+    hospital: Rng;
   };
   year: YearCounters = emptyYear();
   lastYear: YearCounters = emptyYear();
@@ -115,6 +117,10 @@ export class City {
   readonly seekJob = new IndexedSet();
   readonly seekSchool = new IndexedSet();
   readonly seekClinic = new IndexedSet();
+  /** Quem pediu internação e espera um leito livre (fila separada da UBS). */
+  readonly seekHospital = new IndexedSet();
+  /** Quem está internado agora (índice para a alta não varrer a população inteira). */
+  readonly hospitalized = new IndexedSet();
   /** Famílias procurando casa. */
   readonly seekHome = new IndexedSet();
   /** Adultos solteiros (para sortear pares). */
@@ -145,6 +151,7 @@ export class City {
       migration: r.stream("migration"),
       growth: r.stream("growth"),
       traits: r.stream("traits"),
+      hospital: r.stream("hospital"),
     };
     this.slots = Array.from({ length: sim.clock.ticksPerDay }, () => []);
     this.carOwnership = makeTableLookup(sim.config.traffic.cars.ownershipByHouseholdIncome);

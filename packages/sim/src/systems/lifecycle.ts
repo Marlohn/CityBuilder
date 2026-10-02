@@ -1,10 +1,19 @@
 /**
  * Atualização anual de cada pessoa, no tick do aniversário dela (espalha o trabalho ao longo do dia).
- * Ordem: morte -> estudo -> trabalho/aposentadoria -> família -> dinheiro da família.
+ * Ordem: morte -> estudo -> trabalho/aposentadoria -> família -> internação -> dinheiro da família.
+ * A alta hospitalar roda a cada tick sobre os internados (`city.hospitalized`).
  */
 import type { City } from "../city";
 import type { Demography } from "../metrics/demography";
-import { die, eduLevelFromYears, fire, householdLeavesCity, refreshRole, unenroll } from "../people/actions";
+import {
+  die,
+  eduLevelFromYears,
+  fire,
+  householdLeavesCity,
+  refreshRole,
+  unenroll,
+  unregisterHospital,
+} from "../people/actions";
 import { EV, UNMET } from "../people/events";
 import { OUTSIDE_JOB, PSTATUS, ROLE, SEX } from "../people/population";
 import type { System } from "../sim";
@@ -20,6 +29,7 @@ export class LifecycleSystem implements System {
 
   tick() {
     const city = this.city;
+    this.discharge();
     const list = city.slots[city.sim.clock.tickOfDay]!;
     if (list.length === 0) return;
     let write = 0;
@@ -145,9 +155,46 @@ export class LifecycleSystem implements System {
     maybeLeaveParents(city, p);
     this.homelessCouple(p);
 
-    // 5. Dinheiro da família (uma vez por ano, pela primeira pessoa da lista da família).
+    // 5. Internação: um episódio novo (quem já tem leito não pede outro). A chance é a taxa
+    // diária equivalente à anual da config (hospitalAdmissionRatePerYear, 8% = meio do
+    // intervalo de 7-9% da Portaria GM/MS 1.101/2002). O sorteio usa o fluxo `hospital`,
+    // separado do `life`: internação e alta são novas e não podem mudar o sorteio da morte,
+    // do estudo e do trabalho de quem já estava na cidade.
+    if (
+      pop.hospital[p]! < 0 &&
+      pop.clinic[p]! < 0 &&
+      city.rng.hospital.chance(config.health.hospitalAdmissionRatePerYear / 365)
+    )
+      city.seekHospital.add(p);
+
+    // 6. Dinheiro da família (uma vez por ano, pela primeira pessoa da lista da família).
     const h = pop.household[p]!;
     if (h >= 0 && city.hh.head[h] === p) this.householdYear(h);
+  }
+
+  /**
+   * Alta hospitalar: cada internado tem por tick a fração diária da chance de alta
+   * (`1 / hospitalAvgLengthOfStayDays`, em dias). Só percorre os internados
+   * (`city.hospitalized`), nunca a população inteira. Morte e saída da cidade já
+   * soltam o leito (`detach` chama `unregisterHospital`), então o índice se limpa sozinho.
+   */
+  private discharge() {
+    const city = this.city;
+    const chance = Math.min(
+      1,
+      1 / city.config.health.hospitalAvgLengthOfStayDays / city.sim.clock.ticksPerDay,
+    );
+    for (let i = 0; i < city.hospitalized.size; i++) {
+      const p = city.hospitalized.at(i);
+      city.sim.perf.count("personsUpdated");
+      if (city.rng.hospital.chance(chance)) {
+        unregisterHospital(city, p);
+        // Alta é cura, não perda de atendimento: o curado não volta para a fila
+        // da UBS (ela anda por versão do mercado de UBS e o ex-internado ficaria
+        // preso nela; ele pede outro episódio pelo `seekHospital` no aniversário).
+        city.seekClinic.delete(p);
+      }
+    }
   }
 
   /** Família esperando casa há mais de um ano pode desistir e ir para outra cidade. */
