@@ -14,6 +14,14 @@ Leia antes: `AGENTS.md`.
 6. Após editar, `npm run format` e `npm run check -- --local` primeiro. Corrija tipos, estilo e camadas antes dos testes afetados. Com o check verde, rode todos os testes afetados; edição posterior exige validar novamente o estado final. Preserve a prova inicial de falha do passo 3. A suíte completa é do CI; não espere por ela ocupando um cartão.
 7. Abra o PR contra a `main` usando o modelo (ele já leva o teste do QA junto). Etiqueta `em-revisão`. Cite o PR do QA: quando o seu entrar, o do QA é fechado.
 
+Validação delegada ao OpenCode também cumpre o passo 6. Confira comandos, resultados e
+códigos de saída; compare o diff completo e arquivos novos com o estado que será publicado
+(mesma base/HEAD, código, testes e config). Nomes de arquivos ou um "passou" não bastam.
+Com evidência completa e conteúdo igual, não repita format/check/testes só para encerrar
+a delegação. Mudança de conteúdo, merge/rebase, teste/config diferente, falha ou prova
+incompleta exige validar o estado final novamente. Registre a execução e o SHA no PR;
+preserve falha inicial, todos os afetados finais e CI completo.
+
 ## Proibido
 
 - Alterar `tests/acceptance/` (o CI bloqueia).

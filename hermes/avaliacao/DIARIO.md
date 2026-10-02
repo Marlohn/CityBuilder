@@ -1,5 +1,32 @@
 # Diário da avaliação: agentes Hermes + kanban + LLM grátis (CityBuilder)
 
+## 02/10 — validação local comprovada não se repete ao terminar a delegação
+
+Dev223 delegou implementação e validação ao OpenCode. A sessão
+`ses_f0258a3e5ffejWD9p6X1I7kMRW` fez format, check local verde e os cinco testes
+afetados verdes em 239,545s. Depois o coordenador repetiu format/check e os mesmos
+cinco testes: chamada 17:32:43.199–17:36:49.016Z, 245,817s. O diff completo do
+CLI após validar e o diff do commit publicado f6a41e4 são byte a byte iguais:
+2741 bytes, SHA256 4f2285215c16afe5eccb3ee61a7dbc0c11af2a4e87b63169d7cea378413f1720.
+O status do CLI só listava os mesmos três arquivos, sem arquivo novo; o teste QA
+permaneceu intacto. Não se deduziu igualdade apenas do format com saída suprimida.
+Isso reproduz validação repetida do mesmo conteúdo, não prova que toda repetição
+é dispensável ou que a latência de IA foi resolvida.
+
+O SOUL manda validar após editar e também pede a mesma validação ao CLI, sem
+explicitar quando a evidência delegada já cumpre a etapa. A orientação agora pede
+comandos/resultados/saídas e estado completo comparável antes de aproveitar esse
+resultado. Mudança de conteúdo/base/testes/config, falha ou evidência incompleta
+exige nova validação final. Não basta resumo, nomes de arquivos ou exit global.
+Falha inicial, afetados finais, CI completo, proteção QA e gates de merge mantidos.
+Nenhum teste/feature do jogo foi escrito ou executado pelo supervisor.
+
+Checks desta mudança de instrução: diff/revisão do contrato e CI completo do HEAD.
+Não há teste que apenas espelha o texto. Deploy após merge copia somente SOUL Dev,
+com backup e comparação dos bytes da fonte mesclada; reversão só esse backup.
+Economia futura depende de adoção em tarefa nova natural; 245,817s é repetição
+observada, não promessa para toda tarefa nem comparação causal entre modelos.
+
 ## 02/10 — PR sem execução não prende arquivos de outra tarefa
 
 QA223 publicou o teste, mas o Dev não começou. `tarefas()` reservava arquivos

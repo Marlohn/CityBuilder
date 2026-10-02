@@ -34,6 +34,21 @@ Página bloqueada ou resposta 429: não repita a mesma URL com `sleep` nem monte
 
 ## Comandos demorados
 
+### Aproveitar a validação do OpenCode
+
+Inclua implementação e validação local no mesmo pedido ao OpenCode. Peça os comandos,
+resultados e códigos de saída, além do diff completo após a última validação e do conteúdo
+dos arquivos novos relevantes. Confira essa evidência e compare com o estado que vai publicar:
+base/HEAD, código, testes e config devem ser os mesmos. Só nomes em `git status`, um resumo
+"passou" ou exit 0 do comando inteiro não provam isso.
+Se format, check local e todos os testes afetados já passaram nesse estado, essa execução
+cumpre o passo 5: não rode os mesmos comandos novamente só porque terminou a delegação.
+Se houve edição, formatação que mudou conteúdo, merge/rebase, mudança de testes/config,
+falha ou evidência incompleta, valide novamente o estado final, na ordem do passo 5.
+Na descrição do PR, registre quem executou, comandos/resultados e o SHA publicado;
+um teste adicional necessário continua obrigatório. Preserve a falha inicial, todos os
+afetados finais e o CI completo. Não aproveite evidência de outra tarefa ou só de um SHA antigo.
+
 Inicie `opencode run` e testes potencialmente longos com `background=true`, guarde o `session_id` e acompanhe esse mesmo processo. `process` espera no máximo 60 s por chamada. Nunca reinicie um comando só porque a ferramenta atingiu timeout; veja se o processo original continua vivo. Inclua no pedido ao OpenCode a ordem após edição: formatar, check local verde, testes afetados; preserve a prova inicial de falha, sem suíte completa e sem esperar CI.
 
 O terminal usa um guard que devolve erros de provedor e tenta reservas gratuitas automaticamente, na mesma sessão: Muse → Nemotron Ultra grátis no Kilo → Space Bunny grátis no Zen, no máximo três chamadas. Partindo explicitamente de Kilo ou Space Bunny, tenta apenas o outro, no máximo duas chamadas. `HERMES_OPENCODE_FALLBACK` identifica a troca e `FALLBACK_RESULT` informa a saída. Não relance manualmente após essa sequência: isso reiniciaria o limite. Exit 75 significa que a recuperação falhou ou rota/custo/credencial não foram confirmados; registre os erros como bloqueio de infraestrutura, sem culpar o teste, dividir a feature ou alegar entrega. Confira o diff e preserve os arquivos. Não instale ferramentas, use modelos pagos ou loops de espera. Exit 124 é limite total de uma hora, incluindo as reservas; registre o diagnóstico sem relançar automaticamente. A reserva nativa do coordenador Hermes é separada da reserva desse comando.
