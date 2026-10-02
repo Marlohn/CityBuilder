@@ -1,5 +1,34 @@
 # Diário da avaliação: agentes Hermes + kanban + LLM grátis (CityBuilder)
 
+## 02/10 — PR sem execução não prende arquivos de outra tarefa
+
+QA223 publicou o teste, mas o Dev não começou. `tarefas()` reservava arquivos
+de todo PR Dev aberto. O PR201, com as rodadas do HEAD d29e5d9 gastas e a decisão
+final blocked, ainda reservava `packages/sim/src/config/schema.ts`, também listado
+na #223. Nenhum agente estava executando esse PR. Replay com metadados atuais,
+SQLite somente leitura e escritas/CLI proibidos criou zero cartões. No mock,
+suspender só a reserva da #196, mantendo PR201 aberto, liberou `dev-issue-223-r1`.
+
+A reserva de arquivos é suspensa somente para um PR dev/N com final/esgotado
+blocked, retomadas gastas no HEAD atual, sem em-revisão e sem atendimento ativo
+do PR. A issue original continua associada ao PR, sem outro Dev ou orçamento
+renovado. Worker Dev ready/running sempre reserva seus arquivos; revisão,
+atendimento ou novo HEAD retomam a reserva. Dependências abertas continuam
+segurando as tarefas. Serialização de trabalhos ativos e CI/merge não mudaram.
+Perfil Dev1 protege o clone compartilhado. Isso permite outra tarefa real avançar,
+não resolve nem esconde o PR201 ou autoriza seu merge vermelho.
+
+Checks: cenário parado/retomado, novo HEAD, revisão, diagnóstico, worker Dev,
+rodadas disponíveis e dependência; quatro mutantes preservam os 36 anteriores.
+Não altera cartões, branches de features, modelos, retries, timeouts ou vagas.
+Implantação após merge copia só o sincronizador, com backup e hash; reversão
+restaura só esse backup. A publicação real da #223 após implantação ainda precisa
+ser observada; replay não é entrega nem medida de economia.
+
+O PR230 de reduzir a recuperação nativa foi retirado: o segundo worker QA223
+recuperou o trabalho em 157s e publicou PR228. Não reabrir nem aplicar essa proposta.
+A demora da primeira execução e a escrita fora do OpenCode continuam pendentes.
+
 ## 02/10 — bloqueio registra causa e destino, sem fingir entrega
 
 O novo Designer `t_90ca66fc` atingiu 902s para limite de 900s, como o atendimento

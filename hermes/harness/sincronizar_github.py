@@ -473,14 +473,39 @@ def fechar_tarefas_entregues(mesclados, todas, agora=None):
     return fechadas
 
 
-def tarefas(todas, prs, existentes):
-    """Issue pronta -> cartão do Dev/QA. Três rodadas sem entrega -> o Arquiteto quebra a tarefa."""
-    abertas = {i["number"] for i in todas}
+def issues_com_pr(prs):
     # Issue com PR do DEV aberto que a fecha já está com alguém (29/09: a #38 seguia 'pronto-pra-dev' com o PR #43 em
     # revisão). O rascunho do QA (qa/N) também diz "Closes #N" e NÃO conta: em 30/09 ele escondeu a #49 do dev por 2 h.
     com_pr = {int(n) for pr in prs if not pr["headRefName"].startswith("qa/") for n in FECHA.findall(pr["body"] or "")}
     # #180 perdeu Closes ao editar a descrição: dev/N continua sendo o trabalho da issue N.
     com_pr |= {int(pr["headRefName"][4:]) for pr in prs if re.fullmatch(r"dev/(\d+)", pr["headRefName"])}
+    return com_pr
+
+
+def reserva_pr_ativa(pr, existentes):
+    """PR parado no limite não reserva arquivos de outras issues; sua própria issue continua com PR."""
+    n = pr["number"]
+    base = f"arquiteto-destravar-pr-{n}-"
+    if not re.fullmatch(r"dev/(\d+)", pr["headRefName"]):
+        return True
+    if any(lb["name"] == "em-revisão" for lb in pr["labels"]):
+        return True
+    if not any(existentes.get(base + fim) == "blocked" for fim in ("final", "esgotado")):
+        return True
+    if not esgotada(existentes, base + pr["headRefOid"][:7] + "-retomar"):
+        return True  # outro HEAD ou rodadas ainda disponíveis não são uma reserva parada confirmada
+    prefixos = (base, f"dev-ajuste-pr-{n}-", f"revisar-pr-{n}-")
+    if any(st in ("todo", "ready", "running", "review")
+           and (k.startswith(prefixos) or k == f"dev-diagnostico-pr-{n}")
+           for k, st in existentes.items()):
+        return True
+    return False
+
+
+def tarefas(todas, prs, existentes):
+    """Issue pronta -> cartão do Dev/QA. Três rodadas sem entrega -> o Arquiteto quebra a tarefa."""
+    abertas = {i["number"] for i in todas}
+    com_pr = issues_com_pr(prs)
     bugs = {i["number"] for i in todas if any(lb["name"] == "bug" for lb in i["labels"])}  # PLANO 12.2: bug passa na frente
     for etiqueta, papel, prio in (("pronto-pra-dev", "dev", 20), ("pronto-pra-teste", "qa", 10)):
         lista = json.loads(gh("issue", "list", "-R", REPO, "--state", "open", "--label", etiqueta,
@@ -492,9 +517,11 @@ def tarefas(todas, prs, existentes):
             # Dois devs no mesmo arquivo = conflito garantido e uma rodada de revisão a mais (29/09: #36, #37 e #48 em
             # trafficSystem.ts). A tarefa espera o PR da outra entrar; dev parado é barato, revisão não é.
             corpos = {i["number"]: i["body"] for i in lista}
-            ativos = com_pr | {int(k.split("-")[2]) for k, st in existentes.items()
-                               if k.startswith("dev-issue-") and st in ("ready", "running")}
-            ocupados = set().union(*(arquivos(corpos.get(n)) for n in ativos)) if ativos else set()
+            devs_abertos = {int(k.split("-")[2]) for k, st in existentes.items()
+                            if k.startswith("dev-issue-") and st in ("ready", "running")}
+            ativos = com_pr | devs_abertos
+            reservados = issues_com_pr([pr for pr in prs if reserva_pr_ativa(pr, existentes)]) | devs_abertos
+            ocupados = set().union(*(arquivos(corpos.get(n)) for n in reservados)) if reservados else set()
         for iss in sorted(lista, key=lambda i: i["number"]):  # menor número primeiro = ordem do Arquiteto
             n = iss["number"]
             if papel == "dev" and n in com_pr:

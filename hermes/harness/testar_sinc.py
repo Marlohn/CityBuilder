@@ -219,6 +219,23 @@ s.tarefas(todas, [], {**esg, "arquiteto-quebrar-1": "running"}); cria()
 s.tarefas(todas, [], {**esg, "arquiteto-quebrar-1": "done", "arquiteto-quebrar-1-retomar-r1": "ready"}); cria()
 s.tarefas(todas, [], {**esg, "arquiteto-quebrar-1": "done", **{f"arquiteto-quebrar-1-retomar-r{n}": "done" for n in (1, 2, 3)}}); cria()
 s.tarefas(todas, [], {**esg, "dev-issue-1-r3": "running"}); cria()  # rodada aberta: não quebra ainda
+# PR196 parado ocupava schema.ts de 223. Suspende só sua reserva, sem retirar o PR
+# de com_pr, sem liberar dependência ou reiniciar rodada. Todos os casos ativos continuam serializados.
+s.gh = gh_issues(dev=[iss(1, ARQ), iss(2, ARQ)])
+_parado = pr(9, "aaaaaaa", "dev/1")
+_limite = {"arquiteto-destravar-pr-9-final": "blocked",
+           **{f"arquiteto-destravar-pr-9-aaaaaaa-retomar-r{n}": "done" for n in (1, 2, 3)}}
+s.tarefas(todas, [_parado], _limite); cria("dev-issue-2-r1")
+for _retomada in ("arquiteto-destravar-pr-9-aaaaaaa", "dev-ajuste-pr-9-aaaaaaa",
+                  "revisar-pr-9-aaaaaaa", "dev-diagnostico-pr-9", "dev-issue-1-r2"):
+    for _st in ("ready", "running"):
+        s.tarefas(todas, [_parado], {**_limite, _retomada: _st}); cria()
+s.tarefas(todas, [pr(9, "bbbbbbb", "dev/1")], _limite); cria()  # novo HEAD retoma reserva
+s.tarefas(todas, [pr(9, "aaaaaaa", "dev/1", ["em-revisão"])], _limite); cria()
+s.tarefas(todas, [_parado], {"arquiteto-destravar-pr-9-final": "blocked"}); cria()
+s.tarefas(todas, [_parado], {**_limite, "arquiteto-destravar-pr-9-aaaaaaa-retomar-r3": "ready"}); cria()
+s.gh = gh_issues(dev=[iss(1, ARQ), iss(2, ARQ + "Depende de #1\n")])
+s.tarefas(todas, [_parado], _limite); cria()  # sem reservar arquivo não significa dependência entregue
 s.gh = gh_issues(dev=[iss(30, etiquetas=("roadmap", "pronto-pra-dev"))])
 s.tarefas(todas, [], {}); cria()  # item do roadmap com a etiqueta errada: nunca vira cartão
 s.gh = gh_issues(qa=[iss(1), iss(2)])
