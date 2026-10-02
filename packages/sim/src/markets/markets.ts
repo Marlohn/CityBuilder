@@ -63,6 +63,7 @@ export class VacancyMarket {
     private world: World,
     private capacity: Capacity,
     private used: Used,
+    private readonly accept: (tipo: BuildingType) => boolean = () => true,
   ) {}
 
   /** Recalcula se o prédio tem vaga. Chame depois de mudar a ocupação ou o estado. */
@@ -70,7 +71,11 @@ export class VacancyMarket {
   served: (b: number) => boolean = () => true;
 
   update(b: number) {
-    const has = this.buildings.isActive(b) && this.served(b) && this.used(b) < this.capacity(b);
+    const has =
+      this.buildings.isActive(b) &&
+      this.served(b) &&
+      this.accept(this.buildings.typeOf(b)) &&
+      this.used(b) < this.capacity(b);
     if (has && !this.open.has(b)) {
       this.open.add(b);
       this.version++;
@@ -150,6 +155,7 @@ export class Markets {
       world,
       (id) => b.patientsCapacity(id),
       (id) => b.patients[id]!,
+      (tipo) => tipo.id === "ubs",
     );
     this.hospitals = new VacancyMarket(
       b,
@@ -157,6 +163,7 @@ export class Markets {
       world,
       (id) => b.patientsCapacity(id),
       (id) => b.patients[id]!,
+      (tipo) => tipo.id === "hospital",
     );
   }
 

@@ -332,3 +332,4 @@ Mudou isto → atualize aquilo **no mesmo PR**:
 | Erro de provedor deixa OpenCode aberto | `hermes/harness/opencode_guard.py`, cenários em `testar_opencode_guard.py` e deploy em `hermes/OPERACAO.md` |
 | Algo que o jogador vê | `docs/MANUAL.md` |
 | Volta de compras/saúde/lazer (motivo do dia, destino e volta para casa) | `packages/sim/src/traffic/trafficSystem.ts` (monta a volta) e números em `config/traffic.yaml` (routine.errand*) |
+| Mercado de saúde separado por tipo de prédio (UBS não é leito, leito não é posto de saúde) | filtro por `tipo.id` no construtor de `VacancyMarket` em `packages/sim/src/markets/markets.ts` (`clinics` = `ubs`, `hospitals` = `hospital`) |

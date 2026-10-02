@@ -123,17 +123,23 @@ export class AutoMayor {
     // (não marca `saving`: guardar dinheiro não resolve e `saving` parava a abertura de bairros —
     // foi o que quebrou o teste 48). No modo sandbox o dinheiro é infinito e não há espera.
     // Gatilho: config/utilities.yaml sewageMinUncovered (PENDENTE: limiar de jogo, sem fonte oficial).
-    if (
-      census.withoutSewage > this.game.sim.config.utilities.sewageMinUncovered &&
-      !this.underConstruction("ete")
-    ) {
+    if (census.withoutSewage > this.game.sim.config.utilities.sewageMinUncovered) {
       const t = this.game.sim.treasury;
       const upkeep = this.serviceUpkeep("ete");
       const revenueCovers =
         t.mode === "sandbox" || (t.lastYearRevenue > 0 && t.lastYearRevenue - t.lastYearExpenses >= upkeep);
-      if (revenueCovers) {
+      if (this.underConstruction("ete")) {
+        // Obra em andamento e ainda falta esgoto: a ETE só atende depois de pronta. Sem receita
+        // para bancar outra, espera ela entregar em vez de abrir rua nova (não pede nada: sem
+        // comando recusado). Com receita no azul, segue o jogo normal.
+        if (!revenueCovers) saving = true;
+      } else if (revenueCovers) {
         const [px, py] = this.waterEdge();
         saving = !this.placeNear("ete", px, py) || saving;
+      } else {
+        // Sem receita para o custeio e sem caixa para a obra: guardar é o que resolve.
+        const eteCost = this.game.sim.buildings.catalog.find((b) => b.id === "ete")?.cost ?? 0;
+        if (!t.canAfford(eteCost)) saving = true;
       }
     }
     if (saving && this.districts.length > 0) return;

@@ -258,8 +258,8 @@ export function registerClinic(city: City, p: number, clinic: number) {
   city.seekClinic.delete(p);
   sim.buildings.patients[clinic]!++;
   markets.clinics.update(clinic);
-  // UBS e hospital dividem o mesmo contador de pacientes: atualiza os dois mercados.
-  markets.hospitals.update(clinic);
+  // `patients` continua sendo um contador só (UBS e hospital dividem o mesmo campo). A separação
+  // é por tipo de prédio, feita no filtro do mercado: só UBS entra no mercado de posto de saúde.
 }
 
 export function unregisterClinic(city: City, p: number) {
@@ -268,8 +268,8 @@ export function unregisterClinic(city: City, p: number) {
   if (c < 0) return;
   sim.buildings.patients[c]!--;
   markets.clinics.update(c);
-  // UBS e hospital dividem o mesmo contador de pacientes: atualiza os dois mercados.
-  markets.hospitals.update(c);
+  // `patients` continua sendo um contador só (UBS e hospital dividem o mesmo campo). A separação
+  // é por tipo de prédio, feita no filtro do mercado: só UBS entra no mercado de posto de saúde.
   pop.clinic[p] = -1;
   if (pop.isAlive(p)) city.seekClinic.add(p);
 }
@@ -282,8 +282,8 @@ export function registerHospital(city: City, p: number, hospital: number) {
   city.seekClinic.delete(p);
   sim.buildings.patients[hospital]!++;
   markets.hospitals.update(hospital);
-  // UBS e hospital dividem o mesmo contador de pacientes: atualiza os dois mercados.
-  markets.clinics.update(hospital);
+  // `patients` continua sendo um contador só (UBS e hospital dividem o mesmo campo). A separação
+  // é por tipo de prédio, feita no filtro do mercado: só hospital entra no mercado de leito.
 }
 
 /** Solta o leito de hospital da pessoa (espelha a UBS). */
@@ -293,8 +293,8 @@ export function unregisterHospital(city: City, p: number) {
   if (hb < 0) return;
   sim.buildings.patients[hb]!--;
   markets.hospitals.update(hb);
-  // UBS e hospital dividem o mesmo contador de pacientes: atualiza os dois mercados.
-  markets.clinics.update(hb);
+  // `patients` continua sendo um contador só (UBS e hospital dividem o mesmo campo). A separação
+  // é por tipo de prédio, feita no filtro do mercado: só hospital entra no mercado de leito.
   pop.hospital[p] = -1;
   if (pop.isAlive(p)) city.seekClinic.add(p);
 }
