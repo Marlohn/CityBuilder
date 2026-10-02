@@ -134,13 +134,17 @@ Falta acesso ou algo quebrou fora do seu alcance? kanban_block com o motivo.
 """
 
 
-def criar(chave, titulo, papel, alvo, prioridade=0):
+def criar(chave, titulo, papel, alvo, prioridade=0, max_runtime="2h", max_retries=None,
+          goal_max_turns=None, bloqueado=False):
     """Um cartão. Contrato local-only em todos: o contrato de PR só deixa fechar com o PR verde, e revisão que
     REPROVA nunca fecharia (30/09: cartão do #56 travou). A trava de verdade é a proteção da main no GitHub."""
     skills = ["--skill", "opencode"] if papel in ("qa", "dev") else []
+    limites = (["--max-retries", str(max_retries)] if max_retries is not None else [])
+    limites += (["--goal", "--goal-max-turns", str(goal_max_turns)] if goal_max_turns else [])
+    limites += (["--initial-status", "blocked"] if bloqueado else [])
     subprocess.run(
         [HERMES, "kanban", "create", f"[{chave}] {titulo}", "--assignee", papel, "--workspace", f"dir:/opt/data/cb/{papel}",
-         *skills, "--idempotency-key", chave, "--max-runtime", "2h", "--priority", str(prioridade),
+         *skills, *limites, "--idempotency-key", chave, "--max-runtime", max_runtime, "--priority", str(prioridade),
          "--created-by", "sincronizador", "--completion-contract", "local-only", "--body-file", "-"],
         input=CORPO.format(alvo=alvo), capture_output=True, text=True, timeout=60, check=True)
     print(f"cartão criado: [{chave}] -> {papel}")
@@ -170,6 +174,10 @@ def zelar(lista, prs=()):
     for c in lista:
         if c.get("status") != "blocked":
             continue
+        chave = (c.get("title") or "").split("]", 1)[0].lstrip("[")
+        if (re.fullmatch(r"arquiteto-destravar-pr-\d+-(?:final|esgotado)", chave)
+                or chave.startswith("designer-fila-")):
+            continue  # impedimento persistente: não fingir conclusão nem liberar repetição
         dados = bloqueio(c["id"])
         motivo = str(dados.get("reason") or "(motivo não registrado)")[:300]
         chave = (c.get("title") or "").split("]", 1)[0].lstrip("[")
@@ -257,7 +265,34 @@ def escalar_pr(pr, existentes, motivo):
     """Rodadas gastas exigem uma decisão registrada, não um PR esquecido."""
     if aberto(existentes, f"arquiteto-destravar-pr-{pr['number']}-"):
         return
+    n = pr['number']
+    final = f"arquiteto-destravar-pr-{n}-final"
+    if final in existentes:
+        impedido = f"arquiteto-destravar-pr-{n}-esgotado"
+        if impedido not in existentes:
+            criar(impedido, f"Encaminhamento do PR #{n} ainda não executável", "arquiteto",
+                  f"O atendimento final [{final}] terminou, mas o PR #{n} ({pr['url']}) continua "
+                  f"sem encaminhamento executável: {motivo}. Não é entrega nem autorização para outro Dev. "
+                  "Bloqueio persistente; o planejamento deve procurar trabalho independente. "
+                  "Confira o GitHub antes de resolver este impedimento.", bloqueado=True)
+        return
     chave = f"arquiteto-destravar-pr-{pr['number']}-{pr['headRefOid'][:7]}"
+    if chave in existentes and esgotada(existentes, chave + "-retomar"):
+        diagnostico = f"dev-diagnostico-pr-{n}"
+        criar(final, f"Executar decisão final para o PR #{n}, sem repetir diagnóstico", "arquiteto",
+              f"O PR #{n} ({pr['url']}, branch {pr['headRefName']}, HEAD {pr['headRefOid']}) "
+              f"esgotou os atendimentos de recuperação. Motivo atual: {motivo}. "
+              f"Tentativa extra [{diagnostico}]: {existentes.get(diagnostico, 'ainda não utilizada')}. "
+              "Leia as evidências já registradas e EXECUTE o destino: se o orçamento Dev foi gasto, "
+              "substitua o trabalho por partes menores reais, feche a tarefa e o PR substituídos com links "
+              "e deixe a primeira parte pronta para o QA. Não clone a mesma tarefa para renovar tentativas. "
+              "Se há outro encaminhamento válido, execute e confira que as regras do sincronizador "
+              "permitem continuar. Não implemente a feature, não faça merge vermelho e não reinicie "
+              "o orçamento Dev. Comentário ou promessa não conclui este alvo. Sem decisão executável, "
+              "kanban_block com motivo e kind=needs_input; o impedimento fica visível e o planejamento "
+              "busca trabalho independente. Este atendimento é único por PR, mesmo se o HEAD mudar.",
+              prioridade=25, max_runtime="15m", max_retries=1, goal_max_turns=2)
+        return
     if chave in existentes:
         chave = rodada(existentes, chave + "-retomar")
         if chave is None:
@@ -455,8 +490,11 @@ def diarios(todas, existentes, dia, corpos_tarefa):
     fixos = []
     abertas = {i["number"] for i in todas}
     prontas = [t["number"] for t in corpos_tarefa if not dependencias(t["body"]) & abertas]
+    impedimentos = sorted(k for k, st in existentes.items() if st == "blocked"
+                          and re.fullmatch(r"arquiteto-destravar-pr-\d+-(?:final|esgotado)", k))
     if len(prontas) < FILA_MINIMA:
-        estado = hashlib.sha1(json.dumps([tarefas_abertas, itens]).encode()).hexdigest()[:8]
+        contexto = [tarefas_abertas, itens] + ([impedimentos] if impedimentos else [])
+        estado = hashlib.sha1(json.dumps(contexto).encode()).hexdigest()[:8]
         fixos.append((f"arquiteto-plano-{estado}", "Planejar o próximo item do ROADMAP", "arquiteto",
                       "Sua tarefa: passo 3 do seu ciclo: percorra Agora até comprovar trabalho faltante em um item "
                       "SEM tarefa ABERTA. Planeje no máximo um item; sem lacuna comprovada, pare.\n"
@@ -470,6 +508,15 @@ def diarios(todas, existentes, dia, corpos_tarefa):
                       "Tarefa que precisa de outra antes: escreva no corpo uma linha própria `Depende de #N, #M` com os "
                       "NÚMEROS das issues (o sincronizador lê essa linha e só libera a tarefa quando elas fecharem; "
                       "\"rode as anteriores antes\" sem número não é lido)."))
+        if impedimentos and existentes.get(f"arquiteto-plano-{estado}") in TERMINAIS:
+            fixos.append((f"designer-fila-{estado}", "Encontrar trabalho independente para a fila bloqueada", "designer",
+                          "O planejamento deste estado terminou sem repor a fila, e há impedimentos persistentes: "
+                          + ", ".join(impedimentos) + ". Encontre UMA oportunidade real independente deles e "
+                          "registre um item de roadmap com benefício, critérios, fonte e métrica para o Arquiteto. "
+                          "Leia a ordem oficial e entregas existentes; não duplique feature, não crie trabalho vazio "
+                          "nem reabra orçamento gasto. Apenas fechar um item antigo ou prometer outra pesquisa não "
+                          "repõe a fila. Use as ferramentas do seu papel, sem assumir Dev/QA. Se faltar condição "
+                          "externa necessária, registre-a honestamente: não declare que abasteceu a fábrica."))
     fixos.append((f"designer-{dia}", "Ciclo diário do Designer", "designer",
                   "Sua tarefa: um ciclo completo do Designer (um item só)."))
     if not any(tem(i, "pronto-pra-teste") for i in todas):  # tarefa de verdade vem antes; caça só ocupa o QA sem fila
@@ -480,7 +527,10 @@ def diarios(todas, existentes, dia, corpos_tarefa):
                       "A API do GitHub NÃO anexa arquivo em issue: nunca escreva 'anexado', nunca use base64."))
     for chave, titulo, papel, alvo in fixos:
         if chave not in existentes:
-            criar(chave, titulo, papel, alvo)
+            if chave.startswith("designer-fila-"):
+                criar(chave, titulo, papel, alvo, max_runtime="15m", max_retries=1, goal_max_turns=3)
+            else:
+                criar(chave, titulo, papel, alvo)
 
 
 def main():

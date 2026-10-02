@@ -1,5 +1,37 @@
 # Diário da avaliação: agentes Hermes + kanban + LLM grátis (CityBuilder)
 
+## 02/10 — impedimento de tarefa não deve parar a fábrica
+
+O dono esclareceu que não proibiu pessoalmente a mudança dos limites e pediu que a fábrica
+continue com trabalho independente quando um alvo trava. A atribuição anterior dessa proibição
+ao dono foi incorreta. Em produção havia zero ready/running/blocked: #196 tinha PR #201 sem
+encaminhamento e orçamento gasto; #197/#198 dependiam dela. O planejamento consumido parou por
+associação com tarefas antigas (corrigido no #220). `escalar_pr()` retornava após as três
+retomadas sem destino; `zelar()` fechava blocked, mesmo sem uma solução. Não era falta de vaga.
+
+Após os atendimentos de recuperação, há uma decisão final única POR PR, independente de HEAD,
+sem renovar Dev. Usa os recursos nativos: 15min, bloqueio na primeira falha (`max-retries=1`)
+e goal limitado a duas rodadas, com execução do encaminhamento no contrato do cartão. Não
+implementa feature nem clona tarefa para renovar orçamento. Falha/bloqueio persiste no kanban;
+se a decisão terminou e o PR continua sem caminho executável, um registro blocked guarda o
+impedimento, sem novo worker de diagnóstico. O zelador preserva esses bloqueios.
+
+Um impedimento persistente é evento real para buscar trabalho independente: entra na chave
+do planejamento sem mudar chaves de estados saudáveis. Depois de um planejamento concluído
+sem repor a fila, o Designer recebe uma busca de oportunidade real, uma por esse estado,
+com 15min/primeira falha/goal de três rodadas. Não depende do Codex, não muda vagas, não espera
+virada diária, não repete por relógio nem por novo SHA do PR impedido. O ciclo diário existente
+é preservado. Sem condições externas para produzir trabalho válido, o agente precisa registrar
+o impedimento; atividade de LLM não é entrega. Essa exceção por fila bloqueada é decisão nova
+do dono, não uma demonstração artificial de cadência ou repetição de feature como benchmark.
+
+Reprodução e checks: cenário de roteamento com orçamentos reais e escritas mockadas; criação
+final limitada, persistência blocked, mudança de HEAD sem nova decisão e repetição do mesmo
+estado sem novos cartões. Preservar todos os mutantes anteriores e gates. Sem teste/simulação
+do jogo pelo supervisor. PR e CI completos antes de deploy; copiar somente sincronizador
+mesclado, backup/igualdade de bytes. Reversão: restaurar esse backup. Adoção do goal e resultado
+real de encaminhamento ainda precisam ser observados, não inferidos apenas do harness.
+
 ## 02/10 — planejamento não confunde tarefa associada com item entregue
 
 O Arquiteto `t_12c732e6` iniciou 03:15:57Z e encerrou 03:17:17Z. Na sessão

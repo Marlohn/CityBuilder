@@ -15,11 +15,13 @@ spec.loader.exec_module(s)
 
 CRIADOS, ESCRITOS = [], []
 ALVOS = {}
+LIMITES = {}
 
 
-def criar_simulado(chave, titulo, papel, alvo, prioridade=0):
+def criar_simulado(chave, titulo, papel, alvo, prioridade=0, **limites):
     CRIADOS.append((chave, papel, prioridade))
     ALVOS[chave] = alvo
+    LIMITES[chave] = limites
 
 
 s.criar = criar_simulado
@@ -100,7 +102,20 @@ for _fim in s.TERMINAIS:
 s.revisoes([_pdiag], _decisao, {10}); cria()  # nunca contorna retorno ao QA
 s.revisoes([pr(10, "ddddddd", "dev/10", ["pronto-pra-dev"])], _decisao); cria("arquiteto-destravar-pr-10-ddddddd")
 s.revisoes([_pdiag], {**_decisao, "dev-diagnostico-pr-10": "done",
-                     **{f"arquiteto-destravar-pr-10-ccccccc-retomar-r{n}": "done" for n in (1, 2, 3)}}); cria()
+                     **{f"arquiteto-destravar-pr-10-ccccccc-retomar-r{n}": "done" for n in (1, 2, 3)}})
+cria("arquiteto-destravar-pr-10-final")
+assert LIMITES["arquiteto-destravar-pr-10-final"] == {
+    "max_runtime": "15m", "max_retries": 1, "goal_max_turns": 2}
+assert "Não clone a mesma tarefa" in ALVOS["arquiteto-destravar-pr-10-final"]
+for _st in ("ready", "running", "blocked"):
+    s.revisoes([_pdiag], {**_decisao, "dev-diagnostico-pr-10": "done",
+                         "arquiteto-destravar-pr-10-final": _st}); cria()
+_final = {**_decisao, "dev-diagnostico-pr-10": "done", "arquiteto-destravar-pr-10-final": "done"}
+s.revisoes([_pdiag], _final); cria("arquiteto-destravar-pr-10-esgotado")
+assert LIMITES["arquiteto-destravar-pr-10-esgotado"] == {"bloqueado": True}
+for _sha in ("ccccccc", "eeeeeee"):
+    s.revisoes([pr(10, _sha, "dev/10", ["pronto-pra-dev"])], {
+        **_final, "arquiteto-destravar-pr-10-esgotado": "blocked"}); cria()
 print("revisões/ajustes: ok")
 s.preparar_revisao = real_preparar
 
@@ -226,6 +241,17 @@ s.diarios(cheia, {}, "20260930", livres); cria("designer-20260930")  # fila chei
 presas = [{"number": 1, "body": ""}, {"number": 2, "body": "Depende de #1"}, {"number": 3, "body": "Depende de #1, #2"}]
 s.diarios(cheia, {}, "20260930", presas)  # 3 abertas, mas só 1 pode começar: planeja outro item
 assert [c[0][:15] for c in CRIADOS] == ["arquiteto-plano", "designer-202609"], CRIADOS; CRIADOS.clear()
+_bloqueios = {"arquiteto-destravar-pr-10-final": "blocked", "designer-20260930": "done",
+              "qa-caca-20260930": "done"}
+s.diarios(sem_fila, _bloqueios, "20260930", [])
+assert len(CRIADOS) == 1 and CRIADOS[0][0].startswith("arquiteto-plano-"), CRIADOS
+_plano = CRIADOS[0][0]; CRIADOS.clear()
+s.diarios(sem_fila, {**_bloqueios, _plano: "running"}, "20260930", []); cria()
+s.diarios(sem_fila, {**_bloqueios, _plano: "done"}, "20260930", [])
+_reposicao = _plano.replace("arquiteto-plano-", "designer-fila-"); cria(_reposicao)
+assert LIMITES[_reposicao] == {"max_runtime": "15m", "max_retries": 1, "goal_max_turns": 3}
+for _st in ("ready", "running", "blocked", "done", "archived"):
+    s.diarios(sem_fila, {**_bloqueios, _plano: "done", _reposicao: _st}, "20260930", []); cria()
 print("diários: ok")
 
 # ---- PR do QA de tarefa entregue --------------------------------------------------------------------------------
@@ -289,7 +315,14 @@ cria()  # decisão já aberta: não duplica nem reinicia orçamento
 _esgotados = [card("arquiteto-destravar-pr-208-3cc5697" + _sufixo, "done", "t_gasto")
               for _sufixo in ("", "-retomar-r1", "-retomar-r2", "-retomar-r3")]
 assert s.zelar([_bloqueado, *_esgotados], [_pr_bloqueado]) == 1
-cria()  # pedido de decisão não concede novas retomadas após o limite
+cria("arquiteto-destravar-pr-208-final")  # decisão final limitada, sem reiniciar Dev
+CHAMADAS.clear()
+_persistentes = [card("arquiteto-destravar-pr-208-final", "blocked", "t_final"),
+                card("arquiteto-destravar-pr-208-esgotado", "blocked", "t_limite"),
+                card("designer-fila-evento", "blocked", "t_ideia")]
+assert s.zelar(_persistentes, [_pr_bloqueado]) == 0
+assert not CHAMADAS, "impedimento persistente não pode ser fechado pelo zelador"
+cria()
 for _cards, _prs in [([_bloqueado], []), ([_bloqueado], [pr(208, "bbbbbbb", "dev/203")]),
                       ([{**_bloqueado, "assignee": "qa"}], [_pr_bloqueado]),
                       ([{**_bloqueado, "status": "ready"}], [_pr_bloqueado]),
