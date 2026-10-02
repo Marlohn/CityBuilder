@@ -1,5 +1,29 @@
 # Diário da avaliação: agentes Hermes + kanban + LLM grátis (CityBuilder)
 
+## 02/10 — concluir itens do roadmap antes de acumular novos
+
+O Arquiteto `t_4a8c77f8` (01:31:39–01:37:29Z) encerrou o planejamento porque os dez itens de Agora
+já tinham tarefas associadas. Isso não confirma entrega de todos. O item #26 continuava aberto sem
+`entregue`, embora a tarefa #72 estivesse fechada desde 30/09 e o próprio Arquiteto tivesse registrado
+em 01/10 16:31:20Z que nada faltava. O supervisor não verificou a regra do jogo nem fechou esse item.
+
+O código `computeRoadmap` mantém itens abertos sem `entregue` na prioridade. `roadmap:check` só imprime
+o resultado e devolve um código: não fecha nem reetiqueta issues. `agents/designer.md` previa a conferência
+e o fechamento, mas o SOUL diário terminava na criação de um item e não incluía essa etapa. A última
+sessão Designer observada (`20261001_052220_a3af88`) criou #157 e terminou. A omissão nas instruções e o
+estado desatualizado estão confirmados; não são prova de que todo item de Agora já esteja resolvido nem
+de que esse seja o único motivo da falta de evolução visível.
+
+O SOUL passa a priorizar um candidato à conclusão, com critérios, tarefas, PRs, main/CI e resultado
+específico da métrica. Só o Designer decide e executa o fechamento depois de conferir; ausência de
+evidência ou métrica vermelha mantém o item aberto. Um ciclo trata uma entrega ou um sinal/ideia.
+Usa os comandos existentes, sem coletor, serviço, mudança de fórmula, cartão manual ou orçamento
+reiniciado. Nenhum teste, simulação ou pesquisa de conteúdo do jogo foi executado pelo supervisor.
+
+Reversão: repor o SOUL Designer anterior e reverter a orientação em `agents/designer.md`. Deploy somente
+do SOUL mesclado após CI completo, com backup e fonte/produção iguais; não reiniciar worker ativo. A
+eficácia depende do próximo ciclo real do Designer, sem criar outro cartão para aparentar autonomia.
+
 ## 02/10 — check local antes dos testes após edição
 
 O registro real OpenCode do ajuste209 (`ses_f0630c0b2ffeHd1eweu0V2IONg`) mostra dois testes
