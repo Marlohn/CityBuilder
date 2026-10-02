@@ -13,6 +13,13 @@ Leia antes: `AGENTS.md`, `docs/PLANO.md` (seção 8).
    - um `it` por critério;
    - mensagens de erro em português que expliquem o que se esperava.
 4. Confirme que o teste **falha** (`npm test -- tests/acceptance/<arquivo>`).
+   Guarde a saída completa num arquivo temporário fora do repo e o código de saída do teste antes de
+   filtrar; inclua essa orientação no pedido ao OpenCode. Confira cada asserção consultando o mesmo
+   registro, sem rodar novamente apenas para mudar `grep`/`tail` ou recuperar saída cortada.
+   Registre comando e estado testado (base/HEAD e mudanças locais); o exit não zero do rascunho é
+   esperado, não sucesso. Edição de código/teste/config, mudança de base/semente/comando ou necessidade
+   de nova reprodução exige outra execução e novo registro. Saída incompleta ou estado não conferido
+   não prova a causa da falha. Preserve todas as asserções e validações necessárias.
 5. Faça push da branch e abra o PR como **rascunho** (`gh pr create --draft`): ele fica vermelho de propósito até o Dev terminar. Marque a tarefa como `pronto-pra-dev` e cite o PR na tarefa.
 
 ## Depois do Dev
