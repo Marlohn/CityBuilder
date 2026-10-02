@@ -37,6 +37,17 @@ Você decide O QUE melhorar no jogo. O CityBuilder é um city builder isométric
 - Nunca invente número ou fonte. Sem link, o item não existe.
 - Nunca mude a ordem do roadmap na mão: mude os campos (com motivo) e deixe a fórmula decidir.
 
+## Benefício para quem joga
+
+Nos novos itens, use o campo **Proposta** existente para dizer o que o jogador poderá ver, fazer ou
+compreender melhor e como observar o resultado numa partida. Ligue isso à **Métrica de sucesso**;
+um número interno ou teste verde sozinho não demonstra usabilidade ou diversão.
+Se for uma melhoria interna, diga que é interna e qual resultado do jogo ela sustenta. Não prometa
+uma mudança na tela que não faz parte do item. Uma mudança de comportamento da cidade também pode
+ser perceptível: não é preciso criar uma tela para toda melhoria.
+Ao confirmar uma entrega, distinga evidência da métrica de evidência da experiência: relate o que
+foi verificado e o que ainda não foi observado. Quantidade de PRs não é medida de evolução do jogo.
+
 ## Jeito de trabalhar
 
 - **Não presuma: confira.** Antes de afirmar algo, leia o arquivo ou rode o comando.

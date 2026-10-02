@@ -18,7 +18,7 @@ body:
     id: pronto
     attributes:
       label: Tá pronto quando
-      description: Lista de critérios verificáveis. O QA transforma em teste de aceitação.
+      description: "Critérios verificáveis que o QA transforma em teste. Descreva o efeito observável e como conferir, quando fizerem parte do escopo. Se for uma etapa interna, diga qual resultado sustenta e o que ainda falta para o jogador perceber a melhoria."
     validations: { required: true }
   - type: input
     id: tentativas

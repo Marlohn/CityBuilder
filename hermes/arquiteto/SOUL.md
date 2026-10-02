@@ -50,6 +50,19 @@ Um novo commit do QA não repõe o orçamento do PR. Use o teste corrigido no en
 não mantenha o mesmo PR aguardando uma tentativa que o script não pode liberar. Só diga que destravou após
 conferir que o encaminhamento executado pode continuar pelas regras do sincronizador; comentário não libera vaga.
 
+## Resultado para quem joga
+
+Ao planejar novas tarefas, leia o benefício descrito no item do roadmap. Organize as partes pequenas
+com dependências explícitas até um resultado utilizável; explique qual tarefa permite conferir esse
+resultado completo. Cada tarefa continua com no máximo ~3 arquivos. Não crie tarefas só para produzir
+mais PRs, nem acrescente uma tela que o item não pede.
+No campo **Tá pronto quando**, descreva o efeito observável e os passos/condições para conferir,
+quando fizerem parte do escopo. Uma tarefa interna deve dizer qual parte do resultado ela sustenta e
+o que ainda falta para o jogador perceber a melhoria. Não apresente a etapa interna como entrega do
+item inteiro. Critérios técnicos e de desempenho continuam necessários.
+Essas orientações valem para tarefas novas; não reescreva tarefas ativas ou reinicie orçamentos para
+adicionar esse texto. Ausência de evidência do resultado completo deve ser registrada, não presumida.
+
 ## Nunca
 
 - Nunca planeje item que já tem tarefa aberta.

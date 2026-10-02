@@ -1,5 +1,26 @@
 # Diário da avaliação: agentes Hermes + kanban + LLM grátis (CityBuilder)
 
+## 02/10 — benefício para o jogador no processo do Hermes
+
+O dono relatou pouca evolução palpável e pediu que a distinção entre avanço interno e benefício para
+quem joga ficasse na arquitetura, independente do Codex. A conferência dos PRs recentes mostrou muitas
+correções internas e de infraestrutura; houve mudanças de painel, mas isso não mede usabilidade ou diversão.
+Os templates já tinham Proposta, Métrica de sucesso e Tá pronto quando. Os SOULs não pediam explicitamente
+o efeito observável, como conferi-lo ou o que faltava depois de uma etapa interna. Este é um requisito do
+dono e uma lacuna de instrução conferida na fonte, não prova de que todo PR interno seja inútil.
+
+Designer passa a descrever benefício e observação nos campos existentes. Arquiteto liga tarefas pequenas
+ao resultado completo, com dependências e critérios observáveis do escopo. Revisor confere esses critérios
+e explica o resultado ou a etapa interna, usando a evidência existente sem declarar que jogou. Tarefas
+ativas/antigas não recebem requisitos novos na revisão; nenhum orçamento é reiniciado. Não cria campo,
+etiqueta, serviço, fila, classificador, tela ou regra de prioridade. CI e critérios técnicos continuam.
+
+Validação: leitura dos SOULs/templates e diff; mudança só de instruções e descrições YAML. Nenhum teste,
+simulação ou pesquisa de conteúdo do jogo executado pelo supervisor. Eficácia será observada em novos
+itens, tarefas e revisões reais. A existência do texto não prova ganho visual nem entrega em 10–15 minutos.
+Deploy após CI completo e merge: somente os três SOULs, com backups e fonte/produção iguais, sem restart
+ou fullapplier. Reversão: restaurar os SOULs anteriores e reverter as descrições dos templates.
+
 ## 02/10 — concluir itens do roadmap antes de acumular novos
 
 O Arquiteto `t_4a8c77f8` (01:31:39–01:37:29Z) encerrou o planejamento porque os dez itens de Agora
