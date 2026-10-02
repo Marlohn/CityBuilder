@@ -378,6 +378,10 @@ export function handleOrphans(city: City, h: number) {
   const adult = members.some((m) => city.age(m) >= 18);
   if (adult) return;
   for (const child of members) {
+    // A lista é uma foto: casar ou mudar de família dentro do laço tira gente da `h`
+    // (ela se dissolve ou passa a ter adulto). Quem já saiu não pode ser tratado de novo
+    // (contaria a mesma pessoa duas vezes).
+    if (!pop.isAlive(child) || pop.household[child]! !== h) continue;
     const guardianHh = findRelativeHousehold(city, child);
     if (guardianHh >= 0 && guardianHh !== h) {
       joinHousehold(city, child, guardianHh);
