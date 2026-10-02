@@ -159,6 +159,9 @@ def bloqueio(cid):
         if r.returncode:
             return {}
         detalhe = json.loads(r.stdout)
+        atual = detalhe.get("task", {})
+        if atual.get("status") != "blocked" or atual.get("worker_pid") or atual.get("claim_lock"):
+            return {}  # snapshot antigo não autoriza encaminhar/arquivar um worker que voltou a trabalhar
         eventos = detalhe["events"]
         for i in range(len(eventos) - 1, -1, -1):
             e = eventos[i]
@@ -249,6 +252,9 @@ def zelar(lista, prs=()):
                 continue  # nunca arquivar sem preservar motivo/destino; tentar a escrita no próximo ciclo
             n += 1
         if not persistente and (tecnica or delegado) and kind != "dependency":
+            atual = bloqueio(c["id"])
+            if not atual or atual.get("marca") != dados["marca"]:
+                continue  # conferir novamente estado/falha depois de criar destino e preservar evidência
             r = subprocess.run([HERMES, "kanban", "archive", c["id"]], capture_output=True, text=True, timeout=60)
             if not r.returncode:
                 n += 1

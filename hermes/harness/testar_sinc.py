@@ -290,13 +290,14 @@ BLOQUEIO = {"reason": "sem acesso ao repo X", "kind": "capability"}
 EVENTOS = None
 COMENTARIOS = {}
 FALHA_COMMENT = FALHA_ARCHIVE = FALHA_SHOW = 0
+ESTADO_ATUAL = {"status": "blocked", "worker_pid": None, "claim_lock": None}
 
 
 def fake_run(args, **k):
     CHAMADAS.append(args[1:] if args[0] == s.HERMES else args)
     if args[2:3] == ["show"] or (len(args) > 2 and args[2] == "show"):
         ev = EVENTOS if EVENTOS is not None else [{"kind": "created", "payload": {}}, {"kind": "blocked", "payload": BLOQUEIO}]
-        return types.SimpleNamespace(returncode=FALHA_SHOW, stdout=json.dumps({"events": ev, "comments": COMENTARIOS.get(args[3], [])}), stderr="")
+        return types.SimpleNamespace(returncode=FALHA_SHOW, stdout=json.dumps({"task": ESTADO_ATUAL, "events": ev, "comments": COMENTARIOS.get(args[3], [])}), stderr="")
     if args[2] == "comment":
         CHAMADAS.append(("resumo", args[4]))
         if not FALHA_COMMENT:
@@ -357,6 +358,12 @@ COMENTARIOS.clear(); CHAMADAS.clear(); FALHA_SHOW = 1
 assert s.zelar([card("A", "blocked", "t_sem_leitura")]) == 0
 assert all(c[1] == "show" for c in CHAMADAS)
 FALHA_SHOW = 0
+for _atual in ({"status": "running"}, {"status": "done"}, {"status": "blocked", "worker_pid": 123},
+               {"status": "blocked", "claim_lock": "claim-ativo"}):
+    ESTADO_ATUAL = _atual; CHAMADAS.clear()
+    assert s.zelar([card("A", "blocked", "t_snapshot_velho")]) == 0
+    assert all(c[1] == "show" for c in CHAMADAS), "snapshot velho não autoriza encerrar worker"
+ESTADO_ATUAL = {"status": "blocked", "worker_pid": None, "claim_lock": None}
 BLOQUEIO = {"reason": "decisão sobre teste protegido; evidência no PR", "kind": "needs_input"}
 _bloqueado = {**card("dev-ajuste-pr-208-3cc5697", "blocked", "t_decisao"), "assignee": "dev"}
 _pr_bloqueado = pr(208, "3cc5697", "dev/203")

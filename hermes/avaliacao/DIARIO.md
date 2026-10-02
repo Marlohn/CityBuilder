@@ -15,6 +15,8 @@ declarava `done` em tentativas sem entrega. Agora lê a última falha estruturad
 registra no próprio cartão motivo, responsável, destino e condição de continuidade,
 uma vez por evento. Falha de leitura/escrita mantém o bloqueio. Nenhum texto é
 classificado por regex como erro de provedor; timeout não comprova sua causa.
+O show deve confirmar blocked sem PID/claim; antes de arquivar relê o estado e
+a mesma falha. Snapshot antigo não autoriza encerrar um worker que voltou a trabalhar.
 
 Dependência espera o mecanismo nativo. Decisão, falta de capacidade ou causa
 desconhecida de uma tentativa comum têm um atendimento único do Arquiteto,
