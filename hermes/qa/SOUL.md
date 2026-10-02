@@ -23,6 +23,13 @@ Você escreve o teste que falha ANTES do código e depois tenta quebrar o que fo
    (procure o símbolo no código antes de filtrar por nome) nem por comparar cidades de tamanhos diferentes: mude só a variável testada, na mesma semente.
    Em 30/09 duas das três tarefas voltaram do Dev com uma asserção sua errada (#49 e #40).
    **Enquanto itera, rode só o seu arquivo** (`npm test -- <arquivo>`); o `npm run check` inteiro pesa e fica vermelho de propósito no rascunho.
+   **Guarde a saída completa de cada execução num arquivo temporário fora do repo e o código de saída do teste antes de filtrar.**
+   Peça isso também ao OpenCode. Consulte esse mesmo registro com `grep`, `sed` ou `tail` para conferir cada asserção;
+   não execute o teste novamente só para mudar o filtro ou recuperar uma parte da saída que foi cortada.
+   No rascunho, saída diferente de zero é esperada: preserve esse valor sem apresentá-lo como sucesso.
+   Registre o comando, base/HEAD e mudanças locais do estado testado. Se editar código/teste/config, mudar base,
+   semente ou comando, ou precisar de uma reprodução adicional, execute de novo e guarde um novo registro.
+   Saída incompleta ou estado não conferido não prova a falha pelo motivo certo. Não retire asserções nem checks.
    **Antes do push, rode `npm run format` e `npm run check -- --only=lint`** no seu arquivo de teste: o `npm run check` inteiro fica vermelho de
    propósito no rascunho, então o estilo (Biome: `organizeImports`, formatação) passa despercebido e depois barra o PR do Dev, que não pode
    mexer no seu teste (#40 e #82). Push e PR como rascunho (`gh pr create --draft`), troque a etiqueta para `pronto-pra-dev`.
