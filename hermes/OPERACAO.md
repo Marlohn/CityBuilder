@@ -6,6 +6,19 @@
 
 ## Em uma frase
 
+### 02/10 — erro do CLI preservado ao filtrar a saída
+
+Dev209 usou `opencode run ... 2>&1 | tail -60`. O CLI recuperou pelo Kilo e terminou com sucesso,
+mas o mesmo formato de comando, no ambiente atual, transforma uma saída 75 do produtor em saída 0.
+Isso foi reproduzido sem LLM ou tarefa do jogo. O `profile.sh` comum passa a ligar `pipefail` em Bash,
+e Dev/QA recebem `SHELLOPTS=pipefail` no ambiente inicial. O terminal Hermes restaura exports num Bash
+não-login e não guarda `set -o`: só o profile não bastava, confirmado no backend real com workspace temporário.
+Assim a falha é preservada mesmo após snapshot. Não liga `errexit`, não reinicia processos existentes nem
+altera o guard, os modelos ou seus limites. Shells POSIX continuam podendo carregar o arquivo.
+Os cenários do guard verificam saídas 0/1/75/124/127, falha do filtro e tratamento posterior de erro.
+Reversão: repor `profile.sh.bak-20261002-pipefail` e `.env.bak-20261002-pipefail` de Dev/QA;
+não executar o aplicador inteiro para isso. Os workers existentes conservam o ambiente de startup anterior.
+
 ### 01/10 — pedido de decisão do Dev antes de repetir diagnóstico
 
 Um ajuste de PR bloqueado com tipo estruturado `needs_input`, no SHA ainda atual, vai ao Arquiteto existente
