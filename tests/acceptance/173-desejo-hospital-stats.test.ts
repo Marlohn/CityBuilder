@@ -23,8 +23,10 @@
  *
  * Um `it` por critério do "tá pronto quando":
  * 1. sem hospital, `unmet.hospital` vale `withoutHospital`;
- * 2. com hospital, `unmet.hospital` vale `withoutHospital` e é MENOR que
- *    na cidade sem hospital (prova que o contador reage ao hospital);
+ * 2. com hospital, `unmet.hospital` vale `withoutHospital` e o hospital de fato
+ *    interna alguém (prova DENTRO de uma cidade: a cidade com hospital passa a ter
+ *    mais gente — medido: sem hospital pop 1256, com hospital pop 1401 — então
+ *    comparar contagens absolutas entre as duas cidades não prova nada);
  * 3. `unmet.health` continua valendo `withoutClinic` nas duas cidades.
  *
  * Semente fixa única para as duas cidades (só muda a lista de comandos),
@@ -64,6 +66,23 @@ const HOSPITAL_COMMANDS: Command[] = [
 
 /** Cidades já rodadas (não roda a mesma cidade duas vezes). */
 const jogos = new Map<string, Game>();
+
+/**
+ * Pessoas com leito em hospital ativo (mesmo critério do helper `pessoasComLeito`
+ * do teste 239): `pop.hospital[p] >= 0` e o prédio do leito é um hospital ativo.
+ * Leito em obra, abandonado, demolido ou apontando para UBS não conta.
+ */
+function pessoasComLeito(game: Game): number {
+  const pop = game.city.pop;
+  const predios = game.sim.buildings;
+  let total = 0;
+  for (let p = 0; p < pop.count; p++) {
+    const leito = pop.hospital[p]!;
+    if (leito < 0) continue;
+    if (predios.isActive(leito) && predios.typeOf(leito).id === "hospital") total++;
+  }
+  return total;
+}
 
 /** Mesma cidade com ou sem hospital (o bulldoze da UBS vai na frente; só muda o resto). */
 function cidade(comHospital: boolean): Game {
@@ -108,7 +127,7 @@ describe("issue #173: desejo não atendido 'hospital' no contrato e no stats", (
     ).toBe(census.withoutHospital);
   });
 
-  it("com hospital, unmet.hospital vale withoutHospital e é menor que sem hospital", {
+  it("com hospital, unmet.hospital vale withoutHospital e o hospital interna alguém", {
     timeout: 300000,
   }, () => {
     const sem = cidade(false);
@@ -143,11 +162,37 @@ describe("issue #173: desejo não atendido 'hospital' no contrato e no stats", (
       `com hospital era esperado unmet.hospital igual a withoutHospital (${censusCom.withoutHospital}), ` +
         `mas veio ${comHospital}`,
     ).toBe(censusCom.withoutHospital);
+    // Pré-condição da cidade sem hospital (critério 1, repetida aqui para a prova ficar
+    // autocontida): sem hospital ninguém tem leito, então semHospital é a população inteira.
     expect(
-      comHospital,
-      `com hospital (${comHospital} sem leito) o desejo não atendido deveria ser MENOR que sem ` +
-        `hospital (${semHospital}): o contador não está reagindo ao hospital`,
-    ).toBeLessThan(semHospital);
+      semHospital,
+      `sem hospital era esperado unmet.hospital igual a withoutHospital (${censusSem.withoutHospital}), ` +
+        `mas veio ${semHospital}`,
+    ).toBe(censusSem.withoutHospital);
+    // Prova dentro de UMA cidade (a mesma pessoaada): comparar contagens absolutas entre as
+    // duas cidades não prova nada porque o hospital ATRAI gente (a cidade com hospital passa
+    // a ter mais gente: medido pop 1256 sem hospital contra pop 1401 com hospital). Em vez
+    // disso, conta quem realmente está com leito em hospital ativo e afirma que o resto sem
+    // leito é bem menor que a população: isso prova que unmet.hospital reage ao hospital sem
+    // comparar cidades de tamanhos diferentes.
+    const comLeito = pessoasComLeito(com);
+    expect(
+      comLeito,
+      `com ${HOSPITAL_COMMANDS.length} hospitais ativos era esperado ao menos 1 pessoa com leito ` +
+        `em hospital ativo (há ${censusCom.population} pessoas na cidade): sem gente internada ` +
+        `o teste não prova que o hospital registra leito`,
+    ).toBeGreaterThan(0);
+    expect(
+      censusCom.withoutHospital,
+      `com hospital o withoutHospital (${censusCom.withoutHospital}) deveria ser menor que a ` +
+        `população (${censusCom.population}): o hospital de fato interna alguém`,
+    ).toBeLessThan(censusCom.population);
+    expect(
+      censusCom.withoutHospital,
+      `o withoutHospital (${censusCom.withoutHospital}) deveria ser no máximo a população menos ` +
+        `quem está com leito (${censusCom.population} - ${comLeito} = ${censusCom.population - comLeito}): ` +
+        `quem tem leito não pode contar como sem leito`,
+    ).toBeLessThanOrEqual(censusCom.population - comLeito);
   });
 
   it("unmet.health continua valendo withoutClinic nas duas cidades", { timeout: 300000 }, () => {
