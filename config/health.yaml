@@ -22,3 +22,11 @@ health:
   # GM/MS 1.101/2002) fixa leitos por 1.000 habitantes, não um raio de acesso: este número conta
   # quem mora longe do hospital, não gente sem leito.
   hospitalMinUncovered: 500
+  # Taxa de internação: 7 a 9% da população precisa internar no ano (Portaria GM/MS 1.101/2002),
+  # meio do intervalo 7-9% = 8% (0,08).
+  # https://bvsms.saude.gov.br/bvs/saudelegis/gm/2002/gm_1101_12_06_2002.html
+  hospitalAdmissionRatePerYear: 0.08
+  # Média de Permanência (indicador 5, ANS/Qualiss): média geral de 5,3 dias em hospitais
+  # públicos em 2018 (DataSUS/ANS).
+  # https://www.gov.br/ans/pt-br/arquivos/assuntos/prestadores/qualiss-programa-de-qualificacao-dos-prestadores-de-servicos-de-saude-1/Ficha_tecnica_indicador_5.pdf/@@download/file
+  hospitalAvgLengthOfStayDays: 5.3
