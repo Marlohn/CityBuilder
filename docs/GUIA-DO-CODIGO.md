@@ -270,6 +270,13 @@ A correção é escrever a migração, nunca afrouxar o `CommandSchema`:
    (`packages/contract/src/commands.ts`) e nunca afrouxe o schema para o save
    velho passar: saves antigos usam os nomes antigos.
 
+### 3.16 Parâmetros do prefeito automático (bot)
+
+Os gatilhos do bot ficam em `MayorOptions` (`packages/bots/src/mayor.ts`):
+`schoolTrigger`, `clinicTrigger` e `nearbyTiles`, cada um com a conta e a fonte
+(ou `PENDENTE`) no JSDoc do campo. O cenário sobrescreve por `bot:` no yaml
+(ex.: `scenarios/estresse.yaml` usa `bot: { highDensityShare: 0.9 }`).
+
 ---
 
 ## 4. Testes
@@ -333,3 +340,4 @@ Mudou isto → atualize aquilo **no mesmo PR**:
 | Algo que o jogador vê | `docs/MANUAL.md` |
 | Volta de compras/saúde/lazer (motivo do dia, destino e volta para casa) | `packages/sim/src/traffic/trafficSystem.ts` (monta a volta) e números em `config/traffic.yaml` (routine.errand*) |
 | Mercado de saúde separado por tipo de prédio (UBS não é leito, leito não é posto de saúde) | filtro por `tipo.id` no construtor de `VacancyMarket` em `packages/sim/src/markets/markets.ts` (`clinics` = `ubs`, `hospitals` = `hospital`) |
+| Parâmetro novo do prefeito automático (`schoolTrigger`, `clinicTrigger`, `nearbyTiles` em `MayorOptions`) | JSDoc do campo em `packages/bots/src/mayor.ts` com a conta e a fonte (ou `PENDENTE`) |

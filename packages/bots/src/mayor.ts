@@ -20,6 +20,27 @@ export interface MayorOptions {
   highDensityShare: number;
   /** Constrói poço/subestação quando sobra menos que isto (pessoas) de água ou luz na cidade. */
   utilityReserve: number;
+  /**
+   * Crianças de 6 a 17 anos sem escola que disparam uma escola nova. O gatilho mede
+   * quantas crianças ficam esperando enquanto a escola existente ainda não lotou;
+   * a escola do catálogo (data/buildings.yaml, id escola) tem 780 vagas
+   * (FNDE Espaço Educativo Urbano 12 salas). PENDENTE: sem fonte real para 150,
+   * mantido o valor atual.
+   */
+  schoolTrigger: number;
+  /**
+   * Pessoas sem UBS que disparam uma UBS nova. A UBS do catálogo tem 3.500 pacientes
+   * (PNAB 2017, equipe de Saúde da Família atende de 2.000 a 3.500 pessoas).
+   * PENDENTE: sem fonte real para 500, mantido o valor atual.
+   */
+  clinicTrigger: number;
+  /**
+   * Raio em QUADRADINHOS (não metros) do "já tem serviço perto": prédio do mesmo
+   * tipo dentro deste raio (distância de Manhattan) conta como atendimento próximo.
+   * 60 quadradinhos x 16 m (config/world.yaml tileMeters) = 960 m, perto do limite
+   * de caminhada de 2 km (config/health.yaml e config/education.yaml maxDistanceMeters 2000).
+   */
+  nearbyTiles: number;
 }
 
 export const DEFAULT_MAYOR: MayorOptions = {
@@ -27,6 +48,9 @@ export const DEFAULT_MAYOR: MayorOptions = {
   district: 30,
   highDensityShare: 0.35,
   utilityReserve: 3000,
+  schoolTrigger: 150,
+  clinicTrigger: 500,
+  nearbyTiles: 60,
 };
 
 interface District {
@@ -75,8 +99,9 @@ export class AutoMayor {
     this.stalledActions = count === this.lastBuildingCount ? this.stalledActions + 1 : 0;
     this.lastBuildingCount = count;
     const stalled = this.stalledActions >= 2;
-    // Serviços primeiro (como um prefeito de verdade): escola quando ~150 crianças estão sem vaga,
-    // UBS quando ~500 pessoas estão sem UBS. Sem dinheiro para o serviço, guarda dinheiro (não abre bairro).
+    // Serviços primeiro (como um prefeito de verdade): escola quando as crianças sem vaga
+    // passam de opts.schoolTrigger, UBS quando as pessoas sem UBS passam de opts.clinicTrigger.
+    // Sem dinheiro para o serviço, guarda dinheiro (não abre bairro).
     let saving = false;
     // Água e luz antes de tudo: sem sobra, a construtora para (poço é o jeito mais barato; 40% das
     // cidades brasileiras vivem só de água subterrânea, Atlas Águas/ANA).
@@ -92,9 +117,9 @@ export class AutoMayor {
         saving = !this.placeNear(service, px, py) || saving;
       }
     }
-    if (census.childrenWithoutSchool > 150)
+    if (census.childrenWithoutSchool > this.opts.schoolTrigger)
       saving = !this.placeServiceNearDemand("escola", census.samples.school ?? []) || saving;
-    if (census.withoutClinic > 500)
+    if (census.withoutClinic > this.opts.clinicTrigger)
       saving = !this.placeServiceNearDemand("ubs", census.samples.health ?? []) || saving;
     // Hospital: só entra com a receita do ÚLTIMO ANO FECHADO cobrindo o custeio anual do hospital
     // (data/buildings.yaml, upkeepPerYear). Hospital é obra cara e manutenção permanente: entrar sem
@@ -346,7 +371,7 @@ export class AutoMayor {
     const b = sim.buildings;
     for (let id = 0; id < b.count; id++) {
       if (b.typeOf(id).id !== service) continue;
-      if (Math.abs(b.x[id]! - px) + Math.abs(b.y[id]! - py) >= 60) continue;
+      if (Math.abs(b.x[id]! - px) + Math.abs(b.y[id]! - py) >= this.opts.nearbyTiles) continue;
       // Em obra ainda vai abrir vaga: espera ele ficar pronto.
       if (b.state[id]! < BSTATE.active) return true;
       if (b.state[id]! > BSTATE.active) continue;
