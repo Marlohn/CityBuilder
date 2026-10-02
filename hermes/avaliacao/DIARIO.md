@@ -1,5 +1,20 @@
 # Diário da avaliação: agentes Hermes + kanban + LLM grátis (CityBuilder)
 
+## 02/10 — check local antes dos testes após edição
+
+O registro real OpenCode do ajuste209 (`ses_f0630c0b2ffeHd1eweu0V2IONg`) mostra dois testes
+afetados verdes consumindo77,844s e115,729s antes do check local de10,309s detectar TS2769.
+Após corrigir o tipo, o check passou em9,763s e os dois testes foram reexecutados em151,221s.
+O SOUL mandava teste afetado antes de format/check; `agents/dev.md` também punha o teste antes do check.
+Essas instruções passam a pedir format/check verde antes dos testes após editar, incluindo o pedido ao CLI.
+O teste inicial que demonstra a falha, os testes afetados finais e todos os checks do CI continuam obrigatórios.
+
+A sequência registrada reproduz a detecção tardia sem rodar novamente a feature ou chamar uma LLM.
+Não foi alterado o jogo, o runner, a cobertura ou o modelo. O atraso observado antes de detectar o erro
+incluiu3min13,573 de testes; isso não prova economia equivalente em próximas entregas. Ganho depende
+de o agente seguir a ordem em novas execuções. Reversão: SOUL Dev anterior e instrução anterior no repo;
+implantar apenas o SOUL mesclado após CI completo, com backup, sem reiniciar worker ativo.
+
 ## 02/10 00:17Z — recuperação real e propagação da saída do CLI
 
 A sessão Dev209 `20261001_231719_1dffe7` chamou OpenCode às 23:31:42Z, depois da leitura anterior
