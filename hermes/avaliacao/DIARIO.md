@@ -20,6 +20,11 @@ pipefail; sem errexit. O harness verifica códigos de sucesso/falha, saída pres
 carregamento repetido e shell POSIX. Backup/reversão apenas do ambiente; publicar/aplicar após CI completo.
 Isso não prova que a falha mascarada ocorreu no caso209, que terminou com sucesso real.
 
+Antes de implantar, o backend real LocalEnvironment revelou que snapshot persiste exports, não opções:
+profile com pipefail sozinho ainda devolveu0. No mesmo cenário isolado, SHELLOPTS=pipefail no processo inicial
+devolveu75. Dev/QA recebem essa variável na .env, preservando as demais linhas/opções e os workers atuais;
+nenhum patch do core. O harness reproduz também snapshot não-login e preserva o erro com a variável nativa.
+
 ## 01/10 23:52Z — decisão estruturada antes de outra rodada Dev
 
 Dev208 diagnosticou de 22:48:12 até 23:17:07 e bloqueou `needs_input` em 23:16:59, citando

@@ -161,6 +161,15 @@ with tempfile.TemporaryDirectory() as directory:
 tree = ast.parse(Path(__file__).with_name("aplicar_perfis.py").read_text())
 pipeline = next(ast.literal_eval(node.value) for node in tree.body if isinstance(node, ast.Assign)
                 and any(isinstance(t, ast.Name) and t.id == "LINHA_PIPEFAIL" for t in node.targets))
+env_function = next(node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == "env_com_pipefail")
+env_namespace = {}
+exec(compile(ast.Module(body=[env_function], type_ignores=[]), "env_com_pipefail", "exec"), env_namespace)
+env_com_pipefail = env_namespace["env_com_pipefail"]
+original = ["# comentário", "OUTRA=fixture", "SHELLOPTS=braceexpand"]
+configured = env_com_pipefail(original)
+assert configured == ["# comentário", "OUTRA=fixture", "SHELLOPTS=braceexpand:pipefail"]
+assert env_com_pipefail(configured) == configured
+assert env_com_pipefail(["OUTRA=fixture"])[-1] == "SHELLOPTS=pipefail"
 
 
 def shell(code, setup=""):
@@ -175,6 +184,20 @@ for rc in (0, 1, 75, 124, 127):
 assert shell("printf 'ok\\n' | (cat >/dev/null; exit 7)", pipeline).returncode == 7
 assert shell("false; printf 'continua\\n'", pipeline).stdout == "continua\n", "não ligar errexit"
 assert shell("printf 'ok\\n' | tail -60", pipeline + "\n" + pipeline).returncode == 0
+# O backend real restaura export -p em bash não-login; não persiste set -o.
+# Reproduz o snapshot sem dados do servidor e testa a variável nativa de startup.
+with tempfile.TemporaryDirectory() as directory:
+    snapshot = Path(directory) / "snapshot.sh"
+    shell_env = {"PATH": os.environ["PATH"], "HOME": directory}
+    bootstrap = f"{pipeline}\nexport -p > {str(snapshot)!r}"
+    subprocess.run(["bash", "--noprofile", "--norc", "-c", bootstrap], env=shell_env, check=True)
+    command = f"source {str(snapshot)!r} >/dev/null 2>&1 || true; (exit 75) | tail -60"
+    assert subprocess.run(["bash", "--noprofile", "--norc", "-c", command], env=shell_env).returncode == 0
+    shell_env["SHELLOPTS"] = env_com_pipefail([])[-1].split("=", 1)[1]
+    for rc in (0, 75, 124, 127):
+        result = subprocess.run(["bash", "--noprofile", "--norc", "-c", command.replace("exit 75", f"exit {rc}")],
+                                env=shell_env, capture_output=True, text=True, timeout=5)
+        assert result.returncode == rc
 env_sh = dict(os.environ)
 env_sh.pop("BASH_VERSION", None)
 assert subprocess.run(["sh", "-c", pipeline + "\nprintf ok"], env=env_sh,
