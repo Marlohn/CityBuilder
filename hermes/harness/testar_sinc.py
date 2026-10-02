@@ -75,6 +75,11 @@ s.revisoes([pr(10, "ccccccc", "dev/1")], {**_ajustes, "arquiteto-destravar-pr-10
 s.revisoes([pr(10, "ccccccc", "dev/1")], {**_ajustes, "arquiteto-destravar-pr-10-bbbbbbb": "ready"}); cria()
 s.revisoes([pr(10, "ccccccc", "dev/1")], {**_ajustes, "arquiteto-destravar-pr-100-bbbbbbb": "running"}); cria("arquiteto-destravar-pr-10-ccccccc")
 s.revisoes([pr(10, "aaaaaaa", "dev/1")], {"dev-ajuste-pr-10-aaaaaaa": "done"}); cria("dev-ajuste-pr-10-aaaaaaa-retomar-r1")
+for _status in ("ready", "running"):
+    s.revisoes([pr(10, "aaaaaaa", "dev/1")], {"dev-ajuste-pr-10-aaaaaaa": "done",
+                "arquiteto-destravar-pr-10-aaaaaaa": _status}); cria()
+s.revisoes([pr(10, "aaaaaaa", "dev/1")], {"dev-ajuste-pr-10-aaaaaaa": "done",
+            "arquiteto-destravar-pr-10-aaaaaaa": "done"}); cria("dev-ajuste-pr-10-aaaaaaa-retomar-r1")
 s.revisoes([pr(10, "aaaaaaa", "dev/10", ["em-revisão"])], {}, {10}); cria()  # em revisão, mas a issue espera o QA: sem revisão repetida
 s.revisoes([pr(10, "aaaaaaa", "dev/10", ["em-revisão"])], {}, {11}); cria("revisar-pr-10-aaaaaaa")  # outra issue esperando: revisa normal
 s.revisoes([pr(10, "aaaaaaa", "dev/10")], {}, {10}); cria()  # issue 10 esperando o QA corrigir o teste: sem ajuste do dev
@@ -246,12 +251,13 @@ print("tarefa entregue: ok")
 
 # ---- zelador ----------------------------------------------------------------------------------------------------
 CHAMADAS = []
+BLOQUEIO = {"reason": "sem acesso ao repo X"}
 
 
 def fake_run(args, **k):
     CHAMADAS.append(args[1:3] if args[0] == s.HERMES else args)
     if args[2:3] == ["show"] or (len(args) > 2 and args[2] == "show"):
-        ev = [{"kind": "created", "payload": {}}, {"kind": "blocked", "payload": {"reason": "sem acesso ao repo X"}}]
+        ev = [{"kind": "created", "payload": {}}, {"kind": "blocked", "payload": BLOQUEIO}]
         return types.SimpleNamespace(returncode=0, stdout=json.dumps({"events": ev}), stderr="")
     if args[2] == "complete":
         CHAMADAS.append(("resumo", args[args.index("--summary") + 1]))
@@ -269,6 +275,44 @@ assert not any(c[:2] == ["kanban", "archive"] for c in CHAMADAS)
 CHAMADAS.clear(); FALHA_COMPLETE = 1
 assert s.zelar([card("A", "blocked", "t_1")]) == 1
 assert ["kanban", "archive"] in [list(c) if isinstance(c, (list, tuple)) else c for c in CHAMADAS], "recusou o complete: arquiva"
+CHAMADAS.clear(); FALHA_COMPLETE = 0
+BLOQUEIO = {"reason": "decisão sobre teste protegido; evidência no PR", "kind": "needs_input"}
+_bloqueado = {**card("dev-ajuste-pr-208-3cc5697", "blocked", "t_decisao"), "assignee": "dev"}
+_pr_bloqueado = pr(208, "3cc5697", "dev/203")
+assert s.zelar([_bloqueado, {**_bloqueado, "id": "t_repetido"}], [_pr_bloqueado]) == 2
+cria("arquiteto-destravar-pr-208-3cc5697")
+assert "t_decisao" in ALVOS["arquiteto-destravar-pr-208-3cc5697"]
+assert BLOQUEIO["reason"] in ALVOS["arquiteto-destravar-pr-208-3cc5697"]
+_arq = card("arquiteto-destravar-pr-208-3cc5697", "running", "t_arq")
+assert s.zelar([_bloqueado, _arq], [_pr_bloqueado]) == 1
+cria()  # decisão já aberta: não duplica nem reinicia orçamento
+_esgotados = [card("arquiteto-destravar-pr-208-3cc5697" + _sufixo, "done", "t_gasto")
+              for _sufixo in ("", "-retomar-r1", "-retomar-r2", "-retomar-r3")]
+assert s.zelar([_bloqueado, *_esgotados], [_pr_bloqueado]) == 1
+cria()  # pedido de decisão não concede novas retomadas após o limite
+for _cards, _prs in [([_bloqueado], []), ([_bloqueado], [pr(208, "bbbbbbb", "dev/203")]),
+                      ([{**_bloqueado, "assignee": "qa"}], [_pr_bloqueado]),
+                      ([{**_bloqueado, "status": "ready"}], [_pr_bloqueado]),
+                      ([{**_bloqueado, "title": "[dev-issue-203-r1] x"}], [_pr_bloqueado])]:
+    s.zelar(_cards, _prs); cria()
+for _kind in ("error", None):
+    BLOQUEIO = {"reason": "erro sem pedido de decisão", "kind": _kind}
+    s.zelar([_bloqueado], [_pr_bloqueado]); cria()
+BLOQUEIO = {"reason": "decisão necessária", "kind": "needs_input"}
+CHAMADAS.clear()
+real_criar = s.criar
+def falha_criar(*args, **kwargs):
+    raise RuntimeError("kanban indisponível")
+s.criar = falha_criar
+try:
+    s.zelar([_bloqueado], [_pr_bloqueado])
+except RuntimeError:
+    pass
+else:
+    raise AssertionError("falha de encaminhamento precisa preservar bloqueio")
+assert not any(c[:2] == ["kanban", "complete"] for c in CHAMADAS)
+assert not any(c[:2] == ["kanban", "archive"] for c in CHAMADAS)
+s.criar = real_criar
 s.subprocess.run = real_run
 print("zelador: ok")
 
@@ -277,7 +321,7 @@ if "--sem-rede" not in sys.argv:
     tk = s.token()
     if tk:
         s.os.environ["GH_TOKEN"] = tk
-        s.zelar = lambda lista: 0  # nunca fecha cartão de verdade no teste
+        s.zelar = lambda lista, prs=(): 0  # nunca fecha cartão de verdade no teste
         s.main()
         print("fumaça com GitHub e kanban reais: ok; criaria:", [c[0] for c in CRIADOS])
     else:

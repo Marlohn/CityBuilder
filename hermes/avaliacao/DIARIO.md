@@ -1,5 +1,24 @@
 # Diário da avaliação: agentes Hermes + kanban + LLM grátis (CityBuilder)
 
+## 01/10 23:52Z — decisão estruturada antes de outra rodada Dev
+
+Dev208 diagnosticou de 22:48:12 até 23:17:07 e bloqueou `needs_input` em 23:16:59, citando
+teste protegido e alternativas QA/Arquiteto. O zelador completou em 23:18:45 e criou outra rodada
+Dev em 23:18:53. Isso comprova repetição do papel, não que o teste esteja errado. No código, o
+tipo do evento não era usado; o zelador removia o bloqueio e o despacho via apenas chave/status.
+O cenário antes da alteração criou `dev-ajuste-pr-208-3cc5697-retomar-r1`, sem decisão Arquiteto.
+
+Agora o zelador lê o último evento estruturado, encaminha somente `needs_input` de ajuste Dev
+do SHA atual a `escalar_pr` e só então fecha o bloqueio. Decisão aberta segura novos ajustes do
+PR. Depois de concluída, o despacho normal volta com os mesmos limites e gates; o QA continua
+decisão semântica do agente, nunca encaminhamento do supervisor por palavras do comentário.
+Falha ao criar a escalada conserva o bloqueio. Não muda eventos/cartões antigos nem workers.
+
+Cenários verificam tipo, papel, SHA, PR aberto, duplicatas, decisão aberta/concluída e erro de escrita.
+Os 27 mutantes anteriores permanecem, com três novos para perda do encaminhamento, repetição de
+Dev durante decisão e associação a SHA antigo. CI completo e merge atuais precedem implantação.
+Sem instalar componente ou repetir tarefa do jogo; ganho de tempo depende de eventos reais futuros.
+
 ## 01/10 22:45Z — orçamento consumido explícito na escalada
 
 No PR201, `dev-diagnostico-pr-201` terminou em 22:19:55Z e devolveu ao QA. O QA publicou a correção às

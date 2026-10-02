@@ -8,6 +8,12 @@ AQUI = os.path.dirname(os.path.abspath(__file__))
 ORIGINAL = open(f"{AQUI}/sincronizar_github.py", encoding="utf-8").read()
 
 MUTANTES = {
+    "decisao pendente repete dev":
+        ('            if aberto(existentes, f"arquiteto-destravar-pr-{n}-"):\n', '            if False:\n'),
+    "needs_input perde encaminhamento":
+        ('c.get("assignee") == "dev" and dados.get("kind") == "needs_input"', 'False'),
+    "bloqueio de SHA antigo encaminha decisao atual":
+        ('pr["headRefOid"][:7] == ajuste[2] and', 'True and'),
     "diagnostico omite tentativa extra ja utilizada":
         ('        if diagnostico in existentes:\n', '        if False:\n'),
     "PR dev sem Closes perde vinculo com tarefa":
@@ -33,7 +39,7 @@ MUTANTES = {
     "3 rodadas gastas não chamam o arquiteto":
         ('elif esgotada(existentes, base) and', 'elif False and esgotada(existentes, base) and'),
     "zelador esquece o motivo do bloqueio":
-        ("f\"Motivo: {motivo_bloqueio(c['id'])}\"", '"Motivo: -"'),
+        ('f"Motivo: {motivo}"', '"Motivo: -"'),
     "main vermelha cria conserto novo com outro aberto":
         ('if not falhas or aberto(existentes, "main-vermelha-"):', 'if not falhas:'),
     "rodada arquivada é tratada como aberta":

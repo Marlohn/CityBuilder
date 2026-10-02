@@ -6,6 +6,18 @@
 
 ## Em uma frase
 
+### 01/10 — pedido de decisão do Dev antes de repetir diagnóstico
+
+Um ajuste de PR bloqueado com tipo estruturado `needs_input`, no SHA ainda atual, vai ao Arquiteto existente
+antes de o zelador fechar o cartão. O motivo e o cartão de origem seguem na escalada; isso não valida a
+alegação do Dev sobre o teste. Uma decisão aberta segura novos ajustes Dev do mesmo PR. Após a decisão
+terminar, valem novamente os gates de QA/CI e os limites anteriores; não há tentativa extra ou orçamento
+reiniciado. Bloqueio sem tipo, de outro papel, de SHA antigo ou sem PR aberto mantém o tratamento anterior.
+Se criar a escalada falhar, o cartão bloqueado permanece para nova tentativa do sincronizador. Sem mudar
+o core do Hermes: `kanban show --json` já fornece o tipo no evento, embora `kanban list` não o exponha.
+
+Reversão: repor o sincronizador do backup anterior; não reiniciar workers ou modificar cartões existentes.
+
 ### 01/10 — OpenCode devolve falhas do provedor ao agente
 
 No Dev #111, o Muse recusou a chamada com `Rate limit exceeded` em 20:36:06Z e 20:51:12Z.
