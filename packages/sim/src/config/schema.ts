@@ -138,8 +138,7 @@ export const GameConfigSchema = z.object({
     hospitalMortalityReduction: prob,
     hospitalMinPopulation: intPos,
     hospitalMinUncovered: nonneg,
-    // 0 = ninguém é admitido por sorteio no aniversário (cidade sem internação por versioning).
-    hospitalAdmissionRatePerYear: nonneg.max(1),
+    hospitalAdmissionRatePerYear: pos.max(1),
     hospitalAvgLengthOfStayDays: pos,
   }),
   economy: z.object({
