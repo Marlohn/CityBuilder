@@ -110,33 +110,44 @@ export class UtilitiesSystem implements System {
    * Totais da cidade em pessoas equivalentes (para o StatsView).
    * `used` soma o consumo de todos os prédios que não são poço/ETA/subestação
    * (demolidos e abandonados ficam de fora); `capacity` é `used` mais as sobras.
+   * O esgoto soma só prédios sem serviço (nem a ETE entra) vezes a fração da config.
    */
   totals(): {
     water: { capacity: number | null; used: number };
     power: { capacity: number | null; used: number };
+    sewage: { capacity: number | null; used: number };
   } {
     const bs = this.city.sim.buildings;
+    const cfg = this.city.sim.config.utilities;
     let used = 0;
+    let usedNoService = 0;
     for (let b = 0; b < bs.count; b++) {
       const st = bs.state[b];
       if (st === BSTATE.demolished || st === BSTATE.abandoned) continue;
       const t = bs.typeOf(b);
       if (t.service === "water" || t.service === "power") continue;
-      used += this.demandOf(t.homes, t.jobs);
+      const demand = this.demandOf(t.homes, t.jobs);
+      used += demand;
+      if (t.service === undefined) usedNoService += demand;
     }
+    const sewageUsed = usedNoService * cfg.sewageShareOfConsumption;
     if (!this.enabled)
       return {
         water: { capacity: null, used },
         power: { capacity: null, used },
+        sewage: { capacity: null, used: sewageUsed },
       };
     if (this.seenStructure < 0) this.recompute();
     let spareWater = 0;
     for (const v of this.spare.water.values()) spareWater += v;
     let sparePower = 0;
     for (const v of this.spare.power.values()) sparePower += v;
+    let spareSewage = 0;
+    for (const v of this.spare.sewage.values()) spareSewage += v;
     return {
       water: { capacity: used + spareWater, used },
       power: { capacity: used + sparePower, used },
+      sewage: { capacity: sewageUsed + spareSewage, used: sewageUsed },
     };
   }
 

@@ -121,6 +121,10 @@ export function statsView(game: Game, behind = false): StatsView {
         capacity: u.power.capacity === null ? null : Math.round(u.power.capacity),
         used: Math.round(u.power.used),
       },
+      sewage: {
+        capacity: u.sewage.capacity === null ? null : Math.round(u.sewage.capacity),
+        used: Math.round(u.sewage.used),
+      },
     },
     vehiclesMoving: game.traffic.vehicles.moving.size,
     peopleWalking: 0,
