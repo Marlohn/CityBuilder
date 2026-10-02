@@ -479,7 +479,12 @@ function impressaoParcial(game: Game) {
   };
 }
 
-/** Números congelados do snapshot atual ("cenário bairro-basico, 12 dias"). */
+/**
+ * Números congelados do snapshot atual ("cenário bairro-basico, 12 dias"). Regravados com a
+ * receita por porte de cidade (issue #196): o dinheiro muda porque a receita por habitante deixou
+ * de ser valor fixo e passou a vir da tabela por porte (0, 5.000, 20.000, 50.000 e 100.000
+ * habitantes). O resto do fingerprint da cidade é o mesmo.
+ */
 const ESPERADO_BAIRRO = {
   tick: 17700,
   population: 2063,
@@ -490,7 +495,7 @@ const ESPERADO_BAIRRO = {
   retired: 119,
   buildings: 274,
   cars: 272,
-  money: 7204340,
+  money: 93332546,
   events: 13714,
   unmet: {
     school: 0,
@@ -506,26 +511,31 @@ const ESPERADO_BAIRRO = {
   },
 };
 
-/** Números congelados do snapshot atual ("prefeito automático, 12 dias"). */
+/**
+ * Números congelados do snapshot atual ("prefeito automático, 12 dias"). Regravados com a receita
+ * por porte de cidade (issue #196): com mais caixa o prefeito constrói mais e a cidade cresce
+ * (population 970 -> 1404, buildings 375 -> 628, money 289.485 -> 3.296.044). O resto do
+ * fingerprint acompanha a cidade maior.
+ */
 const ESPERADO_BOT = {
   tick: 17700,
-  population: 970,
-  households: 363,
-  employed: 476,
-  unemployed: 36,
-  children: 299,
-  retired: 50,
-  buildings: 375,
-  cars: 143,
-  money: 289485,
-  events: 10527,
+  population: 1404,
+  households: 539,
+  employed: 673,
+  unemployed: 41,
+  children: 109,
+  retired: 64,
+  buildings: 628,
+  cars: 147,
+  money: 3296044,
+  events: 10376,
   unmet: {
-    school: 238,
+    school: 0,
     university: 0,
     health: 0,
-    hospital: 970,
-    housing: 12,
-    job: 36,
+    hospital: 1404,
+    housing: 0,
+    job: 41,
     transit: 0,
     parking: 0,
     water: 0,
