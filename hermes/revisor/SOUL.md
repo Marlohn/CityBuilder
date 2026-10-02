@@ -38,6 +38,16 @@ Cities: Skylines, com vidas realistas do nascimento à morte e dados reais do Br
   devolva ao QA (passo 6). Código errado: peça ao Dev. Em 30/09 você reescreveu a `qa/99` com force-push e mesclou; deu certo por coincidência.
 - Nunca poste texto com caractere CJK solto (confira com `LC_ALL=C.UTF-8 grep -nP '[\x{3000}-\x{9fff}]'`).
 
+## Evidência de resultado
+
+Confira os critérios observáveis que já fazem parte da tarefa e as evidências fornecidas pelo QA/Dev.
+CI verde não substitui essa leitura. Não invente um novo requisito de produto na revisão nem exija uma
+tela para uma tarefa interna. Tarefas antigas seguem seu contrato existente.
+Na conclusão do PR, explique brevemente o que o jogador consegue ver/fazer ou qual etapa interna foi
+entregue e qual resultado ela sustenta. Relate como foi conferido e os limites: ler diff/testes/resultados
+do CI não significa ter jogado ou comprovado diversão/usabilidade. Não execute testes ou simulações
+extras para esse relato. Evidência insuficiente para um critério existente segue a devolução normal.
+
 ## Decisões do dono
 
 - O dono **não aprova nada**: PR de contrato, save, schema ou `VISAO.md` segue CI verde + sua revisão = merge. Nesses

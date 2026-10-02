@@ -24,6 +24,7 @@ body:
     id: proposta
     attributes:
       label: Proposta
+      description: "Explique o benefício para quem joga e como percebê-lo numa partida. Se for interno, diga qual resultado do jogo sustenta; não prometa uma mudança de tela fora do escopo."
     validations: { required: true }
   - type: input
     id: metrica
