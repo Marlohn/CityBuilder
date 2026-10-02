@@ -15,11 +15,15 @@
  * - O teste roda dia a dia com `createRun` (igual ao teste da issue #99) porque
  *   precisa parar no dia exato em que a ETE fica pronta: a obra leva
  *   `constructionMonths: 28` e a ETE só entra na malha em `BSTATE.active`.
- * - O cenário de dinheiro contado usa a config normal (modo `budget`, 60 dias): os dias em que
- *   falta esgoto, o caixa do começo do dia não paga a ETE e já existe lugar de ETE na cidade (a
- *   partir do dia ~54 nesta semente). Aí o prefeito tem que guardar dinheiro (o mesmo `saving`
- *   dos outros serviços) em vez de abrir rua nova ou insistir em obra recusada. Os dias são
- *   achados rodando a simulação, não congelados no teste.
+ * - O cenário de dinheiro contado usa a config normal (modo `budget`, 60 dias) na semente
+ *   "ete-5": os dias em que falta esgoto, o caixa do começo do dia não paga a ETE e já existe
+ *   lugar de ETE na cidade (dias 27 e 28 nesta semente, com a ETE construída até o dia 60). Aí o
+ *   prefeito tem que guardar dinheiro (o mesmo `saving` dos outros serviços) em vez de abrir rua
+ *   nova ou insistir em obra recusada. Os dias são achados rodando a simulação, não congelados
+ *   no teste. A semente é "ete-5" e não "avaliacao-livre" porque, com a regra da #223 (filho sem
+ *   esgoto morre mais), o prefeito ocupa antes o terreno válido de ETE na "avaliacao-livre" e o
+ *   cenário (dia com mais de 300 sem esgoto, sem caixa para a ETE e com lugar de ETE) deixa de
+ *   existir nela em 60 dias; varrendo 24 sementes com o bot, só a "ete-5" ainda tem esse cenário.
  *
  * Semente fixa, sem `Math.random` e sem relógio: o mesmo teste dá sempre o mesmo resultado.
  */
@@ -33,6 +37,8 @@ const DAYS = 90;
 const OVERRIDES = { economy: { mode: "sandbox" } };
 /** Dias da cidade com dinheiro contado (modo `budget`, config normal). */
 const BUDGET_DAYS = 60;
+/** Semente do cenário de dinheiro contado: a única com dia sem caixa para a ETE e com lugar de ETE. */
+const BUDGET_SEED = "ete-5";
 /** Gente sem esgoto que obriga o prefeito a construir a ETE. */
 const SEWAGE_TRIGGER = 300;
 
@@ -220,9 +226,9 @@ describe("issue #111: prefeito constrói a ETE quando falta esgoto", () => {
   });
 
   it("sem dinheiro para a ETE o prefeito guarda e não abre rua nova", { timeout: 600000 }, () => {
-    // Dinheiro contado: config normal (modo `budget`), mesma semente, 60 dias.
+    // Dinheiro contado: config normal (modo `budget`), semente "ete-5", 60 dias.
     const { config, data } = loadConfigAndData();
-    const run = createRun({ config, data, seed: SEED, days: BUDGET_DAYS, bot: true });
+    const run = createRun({ config, data, seed: BUDGET_SEED, days: BUDGET_DAYS, bot: true });
     // Custo lido do catálogo, nunca escrito à mão: se o preço mudar o cenário acompanha.
     const tipoEte = run.game.sim.buildings.catalog.find((tipo) => tipo.id === "ete");
     expect(
