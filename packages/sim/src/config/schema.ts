@@ -133,6 +133,7 @@ export const GameConfigSchema = z.object({
   health: z.object({
     maxDistanceMeters: pos,
     uncoveredMortalityMultiplier: pos,
+    unseweredChildMortalityMultiplier: pos,
     hospitalBedsPer1000: pos,
     hospitalMaxDistanceMeters: pos,
     hospitalMortalityReduction: prob,

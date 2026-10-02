@@ -6,6 +6,12 @@ health:
   # tiveram 36% menos mortes por doenças cardiovasculares (Rasella et al., BMJ 2014), e essas
   # doenças são ~30% dos óbitos no Brasil (Ministério da Saúde). 30% x 36% ≈ 11%.
   uncoveredMortalityMultiplier: 1.11
+  # Sem coleta de esgoto o risco de morte SOBE só para menores de 5 anos: acima disso o número não tem fonte.
+  # Wolf, J. et al. (2014), "Burden of disease from inadequate water, sanitation and hygiene in low- and
+  # middle-income settings", Tropical Medicine & International Health 19(8):918-942: acesso a sanitário
+  # melhorado reduz a morbidade por diarréia em 28% (RR 0,72, IC 95% 0,59-0,88), logo sem esgoto o risco
+  # é 1 / 0,72 = 1,39. https://doi.org/10.1111/tmi.12329
+  unseweredChildMortalityMultiplier: 1.39
   # Portaria GM/MS 1.101/2002: 2,5 a 3 leitos para cada 1.000 habitantes.
   hospitalBedsPer1000: 2.5
   # PENDENTE: distância máxima por rodovia até o hospital. Usado 15 km: cerca de 30 min de viagem a 30 km/h,

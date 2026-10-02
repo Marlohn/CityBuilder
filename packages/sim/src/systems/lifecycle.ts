@@ -54,6 +54,14 @@ export class LifecycleSystem implements System {
     const table = sex === SEX.male ? city.sim.data.mortality.qxMale : city.sim.data.mortality.qxFemale;
     let q = table[Math.min(lived, table.length - 1)] ?? 1;
     if (pop.clinic[p]! < 0) q *= config.health.uncoveredMortalityMultiplier;
+    // Sem esgoto morre mais criança (sanitário melhorado RR 0,72 -> sem esgoto 1 / 0,72 = 1,39).
+    // Só abaixo de 5 anos: a fonte é de diarréia infantil, acima disso o número não tem fonte.
+    if (config.utilities.enabled && age < 5) {
+      const home = city.homeBuilding(p);
+      if (home >= 0 && city.sim.buildings.hasSewage[home] === 0) {
+        q *= config.health.unseweredChildMortalityMultiplier;
+      }
+    }
     // Quem tem leito de hospital (segundo nível) morre menos.
     if (pop.hospital[p]! >= 0) q *= 1 - config.health.hospitalMortalityReduction;
     if (rng.chance(q)) {
