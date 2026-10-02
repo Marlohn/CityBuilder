@@ -8,6 +8,10 @@ AQUI = os.path.dirname(os.path.abspath(__file__))
 ORIGINAL = open(f"{AQUI}/sincronizar_github.py", encoding="utf-8").read()
 
 MUTANTES = {
+    "rodada QA repete worker por dentro":
+        ('if max_retries is None and papel in ("qa", "dev"):', 'if max_retries is None and papel == "dev":'),
+    "rodada Dev repete worker por dentro":
+        ('if max_retries is None and papel in ("qa", "dev"):', 'if max_retries is None and papel == "qa":'),
     "decisao pendente repete dev":
         ('            if aberto(existentes, f"arquiteto-destravar-pr-{n}-"):\n', '            if False:\n'),
     "needs_input perde encaminhamento":

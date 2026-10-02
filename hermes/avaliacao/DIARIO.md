@@ -1,5 +1,32 @@
 # Diário da avaliação: agentes Hermes + kanban + LLM grátis (CityBuilder)
 
+## 02/10 — uma execução de QA/Dev por rodada do sincronizador
+
+O QA223 `t_84de6c30` esgotou 120 iterações sem publicar PR: primeira execução
+14:49:54–16:20:27Z (1h30min33). O evento nativo `timed_out` o devolveu a ready;
+às 16:21:13Z o mesmo cartão ganhou outro worker. `max_retries` estava ausente.
+O core instalado usa `DEFAULT_FAILURE_LIMIT=2`: cada rodada contada pelo
+sincronizador podia conter duas execuções, além das três rodadas já existentes.
+
+Novos cartões QA/Dev recebem `--max-retries 1` quando não há valor explícito.
+A primeira falha de execução chega ao bloqueio e ao encaminhamento já existente;
+as rodadas externas, a tentativa extra Dev, os tempos e o fallback de API/CLI
+continuam iguais. Falha de infraestrutura antes de iniciar o worker conserva
+o tratamento nativo. Nenhum cartão existente é modificado ou worker interrompido.
+
+A reprodução usou o core real em SQLite temporário: após a mesma falha,
+max_retries ausente deixa ready com uma falha; valor 1 deixa blocked com uma
+falha. Sem tarefa real, rede, LLM, jogo ou escrita no kanban de produção.
+O harness verifica os argumentos reais do construtor, override explícito,
+skill e tempo preservados; dois mutantes adicionais preservam os 36 anteriores.
+Reversão: restaurar somente o backup do sincronizador após implantação.
+
+Isso corrige a repetição interna, não a latência da IA nem a escrita fora do CLI.
+A primeira execução QA teve zero `opencode run` e comandos de escrita de testes,
+apesar de a regra estar no prompt. A causa da escolha e a adoção em novos cartões
+continuam pendentes; não atribuir economia comprovada ou qualidade do jogo a
+esta mudança antes de observar o fluxo real.
+
 ## 02/10 — bloqueio registra causa e destino, sem fingir entrega
 
 O novo Designer `t_90ca66fc` atingiu 902s para limite de 900s, como o atendimento

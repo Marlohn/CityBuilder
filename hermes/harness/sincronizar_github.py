@@ -140,6 +140,9 @@ def criar(chave, titulo, papel, alvo, prioridade=0, max_runtime="2h", max_retrie
           goal_max_turns=None, bloqueado=False):
     """Um cartão. Contrato local-only em todos: o contrato de PR só deixa fechar com o PR verde, e revisão que
     REPROVA nunca fecharia (30/09: cartão do #56 travou). A trava de verdade é a proteção da main no GitHub."""
+    if max_retries is None and papel in ("qa", "dev"):
+        # A rodada já tem recuperação no sincronizador. O default nativo (2) repetia o mesmo cartão por dentro.
+        max_retries = 1
     skills = ["--skill", "opencode"] if papel in ("qa", "dev") else []
     limites = (["--max-retries", str(max_retries)] if max_retries is not None else [])
     limites += (["--goal", "--goal-max-turns", str(goal_max_turns)] if goal_max_turns else [])

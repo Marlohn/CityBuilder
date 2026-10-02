@@ -13,6 +13,28 @@ spec = importlib.util.spec_from_file_location("s", CAMINHO)
 s = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(s)
 
+# O CLI instalado usa duas execuções quando --max-retries está ausente. Uma falha
+# deve chegar ao encaminhamento do sincronizador, não repetir por dentro da rodada.
+_run_original = s.subprocess.run
+_comandos_criar = []
+try:
+    s.subprocess.run = lambda args, **kw: _comandos_criar.append((args, kw)) or types.SimpleNamespace(returncode=0)
+    for _papel in ("qa", "dev"):
+        s.criar(f"{_papel}-issue-1-r1", "fixture offline", _papel, "alvo")
+        _args, _kwargs = _comandos_criar[-1]
+        assert "--max-retries" in _args, "rodada não pode herdar duas execuções nativas"
+        assert _args[_args.index("--max-retries") + 1] == "1"
+        assert _args[_args.index("--max-runtime") + 1] == "2h", "limite de tempo não mudou"
+        assert _args[_args.index("--skill") + 1] == "opencode"
+    s.criar("revisar-pr-1-sha", "fixture offline", "revisor", "alvo")
+    assert "--max-retries" not in _comandos_criar[-1][0], "outro papel mantém política anterior"
+    s.criar("dev-explicito", "fixture offline", "dev", "alvo", max_retries=3)
+    _args = _comandos_criar[-1][0]
+    assert _args[_args.index("--max-retries") + 1] == "3", "configuração explícita deve prevalecer"
+finally:
+    s.subprocess.run = _run_original
+print("execução por rodada QA/Dev: ok")
+
 CRIADOS, ESCRITOS = [], []
 ALVOS = {}
 LIMITES = {}
