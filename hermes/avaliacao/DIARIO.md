@@ -1,5 +1,31 @@
 # Diário da avaliação: agentes Hermes + kanban + LLM grátis (CityBuilder)
 
+## 02/10 — planejamento não confunde tarefa associada com item entregue
+
+O Arquiteto `t_12c732e6` iniciou 03:15:57Z e encerrou 03:17:17Z. Na sessão
+`20261002_031559_82d217`, consultou a ordem e listas de tarefas; concluiu que os dez
+itens Agora tinham tarefas abertas ou fechadas. Não consultou critérios dos itens
+nem PRs entregues antes de parar. O SOUL e o corpo do cartão mandavam selecionar
+item sem tarefas abertas OU fechadas, embora em seguida mandassem conferir o que
+faltava depois das fechadas. A primeira condição excluía essa conferência.
+
+A instrução agora exclui somente itens com tarefa aberta. Tarefas fechadas exigem
+conferir critérios e entregas; item coberto permite seguir ao próximo candidato.
+Sem lacuna comprovada, não cria trabalho. Preserva um item planejado por ciclo e
+proíbe usar planejamento para retomar alvo aberto ou orçamento de recuperação gasto.
+Supervisor não avaliou semântica do jogo nem criou tarefas, alterou etiquetas ou
+executou testes do jogo. Reprodução: sequência real acima e texto emitido por
+`diarios()`; conferir instruções antigas e novas sem chamar LLM.
+
+Limitação explícita: esta mudança não reabre o cartão de planejamento já concluído
+nem altera sua chave, a cadência, as três retomadas ou a tentativa extra de Dev.
+O PR #201 continua sem recuperação comprovada; corrigir a seleção não significa
+que a fila atual retomou. Adoção depende de próximo evento real de planejamento,
+quando mudar o conjunto de tarefas/itens abertos. Não gerar evento artificial.
+Validar harness de infraestrutura e seus mutantes preservados, CI completo do HEAD
+e main atual antes de merge. Depois copiar somente SOUL Arquiteto e sincronizador
+mesclados, com backups e igualdade de bytes. Reversão: restaurar esses dois backups.
+
 ## 02/10 — reduzir o caminho de espera dos testes no GitHub
 
 Na entrega real #217, Dev começou 01:49:42Z e Pages terminou 02:09:39Z: 19min57.
