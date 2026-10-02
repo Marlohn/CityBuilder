@@ -1,5 +1,27 @@
 # Diário da avaliação: agentes Hermes + kanban + LLM grátis (CityBuilder)
 
+## 02/10 — reduzir o caminho de espera dos testes no GitHub
+
+Na entrega real #217, Dev começou 01:49:42Z e Pages terminou 02:09:39Z: 19min57.
+O Dev encerrou em 5min52. CI36953396820 iniciou 01:57:52 e terminou 02:05:35:
+7min43. Logs mostram Vitest365,3s e Playwright19testes/2workers em6,7min;
+instalação npm levou6–9s, portanto cache não era o gargalo observado.
+Não atribuir a demora ao modelo ou à instalação sem esse recorte.
+
+O workflow divide as mesmas suítes Vitest e Playwright em duas partes pelo recurso
+`--shard` já disponível nas ferramentas instaladas. Cada parte usa uma máquina GitHub;
+não aumenta concorrência/memória/vagas do miniPC. Não modifica arquivos do jogo/testes,
+timeout, retries, isolamento ou configuração de testes. Partes não cancelam umas às outras
+ao falhar. Mantém os quatro nomes exigidos pela proteção: os dois checks agregados rodam
+mesmo após falha e exigem resultado `success` de todas as dependências. Nenhuma parte
+pulada/cancelada pode produzir verde. Cenários/mutantes anteriores e teste lento ficam.
+
+Fonte: https://vitest.dev/guide/cli.html#shard e https://playwright.dev/docs/test-sharding .
+Validar YAML/comandos e a tabela de resultados dos checks sem executar jogo no supervisor;
+o CI completo do PR fornece a validação real. Economia ainda NÃO comprovada: registrar
+tempos das partes/esperas e observar próxima entrega nova, sem benchmark de feature.
+Reversão: restaurar workflow anterior; não mudar ruleset, agentes ou produção do miniPC.
+
 ## 02/10 — benefício para o jogador no processo do Hermes
 
 O dono relatou pouca evolução palpável e pediu que a distinção entre avanço interno e benefício para

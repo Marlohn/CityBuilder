@@ -310,6 +310,7 @@ Os gatilhos do bot ficam em `MayorOptions` (`packages/bots/src/mayor.ts`):
 
 - **Atualizar Playwright sem a imagem do CI:** o job de tela usa `mcr.microsoft.com/playwright:v1.63.0-noble`, com navegador e dependências prontos. Ao atualizar `@playwright/test`/`package-lock.json`, atualize também a imagem e a conferência de versão em `.github/workflows/ci.yml`. O comando e todos os testes de tela continuam iguais; não reinstale dependências via apt em cada execução.
 - **Esconder o erro com `| tail`:** `npm run check | tail` devolve sucesso mesmo quando falha. Use `set -o pipefail` antes.
+- **CI em duas partes:** Vitest e Playwright usam `--shard=1/2` e `--shard=2/2` em máquinas separadas. Nenhum arquivo é excluído. Os checks obrigatórios `npm run check` e `teste de tela (Playwright)` só ficam verdes quando todas as partes passam; falha, cancelamento ou parte pulada impedem o verde. Tipos, estilo, camadas, cenários/mutantes do Hermes e testes lentos continuam obrigatórios. Reversão: restaurar `.github/workflows/ci.yml` anterior, sem mudar a proteção da branch.
 - **Idade no aniversário:** quem faz aniversário hoje viveu `idade - 1` anos completos. Usar a idade nova zerou a mortalidade infantil.
 - **Ordem dos eventos:** registre a chegada antes de mover a família para a casa, senão o verificador acha alguém "surgindo do nada".
 - **Filhos acompanham os pais:** ao mudar um adulto de casa, veja os filhos menores (`people/actions.ts`).
