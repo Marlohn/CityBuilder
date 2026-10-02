@@ -1,5 +1,68 @@
 # Diário da avaliação: agentes Hermes + kanban + LLM grátis (CityBuilder)
 
+## 02/10 00:17Z — recuperação real e propagação da saída do CLI
+
+A sessão Dev209 `20261001_231719_1dffe7` chamou OpenCode às 23:31:42Z, depois da leitura anterior
+que encontrara zero chamadas às 23:26. O CLI `ses_f0630c0b2ffeHd1eweu0V2IONg` registrou Muse com
+zero tokens e depois Kilo Nemotron Ultra grátis, na mesma sessão, com `FALLBACK_RESULT exit=0`.
+Alterou os três arquivos publicados, terminou em 23:40:37Z e não foi relançado manualmente. É prova
+de recuperação207 numa implementação real, não apenas probe curto. O erro HTTP exato inicial não foi
+recuperado; não atribuir causa. Space Bunny reserva e fallback nativo Hermes não foram usados nesse caso.
+
+CLI8min53 inclui365,905s de tools e167,080s restantes (LLM e demais intervalos, não só LLM).
+Diagnóstico antes do CLI levou cerca de14min25; coordenação após levou7min23. CI sobrepõe parte dessas
+fases. Fila do ajuste19min31, início ajuste→Pages40min27: alvo10–15min ainda não alcançado.
+
+Comando real tinha `2>&1 | tail -60`, sem `pipefail` explícito. Login Bash com HOME real do Dev
+confirmou pipefail desligado; `(exit 75) | tail -60` devolveu0. A correção é uma opção no ambiente
+comum já existente, não um filtro de comandos ou componente novo. Só novas shells Bash recebem
+pipefail; sem errexit. O harness verifica códigos de sucesso/falha, saída preservada, erro do filtro,
+carregamento repetido e shell POSIX. Backup/reversão apenas do ambiente; publicar/aplicar após CI completo.
+Isso não prova que a falha mascarada ocorreu no caso209, que terminou com sucesso real.
+
+Antes de implantar, o backend real LocalEnvironment revelou que snapshot persiste exports, não opções:
+profile com pipefail sozinho ainda devolveu0. No mesmo cenário isolado, SHELLOPTS=pipefail no processo inicial
+devolveu75. Dev/QA recebem essa variável na .env, preservando as demais linhas/opções e os workers atuais;
+nenhum patch do core. O harness reproduz também snapshot não-login e preserva o erro com a variável nativa.
+
+## 01/10 23:52Z — decisão estruturada antes de outra rodada Dev
+
+Dev208 diagnosticou de 22:48:12 até 23:17:07 e bloqueou `needs_input` em 23:16:59, citando
+teste protegido e alternativas QA/Arquiteto. O zelador completou em 23:18:45 e criou outra rodada
+Dev em 23:18:53. Isso comprova repetição do papel, não que o teste esteja errado. No código, o
+tipo do evento não era usado; o zelador removia o bloqueio e o despacho via apenas chave/status.
+O cenário antes da alteração criou `dev-ajuste-pr-208-3cc5697-retomar-r1`, sem decisão Arquiteto.
+
+Agora o zelador lê o último evento estruturado, encaminha somente `needs_input` de ajuste Dev
+do SHA atual a `escalar_pr` e só então fecha o bloqueio. Decisão aberta segura novos ajustes do
+PR. Depois de concluída, o despacho normal volta com os mesmos limites e gates; o QA continua
+decisão semântica do agente, nunca encaminhamento do supervisor por palavras do comentário.
+Falha ao criar a escalada conserva o bloqueio. Não muda eventos/cartões antigos nem workers.
+
+Cenários verificam tipo, papel, SHA, PR aberto, duplicatas, decisão aberta/concluída e erro de escrita.
+Os 27 mutantes anteriores permanecem, com três novos para perda do encaminhamento, repetição de
+Dev durante decisão e associação a SHA antigo. CI completo e merge atuais precedem implantação.
+Sem instalar componente ou repetir tarefa do jogo; ganho de tempo depende de eventos reais futuros.
+
+## 01/10 22:45Z — orçamento consumido explícito na escalada
+
+No PR201, `dev-diagnostico-pr-201` terminou em 22:19:55Z e devolveu ao QA. O QA publicou a correção às
+22:25:14Z, mas o Arquiteto voltou a orientar merge pelo Dev e manteve autorização no mesmo PR em 22:31,
+22:41 e 22:45, sem novo HEAD. O script respeitou a trava de uma tentativa extra e chamou retomadas limitadas;
+as mensagens dos agentes não produziram encaminhamento executável. Houve custo de novas rodadas sem avanço.
+
+O corpo da escalada tinha instrução condicional de conferir se a tentativa fora usada, embora a chave e seu
+estado já estivessem no dicionário consultado pelo script. Agora o cartão inclui esses fatos e escolhe a instrução
+correta: chave ausente permite autorização única; chave existente informa status e orçamento consumido, sem
+instruir reautorizar. Novo commit do QA não reinicia tentativas. SOUL do Arquiteto reforça o encaminhamento após
+esgotamento. Não altera limites, cartões, labels ou features diretamente pelo supervisor. Cenários e mutantes do
+sincronizador passam a rodar no check existente do CI, sem rede/LLM e sem mudar os quatro checks obrigatórios.
+
+O cenário no harness falhou contra a produção anterior: o cartão não fornecia o orçamento apurado. Após mudança,
+verifica estados terminais e a ausência da instrução contraditória. Os mutantes anteriores permanecem, com um
+novo para omissão do orçamento consumido. Isso valida os fatos e a instrução entregue ao agente, não garante
+que o LLM cumprirá a orientação. Eficácia depende das próximas escaladas reais. Publicar/aplicar só após CI/merge.
+
 ## 01/10 — reserva automática entre provedores, após #206
 
 O dono pediu conferir fallback e desempenho por mais algumas rodadas, sem dependência futura do Codex.

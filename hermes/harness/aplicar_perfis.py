@@ -35,6 +35,16 @@ RESERVA_ZEN = [{"provider": "custom:zen", "model": "space-bunny-free"}]
 RESERVA_KILO = [{"provider": "kilocode", "model": "nvidia/nemotron-3-ultra-550b-a55b:free"}]
 NO_KILO = {"designer", "arquiteto", "revisor"}
 FONTE_SKILLS = "/opt/hermes/skills"
+LINHA_PIPEFAIL = 'if [ -n "${BASH_VERSION:-}" ]; then set -o pipefail; fi'
+
+
+def env_com_pipefail(linhas):
+    """O terminal restaura exports, não opções Bash: novos workers precisam desta variável."""
+    opcoes = next((l.split("=", 1)[1] for l in linhas if l.startswith("SHELLOPTS=")), "")
+    opcoes = list(dict.fromkeys(o for o in opcoes.split(":") if o))
+    if "pipefail" not in opcoes:
+        opcoes.append("pipefail")
+    return [l for l in linhas if not l.startswith("SHELLOPTS=")] + ["SHELLOPTS=" + ":".join(opcoes)]
 
 for papel, cfg in PAPEIS.items():
     d = f"/opt/data/profiles/{papel}"
@@ -56,6 +66,11 @@ for papel, cfg in PAPEIS.items():
             shutil.copy(f"{d}/.env", backup_env)
         env = [l for l in open(f"{d}/.env").read().splitlines() if not l.startswith("KILOCODE_API_KEY=")]
         env.append("KILOCODE_API_KEY=" + open("/opt/data/.kilo_key").read().strip())
+        if papel in ("dev", "qa"):
+            backup_pipeline = f"{d}/.env.bak-20261002-pipefail"
+            if not os.path.exists(backup_pipeline):
+                shutil.copy(f"{d}/.env", backup_pipeline)
+            env = env_com_pipefail(env)
         open(f"{d}/.env", "w").write("\n".join(env) + "\n")
         os.chmod(f"{d}/.env", 0o600)
     if papel in NO_KILO:
@@ -106,3 +121,12 @@ if linha_kilo not in atual.splitlines():
     shutil.copy(ambiente, ambiente + ".bak-20261001-reserva")
     with open(ambiente, "a") as f:
         f.write("\n# Credencial existente; nome exigido pelo provedor nativo do OpenCode. Nunca imprimir.\n" + linha_kilo + "\n")
+
+# A saída do guard não pode virar sucesso ao filtrar o log com `| tail`.
+# Só muda novas shells Bash. Sem errexit: o agente ainda pode tratar erros normalmente.
+with open(ambiente) as f:
+    atual = f.read()
+if LINHA_PIPEFAIL not in atual.splitlines():
+    shutil.copy(ambiente, ambiente + ".bak-20261002-pipefail")
+    with open(ambiente, "a") as f:
+        f.write("\n# Preserve falhas do produtor mesmo quando a saída passa por um filtro.\n" + LINHA_PIPEFAIL + "\n")

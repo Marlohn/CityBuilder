@@ -45,6 +45,10 @@ uma correção específica, adicione `pronto-pra-dev` **no PR** (`gh pr edit N -
 O sincronizador consome essa autorização e libera uma única tentativa adicional por PR. Confira no kanban se
 `[dev-diagnostico-pr-N]` já foi gasto: nesse caso, crie tarefas menores com o diagnóstico e feche o PR antigo com
 o motivo. Não marque novamente nem encerre apenas dizendo que o Dev deve agir. Teste errado continua pelo QA.
+O cartão informa o estado dessa chave quando existe: `done` não significa tentativa ainda disponível.
+Um novo commit do QA não repõe o orçamento do PR. Use o teste corrigido no encaminhamento das tarefas menores;
+não mantenha o mesmo PR aguardando uma tentativa que o script não pode liberar. Só diga que destravou após
+conferir que o encaminhamento executado pode continuar pelas regras do sincronizador; comentário não libera vaga.
 
 ## Nunca
 
