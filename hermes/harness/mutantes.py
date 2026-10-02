@@ -8,6 +8,14 @@ AQUI = os.path.dirname(os.path.abspath(__file__))
 ORIGINAL = open(f"{AQUI}/sincronizar_github.py", encoding="utf-8").read()
 
 MUTANTES = {
+    "PR parado ainda reserva arquivos da fila":
+        ('reserva_pr_ativa(pr, existentes)])', 'True])'),
+    "HEAD novo perde reserva pelo limite antigo":
+        ('if not esgotada(existentes, base + pr["headRefOid"][:7] + "-retomar"):', 'if False:'),
+    "PR em revisao perde reserva":
+        ('if any(lb["name"] == "em-revisão" for lb in pr["labels"]):\n        return True', 'if False:\n        return True'),
+    "worker de PR retomado perde reserva":
+        ('and (k.startswith(prefixos) or k == f"dev-diagnostico-pr-{n}")', 'and False'),
     "decisao pendente repete dev":
         ('            if aberto(existentes, f"arquiteto-destravar-pr-{n}-"):\n', '            if False:\n'),
     "needs_input perde encaminhamento":
