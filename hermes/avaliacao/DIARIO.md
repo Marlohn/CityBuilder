@@ -1,5 +1,33 @@
 # Diário da avaliação: agentes Hermes + kanban + LLM grátis (CityBuilder)
 
+## 02/10 — reposição não espera outro planejamento terminar
+
+O atendimento final de #201 (`t_3d252ae8`) foi bloqueado pelo limite nativo: 902s
+para 900s, sem repetir o atendimento. O sincronizador criou sozinho o planejamento
+independente `t_aa0a2847`, mas seus campos reais ainda eram 7200s, goal desligado e
+sem limite próprio de falhas. `diarios()` só chamava o Designer depois desse cartão
+terminar. Assim uma nova análise podia segurar a reposição por duas horas. #201
+continuava aberto; cartão em execução não era prova de encaminhamento.
+
+Quando há impedimento persistente e fila insuficiente, o Designer busca uma
+oportunidade independente junto com o planejamento dos itens existentes. Cada
+papel mantém uma busca por estado real; não se repetem cartões por relógio ou SHA.
+O Designer confere novamente as issues antes de publicar, evitando duplicar partes
+que o Arquiteto acabou de criar. Planejamentos futuros desse caso usam 15min,
+primeira falha e goal de duas rodadas; o Designer mantém 15min e três rodadas.
+Planejamento bloqueado fica visível, sem o zelador declarar conclusão. Fila reposta
+não chama essa reposição. Estados sem impedimento conservam o comportamento anterior.
+
+Reprodução: o cenário bloqueado falhou na versão anterior (só criava Arquiteto),
+e a máquina confirmou o planejamento com limite de duas horas. Checks do roteamento
+verificam criação conjunta, limites, persistência, fila reposta e ausência de novas
+buscas no mesmo estado; preservar todos os 30 mutantes anteriores. Não executar
+testes do jogo pelo supervisor. Sem mudar concorrência, modelos, orçamento Dev ou
+workers existentes. Deploy somente do sincronizador mesclado, com backup e bytes
+iguais à fonte; reversão somente desse arquivo. O planejamento já iniciado conserva
+seu limite anterior. Adoção e criação de trabalho útil precisam de evidência natural:
+atividade de agentes não garante entrega, e falta externa real deve permanecer explícita.
+
 ## 02/10 — impedimento de tarefa não deve parar a fábrica
 
 O dono esclareceu que não proibiu pessoalmente a mudança dos limites e pediu que a fábrica

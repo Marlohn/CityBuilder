@@ -234,6 +234,7 @@ print("tarefas: ok")
 # ---- diários / planejamento -------------------------------------------------------------------------------------
 sem_fila = [{"number": 1, "labels": [{"name": "roadmap"}]}]
 s.diarios(sem_fila, {}, "20260930", [])
+assert LIMITES[CRIADOS[0][0]] == {}, "planejamento sem impedimento conserva os limites anteriores"
 assert [c[0][:15] for c in CRIADOS] == ["arquiteto-plano", "designer-202609", "qa-caca-2026093"], CRIADOS; CRIADOS.clear()
 cheia = [{"number": n, "labels": [{"name": "tarefa"}, {"name": "pronto-pra-teste"}]} for n in (1, 2, 3)]
 livres = [{"number": n, "body": ""} for n in (1, 2, 3)]
@@ -244,14 +245,16 @@ assert [c[0][:15] for c in CRIADOS] == ["arquiteto-plano", "designer-202609"], C
 _bloqueios = {"arquiteto-destravar-pr-10-final": "blocked", "designer-20260930": "done",
               "qa-caca-20260930": "done"}
 s.diarios(sem_fila, _bloqueios, "20260930", [])
-assert len(CRIADOS) == 1 and CRIADOS[0][0].startswith("arquiteto-plano-"), CRIADOS
+assert len(CRIADOS) == 2 and CRIADOS[0][0].startswith("arquiteto-plano-"), CRIADOS
 _plano = CRIADOS[0][0]; CRIADOS.clear()
-s.diarios(sem_fila, {**_bloqueios, _plano: "running"}, "20260930", []); cria()
-s.diarios(sem_fila, {**_bloqueios, _plano: "done"}, "20260930", [])
-_reposicao = _plano.replace("arquiteto-plano-", "designer-fila-"); cria(_reposicao)
+assert LIMITES[_plano] == {"max_runtime": "15m", "max_retries": 1, "goal_max_turns": 2}
+_reposicao = _plano.replace("arquiteto-plano-", "designer-fila-")
 assert LIMITES[_reposicao] == {"max_runtime": "15m", "max_retries": 1, "goal_max_turns": 3}
 for _st in ("ready", "running", "blocked", "done", "archived"):
+    s.diarios(sem_fila, {**_bloqueios, _plano: _st}, "20260930", []); cria(_reposicao)
+for _st in ("ready", "running", "blocked", "done", "archived"):
     s.diarios(sem_fila, {**_bloqueios, _plano: "done", _reposicao: _st}, "20260930", []); cria()
+s.diarios(cheia, _bloqueios, "20260930", livres); cria()  # fila reposta: não chama reposição
 print("diários: ok")
 
 # ---- PR do QA de tarefa entregue --------------------------------------------------------------------------------
@@ -319,6 +322,7 @@ cria("arquiteto-destravar-pr-208-final")  # decisão final limitada, sem reinici
 CHAMADAS.clear()
 _persistentes = [card("arquiteto-destravar-pr-208-final", "blocked", "t_final"),
                 card("arquiteto-destravar-pr-208-esgotado", "blocked", "t_limite"),
+                card("arquiteto-plano-evento", "blocked", "t_plano"),
                 card("designer-fila-evento", "blocked", "t_ideia")]
 assert s.zelar(_persistentes, [_pr_bloqueado]) == 0
 assert not CHAMADAS, "impedimento persistente não pode ser fechado pelo zelador"

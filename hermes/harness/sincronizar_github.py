@@ -161,7 +161,7 @@ def bloqueio(cid):
 
 
 def zelar(lista, prs=()):
-    """Cartão bloqueado é fechado na hora para liberar a próxima rodada da issue.
+    """Bloqueios de recuperação final e abastecimento persistem; outros liberam a próxima rodada.
 
     O dono não atende bloqueio (29/09: "não quero fazer mais nada"); sem isto um cartão travado segurava a issue
     para sempre. O motivo do bloqueio vai no resumo do cartão. Devolve quantos fechou. Se o Hermes recusar o
@@ -176,7 +176,7 @@ def zelar(lista, prs=()):
             continue
         chave = (c.get("title") or "").split("]", 1)[0].lstrip("[")
         if (re.fullmatch(r"arquiteto-destravar-pr-\d+-(?:final|esgotado)", chave)
-                or chave.startswith("designer-fila-")):
+                or chave.startswith(("designer-fila-", "arquiteto-plano-"))):
             continue  # impedimento persistente: não fingir conclusão nem liberar repetição
         dados = bloqueio(c["id"])
         motivo = str(dados.get("reason") or "(motivo não registrado)")[:300]
@@ -508,11 +508,13 @@ def diarios(todas, existentes, dia, corpos_tarefa):
                       "Tarefa que precisa de outra antes: escreva no corpo uma linha própria `Depende de #N, #M` com os "
                       "NÚMEROS das issues (o sincronizador lê essa linha e só libera a tarefa quando elas fecharem; "
                       "\"rode as anteriores antes\" sem número não é lido)."))
-        if impedimentos and existentes.get(f"arquiteto-plano-{estado}") in TERMINAIS:
+        if impedimentos:
             fixos.append((f"designer-fila-{estado}", "Encontrar trabalho independente para a fila bloqueada", "designer",
-                          "O planejamento deste estado terminou sem repor a fila, e há impedimentos persistentes: "
+                          "A fila está insuficiente e há impedimentos persistentes: "
                           + ", ".join(impedimentos) + ". Encontre UMA oportunidade real independente deles e "
                           "registre um item de roadmap com benefício, critérios, fonte e métrica para o Arquiteto. "
+                          "O Arquiteto também confere os itens existentes; não espere ele terminar. Antes de criar, "
+                          "confira novamente issues abertas para não duplicar trabalho que outro agente acabou de publicar. "
                           "Leia a ordem oficial e entregas existentes; não duplique feature, não crie trabalho vazio "
                           "nem reabra orçamento gasto. Apenas fechar um item antigo ou prometer outra pesquisa não "
                           "repõe a fila. Use as ferramentas do seu papel, sem assumir Dev/QA. Se faltar condição "
@@ -529,6 +531,8 @@ def diarios(todas, existentes, dia, corpos_tarefa):
         if chave not in existentes:
             if chave.startswith("designer-fila-"):
                 criar(chave, titulo, papel, alvo, max_runtime="15m", max_retries=1, goal_max_turns=3)
+            elif impedimentos and chave.startswith("arquiteto-plano-"):
+                criar(chave, titulo, papel, alvo, max_runtime="15m", max_retries=1, goal_max_turns=2)
             else:
                 criar(chave, titulo, papel, alvo)
 
