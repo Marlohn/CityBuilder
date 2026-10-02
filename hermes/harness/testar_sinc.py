@@ -255,6 +255,12 @@ for _st in ("ready", "running", "blocked", "done", "archived"):
 for _st in ("ready", "running", "blocked", "done", "archived"):
     s.diarios(sem_fila, {**_bloqueios, _plano: "done", _reposicao: _st}, "20260930", []); cria()
 s.diarios(cheia, _bloqueios, "20260930", livres); cria()  # fila reposta: não chama reposição
+_origem = {"qa-issue-1-r1": "blocked", "designer-20260930": "done"}
+s.diarios(cheia, _origem, "20260930", livres)
+assert len(CRIADOS) == 2, "três issues, mas uma bloqueada: só duas estão disponíveis"
+_buscas = {c[0]: "blocked" for c in CRIADOS}; CRIADOS.clear()
+s.diarios(cheia, {**_origem, **_buscas, "arquiteto-bloqueio-t_origem": "blocked"}, "20260930", livres)
+cria()  # recuperação que bloqueia não muda evento nem cria buscas infinitas
 print("diários: ok")
 
 # ---- PR do QA de tarefa entregue --------------------------------------------------------------------------------
@@ -280,58 +286,112 @@ print("tarefa entregue: ok")
 
 # ---- zelador ----------------------------------------------------------------------------------------------------
 CHAMADAS = []
-BLOQUEIO = {"reason": "sem acesso ao repo X"}
+BLOQUEIO = {"reason": "sem acesso ao repo X", "kind": "capability"}
+EVENTOS = None
+COMENTARIOS = {}
+FALHA_COMMENT = FALHA_ARCHIVE = FALHA_SHOW = 0
 
 
 def fake_run(args, **k):
-    CHAMADAS.append(args[1:3] if args[0] == s.HERMES else args)
+    CHAMADAS.append(args[1:] if args[0] == s.HERMES else args)
     if args[2:3] == ["show"] or (len(args) > 2 and args[2] == "show"):
-        ev = [{"kind": "created", "payload": {}}, {"kind": "blocked", "payload": BLOQUEIO}]
-        return types.SimpleNamespace(returncode=0, stdout=json.dumps({"events": ev}), stderr="")
-    if args[2] == "complete":
-        CHAMADAS.append(("resumo", args[args.index("--summary") + 1]))
-        return types.SimpleNamespace(returncode=FALHA_COMPLETE, stdout="", stderr="cannot complete" if FALHA_COMPLETE else "")
+        ev = EVENTOS if EVENTOS is not None else [{"kind": "created", "payload": {}}, {"kind": "blocked", "payload": BLOQUEIO}]
+        return types.SimpleNamespace(returncode=FALHA_SHOW, stdout=json.dumps({"events": ev, "comments": COMENTARIOS.get(args[3], [])}), stderr="")
+    if args[2] == "comment":
+        CHAMADAS.append(("resumo", args[4]))
+        if not FALHA_COMMENT:
+            COMENTARIOS.setdefault(args[3], []).append({"body": args[4]})
+        return types.SimpleNamespace(returncode=FALHA_COMMENT, stdout="", stderr="")
+    if args[2] == "archive":
+        return types.SimpleNamespace(returncode=FALHA_ARCHIVE, stdout="", stderr="")
+    if args[2] in ("complete", "unblock"):
+        raise AssertionError("bloqueio não pode fingir entrega nem reiniciar a mesma tentativa")
     return types.SimpleNamespace(returncode=0, stdout="", stderr="")
 
 
 real_run = s.subprocess.run
 s.subprocess.run = fake_run
-FALHA_COMPLETE = 0
-assert s.zelar([card("A", "blocked", "t_1"), card("B", "ready", "t_2")]) == 1
+assert s.zelar([card("A", "blocked", "t_1"), card("B", "ready", "t_2")]) > 0
+cria("arquiteto-bloqueio-t_1")
+assert LIMITES["arquiteto-bloqueio-t_1"] == {"max_runtime": "15m", "max_retries": 1, "goal_max_turns": 2}
 resumo = next(c[1] for c in CHAMADAS if c[0] == "resumo")
-assert "sem acesso ao repo X" in resumo, "o motivo do bloqueio tem que ir pro resumo do cartão"
+assert "sem acesso ao repo X" in resumo and "Responsável: arquiteto" in resumo and "Para continuar:" in resumo
 assert not any(c[:2] == ["kanban", "archive"] for c in CHAMADAS)
-CHAMADAS.clear(); FALHA_COMPLETE = 1
-assert s.zelar([card("A", "blocked", "t_1")]) == 1
-assert ["kanban", "archive"] in [list(c) if isinstance(c, (list, tuple)) else c for c in CHAMADAS], "recusou o complete: arquiva"
-CHAMADAS.clear(); FALHA_COMPLETE = 0
+for _status in ("ready", "running", "blocked", "done", "archived"):
+    CHAMADAS.clear()
+    s.zelar([card("A", "blocked", "t_1"), card("arquiteto-bloqueio-t_1", _status, "t_atendimento")])
+    cria()
+    assert len(COMENTARIOS["t_1"]) == 1, "mesmo evento não cria comentário a cada ciclo"
+    assert not any(c[:2] == ["kanban", "archive"] for c in CHAMADAS)
+COMENTARIOS.clear(); CHAMADAS.clear()
+# Reprodução do breaker real: sem evento blocked; o gave_up mais recente vence bloqueio antigo.
+EVENTOS = [{"kind": "blocked", "payload": {"reason": "motivo antigo", "kind": "needs_input"}},
+           {"kind": "timed_out", "created_at": 10, "payload": {"elapsed_seconds": 902, "limit_seconds": 900}},
+           {"kind": "gave_up", "created_at": 10, "payload": {"error": "elapsed 902s > limit 900s", "trigger_outcome": "timed_out"}}]
+assert s.bloqueio("t_timeout")["reason"] == "elapsed 902s > limit 900s"
+assert s.zelar([{**card("qa-issue-8-r1", "blocked", "t_timeout"), "assignee": "qa"}]) > 0
+assert any(c[:2] == ["kanban", "archive"] for c in CHAMADAS)
+assert "elapsed 902s > limit 900s" in COMENTARIOS["t_timeout"][0]["body"]
+assert s.rodada(s.chaves([card("qa-issue-8-r1", "archived")]), "qa-issue-8") == "qa-issue-8-r2"
+cria()  # timeout não inventa causa do provedor nem outro diagnóstico
+EVENTOS = None
+for _kind in ("dependency", "transient", None):
+    BLOQUEIO = {"reason": "nova causa", "kind": _kind}
+    COMENTARIOS.clear(); CHAMADAS.clear()
+    s.zelar([{**card("qa-issue-8-r1", "blocked", "t_causa"), "assignee": "qa"}])
+    if _kind is None:
+        cria("arquiteto-bloqueio-t_causa")  # desconhecido exige diagnóstico, não retry cego
+    else:
+        cria()
+    assert any(c[:2] == ["kanban", "archive"] for c in CHAMADAS) == (_kind == "transient")
+COMENTARIOS.clear(); CHAMADAS.clear(); FALHA_COMMENT = 1
+BLOQUEIO = {"reason": "serviço indisponível", "kind": "transient"}
+assert s.zelar([card("qa-issue-8-r1", "blocked", "t_sem_registro")]) == 0
+assert not any(c[:2] == ["kanban", "archive"] for c in CHAMADAS), "sem registro, não retirar bloqueio"
+FALHA_COMMENT = 0; FALHA_ARCHIVE = 1
+s.zelar([card("qa-issue-8-r1", "blocked", "t_sem_registro")])
+CHAMADAS.clear(); FALHA_ARCHIVE = 0
+assert s.zelar([card("qa-issue-8-r1", "blocked", "t_sem_registro")]) == 1
+assert not any(c[:2] == ["kanban", "comment"] for c in CHAMADAS), "retomar só a escrita que falhou"
+COMENTARIOS.clear(); CHAMADAS.clear(); FALHA_SHOW = 1
+assert s.zelar([card("A", "blocked", "t_sem_leitura")]) == 0
+assert all(c[1] == "show" for c in CHAMADAS)
+FALHA_SHOW = 0
 BLOQUEIO = {"reason": "decisão sobre teste protegido; evidência no PR", "kind": "needs_input"}
 _bloqueado = {**card("dev-ajuste-pr-208-3cc5697", "blocked", "t_decisao"), "assignee": "dev"}
 _pr_bloqueado = pr(208, "3cc5697", "dev/203")
-assert s.zelar([_bloqueado, {**_bloqueado, "id": "t_repetido"}], [_pr_bloqueado]) == 2
+assert s.zelar([_bloqueado, {**_bloqueado, "id": "t_repetido"}], [_pr_bloqueado]) > 0
 cria("arquiteto-destravar-pr-208-3cc5697")
 assert "t_decisao" in ALVOS["arquiteto-destravar-pr-208-3cc5697"]
 assert BLOQUEIO["reason"] in ALVOS["arquiteto-destravar-pr-208-3cc5697"]
 _arq = card("arquiteto-destravar-pr-208-3cc5697", "running", "t_arq")
-assert s.zelar([_bloqueado, _arq], [_pr_bloqueado]) == 1
+assert s.zelar([_bloqueado, _arq], [_pr_bloqueado]) > 0
 cria()  # decisão já aberta: não duplica nem reinicia orçamento
 _esgotados = [card("arquiteto-destravar-pr-208-3cc5697" + _sufixo, "done", "t_gasto")
               for _sufixo in ("", "-retomar-r1", "-retomar-r2", "-retomar-r3")]
-assert s.zelar([_bloqueado, *_esgotados], [_pr_bloqueado]) == 1
+assert s.zelar([_bloqueado, *_esgotados], [_pr_bloqueado]) > 0
 cria("arquiteto-destravar-pr-208-final")  # decisão final limitada, sem reiniciar Dev
 CHAMADAS.clear()
 _persistentes = [card("arquiteto-destravar-pr-208-final", "blocked", "t_final"),
                 card("arquiteto-destravar-pr-208-esgotado", "blocked", "t_limite"),
                 card("arquiteto-plano-evento", "blocked", "t_plano"),
                 card("designer-fila-evento", "blocked", "t_ideia")]
-assert s.zelar(_persistentes, [_pr_bloqueado]) == 0
-assert not CHAMADAS, "impedimento persistente não pode ser fechado pelo zelador"
+EVENTOS = [{"kind": "gave_up", "payload": {"error": "elapsed 902s > limit 900s", "trigger_outcome": "timed_out"}}]
+assert s.zelar(_persistentes, [_pr_bloqueado]) > 0
+assert not any(c[:2] == ["kanban", "archive"] for c in CHAMADAS), "impedimento persistente não pode ser fechado"
+assert all("elapsed 902s > limit 900s" in COMENTARIOS[c["id"]][0]["body"] for c in _persistentes)
 cria()
+CHAMADAS.clear()
+assert s.zelar(_persistentes, [_pr_bloqueado]) == 0
+assert all(c[1] == "show" for c in CHAMADAS)
+EVENTOS = None
 for _cards, _prs in [([_bloqueado], []), ([_bloqueado], [pr(208, "bbbbbbb", "dev/203")]),
                       ([{**_bloqueado, "assignee": "qa"}], [_pr_bloqueado]),
                       ([{**_bloqueado, "status": "ready"}], [_pr_bloqueado]),
-                      ([{**_bloqueado, "title": "[dev-issue-203-r1] x"}], [_pr_bloqueado])]:
+                      ]:
     s.zelar(_cards, _prs); cria()
+COMENTARIOS.clear()
+s.zelar([{**_bloqueado, "title": "[dev-issue-203-r1] x"}], [_pr_bloqueado]); cria("arquiteto-bloqueio-t_decisao")
 for _kind in ("error", None):
     BLOQUEIO = {"reason": "erro sem pedido de decisão", "kind": _kind}
     s.zelar([_bloqueado], [_pr_bloqueado]); cria()

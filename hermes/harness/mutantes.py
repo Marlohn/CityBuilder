@@ -13,7 +13,19 @@ MUTANTES = {
     "needs_input perde encaminhamento":
         ('c.get("assignee") == "dev" and dados.get("kind") == "needs_input"', 'False'),
     "bloqueio de SHA antigo encaminha decisao atual":
-        ('pr["headRefOid"][:7] == ajuste[2] and', 'True and'),
+        ('pr["headRefOid"][:7] == ajuste[2]', 'True'),
+    "timeout nativo perde motivo":
+        ('("blocked", "gave_up", "timed_out")', '("blocked",)'),
+    "dependencia recebe retry cego":
+        ('if kind != "dependency":', 'if True:'),
+    "recuperacao bloqueada repete atendimento":
+        ('"arquiteto-bloqueio-")))', '"prefixo-inexistente")))'),
+    "sem registro arquiva mesmo assim":
+        ('if r.returncode:\n                continue  # nunca arquivar', 'if False:\n                continue  # nunca arquivar'),
+    "mesmo evento repete comentarios":
+        ('if not dados.get("registrado"):', 'if True:'),
+    "issue bloqueada enche fila disponivel":
+        ('t["number"] not in bloqueadas and', 'True and'),
     "diagnostico omite tentativa extra ja utilizada":
         ('        if diagnostico in existentes:\n', '        if False:\n'),
     "PR dev sem Closes perde vinculo com tarefa":

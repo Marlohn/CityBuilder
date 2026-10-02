@@ -11,7 +11,7 @@ cartão (created_by=sincronizador, com o resumo) ou um comentário no PR/issue. 
   3 rodadas sem entrega                       -> arquiteto quebra a tarefa (docs/PLANO.md 12)
   menos de 3 tarefas abertas                  -> arquiteto planeja o próximo item da issue #2
   CI da main vermelho                         -> dev conserta, na frente de tudo (1 por vez)
-  cartão bloqueado                            -> fechado na hora, com o motivo, para liberar a próxima rodada
+  cartão bloqueado                            -> motivo/destino registrados; decisão espera, falha gasta a rodada
   PR qa/N de tarefa já entregue               -> fechado
   PR dev/N mesclado, tarefa N ainda aberta    -> issue fechada (o GitHub nem sempre fecha)
   1x por dia                                  -> designer; qa caça bug (se está sem fila)
@@ -130,7 +130,9 @@ Faça o ciclo do seu papel (SOUL.md) SÓ para este alvo. Não pegue outra tarefa
 Comece com o clone limpo: `git checkout main && git reset --hard origin/main && git pull` (o clone é só seu; nada
 fica guardado entre ciclos fora do GitHub).
 Ao terminar: kanban_complete com um resumo curto (issue/PR, o que fez, links).
-Falta acesso ou algo quebrou fora do seu alcance? kanban_block com o motivo.
+Falta acesso ou algo quebrou fora do seu alcance? kanban_block com motivo, responsável e condição para continuar.
+Use kind=dependency só com dependência real; needs_input para decisão, capability para acesso/ferramenta ausente,
+transient para falha técnica temporária comprovada. Não chame erro de teste de falha do provedor.
 """
 
 
@@ -151,21 +153,36 @@ def criar(chave, titulo, papel, alvo, prioridade=0, max_runtime="2h", max_retrie
 
 
 def bloqueio(cid):
-    """Último bloqueio registrado: razão e tipo estruturado, sem interpretar texto do agente."""
+    """Última falha nativa, inclusive timeout sem evento blocked. Não interpreta texto para inventar causa."""
     try:
         r = subprocess.run([HERMES, "kanban", "show", cid, "--json"], capture_output=True, text=True, timeout=60)
-        eventos = json.loads(r.stdout)["events"]
-        return next(e["payload"] for e in reversed(eventos) if e["kind"] == "blocked")
+        if r.returncode:
+            return {}
+        detalhe = json.loads(r.stdout)
+        eventos = detalhe["events"]
+        for i in range(len(eventos) - 1, -1, -1):
+            e = eventos[i]
+            if e["kind"] not in ("blocked", "gave_up", "timed_out"):
+                continue
+            dados = dict(e["payload"])
+            dados["reason"] = dados.get("reason") or dados.get("error") or "motivo não registrado"
+            dados["evento"] = e["kind"]
+            marca = f"[encaminhamento:{cid}:{i}:{e.get('created_at', '')}]"
+            dados["marca"] = marca
+            dados["registrado"] = any(marca in c.get("body", "") for c in detalhe.get("comments", []))
+            return dados
     except Exception:
-        return {}
+        pass
+    return {}
 
 
 def zelar(lista, prs=()):
-    """Bloqueios de recuperação final e abastecimento persistem; outros liberam a próxima rodada.
+    """Encaminha pela causa estruturada; nunca declara entrega para limpar a fila.
 
-    O dono não atende bloqueio (29/09: "não quero fazer mais nada"); sem isto um cartão travado segurava a issue
-    para sempre. O motivo do bloqueio vai no resumo do cartão. Devolve quantos fechou. Se o Hermes recusar o
-    complete, arquiva (a chave continua contando como rodada gasta: ver `chaves`).
+    Dependência fica no mecanismo nativo. Decisão/acesso/causa desconhecida tem um atendimento limitado;
+    falha técnica de uma tentativa comum é arquivada como falha e continua contando no orçamento existente.
+    Recuperação/abastecimento bloqueados persistem, sem atendimento de atendimento nem unblock automático.
+    Devolve mudanças para main reler o quadro. Falha de leitura/escrita preserva o bloqueio.
     """
     n = 0
     existentes = chaves(lista)
@@ -175,29 +192,66 @@ def zelar(lista, prs=()):
         if c.get("status") != "blocked":
             continue
         chave = (c.get("title") or "").split("]", 1)[0].lstrip("[")
-        if (re.fullmatch(r"arquiteto-destravar-pr-\d+-(?:final|esgotado)", chave)
-                or chave.startswith(("designer-fila-", "arquiteto-plano-"))):
-            continue  # impedimento persistente: não fingir conclusão nem liberar repetição
         dados = bloqueio(c["id"])
+        if not dados:
+            continue
         motivo = str(dados.get("reason") or "(motivo não registrado)")[:300]
-        chave = (c.get("title") or "").split("]", 1)[0].lstrip("[")
+        kind = dados.get("kind")
+        persistente = (re.fullmatch(r"arquiteto-destravar-pr-\d+-(?:final|esgotado)", chave)
+                       or chave.startswith(("designer-fila-", "arquiteto-plano-", "arquiteto-bloqueio-")))
+        tecnica = kind == "transient" or dados.get("evento") == "timed_out" or (
+            dados.get("evento") == "gave_up" and dados.get("trigger_outcome") == "timed_out")
+        responsavel = c.get("assignee") or "arquiteto"
+        condicao = "aguardar a dependência real; o kanban nativo libera quando os pais terminarem"
+        destino = "espera de dependência, sem nova tentativa"
         ajuste = re.fullmatch(r"dev-ajuste-pr-(\d+)-([0-9a-f]{7})(?:-retomar-r[1-3])?", chave)
         pr = por_numero.get(int(ajuste[1])) if ajuste else None
-        if (c.get("assignee") == "dev" and dados.get("kind") == "needs_input"
-                and pr and pr["headRefOid"][:7] == ajuste[2] and pr["number"] not in decididos):
+        delegado = (c.get("assignee") == "dev" and dados.get("kind") == "needs_input"
+                    and pr and pr["headRefOid"][:7] == ajuste[2])
+        if delegado and pr["number"] not in decididos:
             # Criar a decisão antes de fechar: se a escrita falhar, o bloqueio fica para o próximo ciclo.
             escalar_pr(pr, existentes, f"o Dev pediu uma decisão no cartão {c['id']}: {motivo}")
             decididos.add(pr["number"])
-        resumo = ("Zelador: bloqueado sem ninguém para destravar; fechado para liberar a próxima rodada. "
-                  f"Motivo: {motivo}")
-        r = subprocess.run([HERMES, "kanban", "complete", c["id"], "--summary", resumo],
-                           capture_output=True, text=True, timeout=60)
-        if r.returncode != 0 or "cannot complete" in (r.stdout + r.stderr):
-            subprocess.run([HERMES, "kanban", "archive", c["id"]], capture_output=True, timeout=60)
-            print(f"zelador arquivou {c['id']}: {(r.stdout + r.stderr).strip()[:100]}")
-        else:
-            print(f"zelador fechou {c['id']}: {(c.get('title') or '')[:60]}")
-        n += 1
+        if kind != "dependency":
+            condicao = "corrigir a causa e conferir encaminhamento executável no GitHub; comentário não é solução"
+            destino = "impedimento preservado; outros trabalhos independentes continuam"
+            if not persistente and tecnica:
+                destino = "arquivar tentativa FALHA; próxima rodada só dentro do orçamento já existente"
+                condicao = "orçamento disponível e condições atuais conferidas pelo próximo agente; não reiniciar contadores"
+            elif not persistente and delegado:
+                responsavel = "arquiteto"
+                destino = f"tentativa não entregue delegada à decisão do PR #{pr['number']}; Dev espera essa decisão"
+            elif not persistente and not ajuste and c.get("assignee") != "arquiteto":
+                responsavel = "arquiteto"
+                decisao = f"arquiteto-bloqueio-{c['id']}"
+                destino = f"atendimento único [{decisao}]"
+                if decisao not in existentes:
+                    criar(decisao, f"Encaminhar bloqueio de {c['id']}", "arquiteto",
+                          f"Cartão de origem {c['id']}: {c.get('title', '')}. Tipo: {kind or 'não classificado'}. "
+                          f"Motivo: {motivo}. Confira kanban show, evidências e alvo originais. Não repita o ciclo "
+                          "inteiro do agente. Decisão: execute a divisão ou passagem no GitHub; acesso/ferramenta: "
+                          "confira a capacidade faltante e use somente alternativas gratuitas já disponíveis. "
+                          "Causa desconhecida: diagnostique antes de classificar. Não implemente a feature, altere "
+                          "proteções nem reinicie orçamento Dev. Depois de executar e verificar a condição, comente "
+                          f"a evidência no cartão {c['id']} e arquive a tentativa original como não entregue; isso "
+                          "permite apenas as rodadas que ainda restam. Sem solução executável, mantenha a origem "
+                          "bloqueada, registre responsável/condição e bloqueie este atendimento. Não crie outro "
+                          "atendimento de recuperação. Trabalho independente pode continuar.",
+                          prioridade=25, max_runtime="15m", max_retries=1, goal_max_turns=2)
+                    existentes[decisao] = "ready"
+                    n += 1
+        if not dados.get("registrado"):
+            resumo = (f"{dados['marca']} Não entregue. " + f"Motivo: {motivo}"
+                      + f". Responsável: {responsavel}. Destino: {destino}. Para continuar: {condicao}.")
+            r = subprocess.run([HERMES, "kanban", "comment", c["id"], resumo, "--author", "sincronizador"],
+                               capture_output=True, text=True, timeout=60)
+            if r.returncode:
+                continue  # nunca arquivar sem preservar motivo/destino; tentar a escrita no próximo ciclo
+            n += 1
+        if not persistente and (tecnica or delegado) and kind != "dependency":
+            r = subprocess.run([HERMES, "kanban", "archive", c["id"]], capture_output=True, text=True, timeout=60)
+            if not r.returncode:
+                n += 1
     return n
 
 
@@ -489,9 +543,14 @@ def diarios(todas, existentes, dia, corpos_tarefa):
     itens = sorted(i["number"] for i in todas if tem(i, "roadmap"))
     fixos = []
     abertas = {i["number"] for i in todas}
-    prontas = [t["number"] for t in corpos_tarefa if not dependencias(t["body"]) & abertas]
+    bloqueadas = {int(m[2]) for k, st in existentes.items() if st == "blocked"
+                  and (m := re.fullmatch(r"(dev|qa)-issue-(\d+)-r[1-3]", k))}
+    prontas = [t["number"] for t in corpos_tarefa
+               if t["number"] not in bloqueadas and not dependencias(t["body"]) & abertas]
     impedimentos = sorted(k for k, st in existentes.items() if st == "blocked"
-                          and re.fullmatch(r"arquiteto-destravar-pr-\d+-(?:final|esgotado)", k))
+                          and (re.fullmatch(r"arquiteto-destravar-pr-\d+-(?:final|esgotado)", k)
+                               or re.fullmatch(r"(?:dev|qa)-issue-\d+-r[1-3]", k)))
+    # Só origens reais entram no evento; blocked de plano/Designer/atendimento não cria outra busca de busca.
     if len(prontas) < FILA_MINIMA:
         contexto = [tarefas_abertas, itens] + ([impedimentos] if impedimentos else [])
         estado = hashlib.sha1(json.dumps(contexto).encode()).hexdigest()[:8]

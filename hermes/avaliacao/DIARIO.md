@@ -1,5 +1,44 @@
 # Diário da avaliação: agentes Hermes + kanban + LLM grátis (CityBuilder)
 
+## 02/10 — bloqueio registra causa e destino, sem fingir entrega
+
+O novo Designer `t_90ca66fc` atingiu 902s para limite de 900s, como o atendimento
+final do Arquiteto `t_3d252ae8`. O agent.log confirma sobrecarga Nvidia nos dois,
+mas o percurso difere: o Designer continuou no Kilo, enquanto o Arquiteto usou
+fallback nativo para Zen. No Designer os intervalos de ferramentas somam 27,548s;
+o restante inclui chamadas de IA e intervalos, não só processamento do modelo.
+Não atribuir toda latência ao erro nem comparar modelos como benchmark.
+
+A causa de perda do diagnóstico foi reproduzida: o breaker emite `timed_out` e
+`gave_up`, sem `blocked`; `bloqueio()` só procurava `blocked`. O zelador também
+declarava `done` em tentativas sem entrega. Agora lê a última falha estruturada,
+registra no próprio cartão motivo, responsável, destino e condição de continuidade,
+uma vez por evento. Falha de leitura/escrita mantém o bloqueio. Nenhum texto é
+classificado por regex como erro de provedor; timeout não comprova sua causa.
+
+Dependência espera o mecanismo nativo. Decisão, falta de capacidade ou causa
+desconhecida de uma tentativa comum têm um atendimento único do Arquiteto,
+15min, primeira falha, duas rodadas de goal; deve executar e verificar o destino
+antes de arquivar a origem como não entregue. Ajuste Dev que pede decisão no
+HEAD atual conserva o encaminhamento existente por PR. Falha técnica comum é
+arquivada como tentativa falha, contando no orçamento anterior; não usa complete
+nem unblock para renovar contadores. Recuperação final, planejamento, reposição
+e atendimento de bloqueio que travam permanecem visíveis, sem recuperação recursiva.
+Isso não declara resolvidos os impedimentos atuais nem garante disponibilidade de IA.
+
+Uma issue bloqueada não enche a fila disponível; sua origem real pode chamar a
+busca independente já existente quando a fila está insuficiente. Falha do próprio
+planejamento/Designer/atendimento não entra no hash nem cria buscas de buscas.
+Sem mudar cadência, concorrência, modelos, limites Dev, proteções ou features.
+
+Checks: cenários offline de timeout real, evento mais recente, dependência,
+capacidade, diagnóstico desconhecido, falha de escrita, deduplicação, orçamento,
+SHA antigo, persistência e reposição independente. Os 30 mutantes anteriores
+continuam cobertos; seis novos verificam os defeitos deste ajuste. Nenhum teste,
+simulação ou conteúdo de jogo executado pelo supervisor. Deploy somente do
+sincronizador mesclado, backup e cópia atômica 644; reversão somente desse arquivo.
+Adoção deve ser conferida em eventos naturais, sem cartões ou labels manuais.
+
 ## 02/10 — reposição não espera outro planejamento terminar
 
 O atendimento final de #201 (`t_3d252ae8`) foi bloqueado pelo limite nativo: 902s
