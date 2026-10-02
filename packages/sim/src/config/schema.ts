@@ -138,6 +138,8 @@ export const GameConfigSchema = z.object({
     hospitalMortalityReduction: prob,
     hospitalMinPopulation: intPos,
     hospitalMinUncovered: nonneg,
+    hospitalAdmissionRatePerYear: pos.max(1),
+    hospitalAvgLengthOfStayDays: pos,
   }),
   economy: z.object({
     mode: z.enum(["budget", "sandbox"]),
