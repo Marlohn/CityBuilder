@@ -146,17 +146,17 @@ def criar(chave, titulo, papel, alvo, prioridade=0):
     print(f"cartão criado: [{chave}] -> {papel}")
 
 
-def motivo_bloqueio(cid):
-    """O motivo que o agente (ou o Hermes) deu ao bloquear, para ficar no resumo do cartão."""
+def bloqueio(cid):
+    """Último bloqueio registrado: razão e tipo estruturado, sem interpretar texto do agente."""
     try:
         r = subprocess.run([HERMES, "kanban", "show", cid, "--json"], capture_output=True, text=True, timeout=60)
         eventos = json.loads(r.stdout)["events"]
-        return next(e["payload"]["reason"] for e in reversed(eventos) if e["kind"] == "blocked")[:300]
+        return next(e["payload"] for e in reversed(eventos) if e["kind"] == "blocked")
     except Exception:
-        return "(motivo não registrado)"
+        return {}
 
 
-def zelar(lista):
+def zelar(lista, prs=()):
     """Cartão bloqueado é fechado na hora para liberar a próxima rodada da issue.
 
     O dono não atende bloqueio (29/09: "não quero fazer mais nada"); sem isto um cartão travado segurava a issue
@@ -164,11 +164,24 @@ def zelar(lista):
     complete, arquiva (a chave continua contando como rodada gasta: ver `chaves`).
     """
     n = 0
+    existentes = chaves(lista)
+    por_numero = {pr["number"]: pr for pr in prs}
+    decididos = set()
     for c in lista:
         if c.get("status") != "blocked":
             continue
+        dados = bloqueio(c["id"])
+        motivo = str(dados.get("reason") or "(motivo não registrado)")[:300]
+        chave = (c.get("title") or "").split("]", 1)[0].lstrip("[")
+        ajuste = re.fullmatch(r"dev-ajuste-pr-(\d+)-([0-9a-f]{7})(?:-retomar-r[1-3])?", chave)
+        pr = por_numero.get(int(ajuste[1])) if ajuste else None
+        if (c.get("assignee") == "dev" and dados.get("kind") == "needs_input"
+                and pr and pr["headRefOid"][:7] == ajuste[2] and pr["number"] not in decididos):
+            # Criar a decisão antes de fechar: se a escrita falhar, o bloqueio fica para o próximo ciclo.
+            escalar_pr(pr, existentes, f"o Dev pediu uma decisão no cartão {c['id']}: {motivo}")
+            decididos.add(pr["number"])
         resumo = ("Zelador: bloqueado sem ninguém para destravar; fechado para liberar a próxima rodada. "
-                  f"Motivo: {motivo_bloqueio(c['id'])}")
+                  f"Motivo: {motivo}")
         r = subprocess.run([HERMES, "kanban", "complete", c["id"], "--summary", resumo],
                            capture_output=True, text=True, timeout=60)
         if r.returncode != 0 or "cannot complete" in (r.stdout + r.stderr):
@@ -295,6 +308,8 @@ def revisoes(prs, existentes, esperando_qa=frozenset()):
                       "o sincronizador atualizará e chamará novamente. Aprovou? Confira checks e faça merge "
                       "com --match-head-commit no SHA revisado.", prioridade=30)
         elif pr["headRefName"].startswith(("dev/", "fix/main-")):
+            if aberto(existentes, f"arquiteto-destravar-pr-{n}-"):
+                continue  # decisão pendente não ocupa outro Dev para repetir o mesmo diagnóstico
             # Issue de volta no QA (teste errado: o Dev não pode corrigir, o CI barra): o ajuste espera o QA (branch dev/N = issue N).
             if re.fullmatch(r"dev/(\d+)", pr["headRefName"]) and int(pr["headRefName"][4:]) in esperando_qa:
                 continue
@@ -471,13 +486,13 @@ def main():
         return
     os.environ["GH_TOKEN"] = tk
     lista = cartoes()
-    if zelar(lista):
-        lista = cartoes()  # cartão fechado libera a rodada já neste ciclo
+    prs = json.loads(gh("pr", "list", "-R", REPO, "--state", "open", "--json",
+                        "number,title,body,labels,headRefName,headRefOid,url,isDraft,mergeStateStatus,statusCheckRollup", "--limit", "50"))
+    if zelar(lista, prs):
+        lista = cartoes()  # inclui também a decisão criada antes de fechar o bloqueio
     existentes = chaves(lista)
     dia = dt.datetime.now(BRT).strftime("%Y%m%d")
     main_vermelha(existentes)
-    prs = json.loads(gh("pr", "list", "-R", REPO, "--state", "open", "--json",
-                        "number,title,body,labels,headRefName,headRefOid,url,isDraft,mergeStateStatus,statusCheckRollup", "--limit", "50"))
     todas = json.loads(gh("issue", "list", "-R", REPO, "--state", "open", "--json", "number,labels", "--limit", "300"))
     mesclados = json.loads(gh("pr", "list", "-R", REPO, "--state", "merged", "--limit", "20",
                               "--json", "number,headRefName,mergedAt"))
