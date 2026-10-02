@@ -142,7 +142,14 @@ export const GameConfigSchema = z.object({
   economy: z.object({
     mode: z.enum(["budget", "sandbox"]),
     startingMoney: z.number(),
-    revenuePerResidentPerYear: nonneg,
+    revenuePerResidentByPopulation: numericTable,
+    /** Chave antiga removida (issue #196): aceitar em silêncio esconderia a troca pela tabela. */
+    revenuePerResidentPerYear: z
+      .never({
+        message:
+          "revenuePerResidentPerYear foi removido; use revenuePerResidentByPopulation (tabela porte -> R$ por habitante por ano)",
+      })
+      .optional(),
     income: z.object({
       monthlyByEducation: z.array(pos).length(5),
       spread: z.number().min(0).max(1),
