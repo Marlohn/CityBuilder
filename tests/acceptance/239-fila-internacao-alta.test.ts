@@ -146,17 +146,6 @@ function pessoasComLeito(game: Game): number {
   return n;
 }
 
-/** Pessoas vivas adultas (18 anos: a maioridade que o próprio motor usa em actions.ts). */
-function contaAdultos(game: Game): number {
-  const city = game.city;
-  let n = 0;
-  for (let p = 0; p < city.pop.count; p++) {
-    if (city.pop.status[p] !== 1) continue; // 1 = viva (PSTATUS.alive)
-    if (city.age(p) >= 18) n++;
-  }
-  return n;
-}
-
 /** Pessoas vivas (1 = viva, como em PSTATUS.alive). */
 function contaVivos(game: Game): number {
   const pop = game.city.pop;
