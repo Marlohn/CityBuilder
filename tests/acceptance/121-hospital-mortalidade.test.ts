@@ -10,16 +10,20 @@
  * 2. Leitos: ninguém fica com leito a mais do que a soma de `patientsCapacity` dos hospitais,
  *    e todo leito aponta para um hospital em funcionamento.
  * 3. Mortalidade: na MESMA cidade e na MESMA semente, quem tem leito de hospital morre menos
- *    do que quem não tem (a única variável mudada é o leito).
+ *    do que quem não tem (a única variável mudada é o leito). A conta sai de uma coorte
+ *    controlada de recém-nascidos (5.000 em cada grupo), não da cidade do cenário: depois da
+ *    #203 o leito é só de hospital (UBS não vira leito), o grupo com leito do `bairro-basico`
+ *    fica pequeno e não acumula nenhuma morte em 80 dias.
  * 4. Porte mínimo: o item `hospital` de `data/reference/cidade-real.yaml` diz a partir de que
  *    tamanho de cidade o hospital faz falta, com fonte (hoje está "PENDENTE: porte mínimo").
  *
  * Semente fixa, sem relógio e sem `Math.random`. Cada cidade roda uma vez só.
  */
 import { readFileSync } from "node:fs";
-import { loadConfigAndData, loadScenario, runGame } from "@city/cli";
-import { BSTATE, checkInvariants, currentCensus, type Game } from "@city/sim";
+import { createRun, loadConfigAndData, loadScenario, runGame } from "@city/cli";
+import { BSTATE, checkInvariants, currentCensus, type Game, joinHousehold, newPerson } from "@city/sim";
 import { describe, expect, it } from "vitest";
+import { EV } from "../../packages/sim/src/people/events";
 
 /** Semente fixa do arquivo (nada de relógio nem `Math.random`). */
 const SEED = "hospital-mortalidade";
@@ -27,6 +31,10 @@ const SEED = "hospital-mortalidade";
 const DAYS = 80;
 /** Raio curto de UBS (200 m) para o hospital virar o segundo nível de verdade. */
 const UBS_RAIO = 200;
+/** Recém-nascidos em cada grupo da coorte de mortalidade (peso estatístico da comparação). */
+const COORTE = 5000;
+/** Dias de jogo da coorte: menos de um ano, como em 119-hospital-segundo-nivel.test.ts. */
+const DIAS_COHORTE = 76;
 
 /** Uma pessoa com leito de internação e o prédio do hospital onde ela está. */
 type Ocupante = { pessoa: number; hospital: number };
@@ -95,12 +103,12 @@ function leitoOcupa(game: Game): Ocupante[] {
   return out;
 }
 
-/** Pessoas que morreram (evento EV.died = 3) na cidade, por id. */
+/** Pessoas que morreram (EV.died = 3) na cidade, pelo id que está no campo `person`. */
 function mortes(game: Game): Set<number> {
   const ev = game.city.events;
   const out = new Set<number>();
   for (let e = 0; e < ev.count; e++) {
-    if (ev.type[e] === 3) out.add(ev.a[e]!);
+    if (ev.type[e] === EV.died) out.add(ev.person[e]!);
   }
   return out;
 }
@@ -149,52 +157,124 @@ describe("issue #121: hospital reduz mortalidade e tem porte documentado", () =>
   });
 
   it("na mesma cidade e semente, quem tem leito morre menos do que quem não tem", { timeout: 300000 }, () => {
-    const game = cidade(true);
-    const pop = game.city.pop;
-    const comLeito = leitoOcupa(game);
+    // Coorte controlada, no padrão de 119-hospital-segundo-nivel.test.ts: dois grupos de
+    // recém-nascidos na MESMA cidade e na MESMA semente, mudando SÓ o leito (`pop.hospital`).
+    // A cidade do cenário (`bairro-basico`, 80 dias) não dá peso para essa conta: o roteiro
+    // antigo exigia uma morte no grupo com leito, e depois da #203 esse grupo quase não morre
+    // — o leito de internação é só de `tipo.id === "hospital"` (UBS não vira leito), sobra muito
+    // pouca gente idosa com leito e o grupo inteiro passa o tempo sem nenhuma morte. Aqui o peso
+    // vem do tamanho da coorte (5.000 de cada lado), não da idade nem da duração.
+    // Sem UBS no mapa, `uncoveredMortalityMultiplier` pesa igual nos dois grupos, então a única
+    // diferença entre eles é a redução de risco que o leito aplica em `systems/lifecycle.ts`.
+    const { config, data } = loadConfigAndData({
+      economy: { mode: "sandbox" },
+      world: { width: 32, height: 32, startingRoad: { enabled: false }, water: { enabled: false } },
+      population: { immigration: { enabled: false } },
+      lifecycle: {
+        marriage: { hazardByAge: { "0": 0 } },
+        labor: { participation: 0 },
+        leaveParentsHome: { annualChance: 0 },
+      },
+      health: { uncoveredMortalityMultiplier: 4 },
+    });
+    const run = createRun({
+      config,
+      data,
+      seed: SEED,
+      days: DIAS_COHORTE,
+      commands: [
+        { type: "buildRoad", kind: "street", x0: 2, y0: 8, x1: 22, y1: 8 },
+        { type: "placeService", service: "hospital", x: 6, y: 9 },
+      ],
+    });
+    const game = run.game;
+    const { city, sim } = game;
+    const tpd = sim.clock.ticksPerDay;
+    // Um dia para os comandos aplicarem: o prédio ainda está em obras, mas o id já é o definitivo.
+    run.nextDay();
+    let hospital = -1;
+    const bs = sim.buildings;
+    for (let i = 0; i < bs.count; i++) {
+      if (bs.typeOf(i).id === "hospital") {
+        hospital = i;
+        break;
+      }
+    }
     expect(
-      comLeito.length,
-      `esperado mais de 0 pessoas com leito de hospital, mas veio ${comLeito.length}: ` +
-        `sem grupo protegido o teste não prova nada`,
-    ).toBeGreaterThan(0);
-    if (comLeito.length === 0) return;
+      hospital,
+      `era esperado 1 hospital construído via placeService em x=6, y=9 (encostado na via ` +
+        `de y=8), mas não há nenhum: sem hospital o teste não prova nada`,
+    ).toBeGreaterThanOrEqual(0);
+    if (hospital < 0) return;
+    // Dois grupos de COORTE recém-nascidos: grupo A sem leito, grupo B com o leito do hospital.
+    // Uma família a cada 50 bebês, com mãe de 30 anos (como em tests/slow/demography.test.ts).
+    const grupoSemLeito: number[] = [];
+    const grupoComLeito: number[] = [];
+    let familia = -1;
+    for (let i = 0; i < 2 * COORTE; i++) {
+      if (i % 50 === 0) {
+        familia = city.hh.create();
+        const mae = newPerson(city, {
+          sex: 0,
+          birthTick: sim.clock.tick - 30 * tpd,
+          first: 0,
+          surnameA: 0,
+          surnameB: 0,
+        });
+        city.pop.laborWilling[mae] = 2;
+        joinHousehold(city, mae, familia);
+      }
+      const homem = i % 205 < 105;
+      const p = newPerson(city, {
+        sex: homem ? 1 : 0,
+        birthTick: sim.clock.tick,
+        first: 0,
+        surnameA: 0,
+        surnameB: 0,
+      });
+      joinHousehold(city, p, familia);
+      if (i < COORTE) {
+        city.pop.hospital[p] = -1;
+        grupoSemLeito.push(p);
+      } else {
+        city.pop.hospital[p] = hospital;
+        grupoComLeito.push(p);
+      }
+    }
+    while (run.nextDay()) {}
+    let hospitalAtivo = -1;
+    for (let i = 0; i < bs.count; i++) {
+      if (bs.typeOf(i).id === "hospital" && bs.state[i] === BSTATE.active) {
+        hospitalAtivo = i;
+        break;
+      }
+    }
+    expect(
+      hospitalAtivo,
+      `era esperado 1 hospital ativo ao fim das obras (placeService em x=6, y=9), ` +
+        `mas não há nenhum: sem hospital ativo o teste não prova nada`,
+    ).toBeGreaterThanOrEqual(0);
+    if (hospitalAtivo < 0) return;
     const morreu = mortes(game);
-    let genteComLeito = 0;
-    let mortesComLeito = 0;
-    let genteSemLeito = 0;
-    let mortesSemLeito = 0;
-    for (const { pessoa, hospital } of comLeito) {
-      if (hospital < 0) continue;
-      genteComLeito++;
-      if (morreu.has(pessoa)) mortesComLeito++;
-    }
-    for (let p = 0; p < pop.count; p++) {
-      if (pop.hospital[p]! >= 0) continue;
-      genteSemLeito++;
-      if (morreu.has(p)) mortesSemLeito++;
-    }
-    expect(
-      genteSemLeito,
-      `esperado mais de 0 pessoas sem leito de hospital, mas veio ${genteSemLeito}`,
-    ).toBeGreaterThan(0);
-    if (genteSemLeito === 0) return;
+    const mortesSemLeito = grupoSemLeito.filter((p) => morreu.has(p)).length;
+    const mortesComLeito = grupoComLeito.filter((p) => morreu.has(p)).length;
     expect(
       mortesSemLeito,
-      `o grupo sem leito (${genteSemLeito} pessoas) não teve nenhuma morte em ${DAYS} dias: ` +
+      `o grupo sem leito (${COORTE} recém-nascidos) não teve nenhuma morte em ${DIAS_COHORTE} dias: ` +
         `sem mortes o grupo de comparação não prova nada`,
     ).toBeGreaterThan(0);
     expect(
       mortesComLeito,
-      `o grupo com leito (${genteComLeito} pessoas) não teve nenhuma morte em ${DAYS} dias: ` +
+      `o grupo com leito (${COORTE} recém-nascidos) não teve nenhuma morte em ${DIAS_COHORTE} dias: ` +
         `o teste precisa das duas taxas para comparar`,
     ).toBeGreaterThan(0);
-    const taxaComLeito = mortesComLeito / genteComLeito;
-    const taxaSemLeito = mortesSemLeito / genteSemLeito;
+    const taxaComLeito = mortesComLeito / grupoComLeito.length;
+    const taxaSemLeito = mortesSemLeito / grupoSemLeito.length;
     expect(
       taxaComLeito,
-      `quem tem leito de hospital (${mortesComLeito} mortes em ${genteComLeito} pessoas = ` +
+      `quem tem leito de hospital (${mortesComLeito} mortes em ${grupoComLeito.length} pessoas = ` +
         `${(taxaComLeito * 100).toFixed(2)}%) deveria morrer MENOS do que quem não tem ` +
-        `(${mortesSemLeito} mortes em ${genteSemLeito} pessoas = ${(taxaSemLeito * 100).toFixed(2)}%): ` +
+        `(${mortesSemLeito} mortes em ${grupoSemLeito.length} pessoas = ${(taxaSemLeito * 100).toFixed(2)}%): ` +
         `o leito do hospital não está reduzindo a mortalidade de ninguém`,
     ).toBeLessThan(taxaSemLeito);
     // A cidade sem hospital é a mesma cidade sem os quatro prédios: sem hospital, ninguém tem leito.
