@@ -458,12 +458,15 @@ def diarios(todas, existentes, dia, corpos_tarefa):
     if len(prontas) < FILA_MINIMA:
         estado = hashlib.sha1(json.dumps([tarefas_abertas, itens]).encode()).hexdigest()[:8]
         fixos.append((f"arquiteto-plano-{estado}", "Planejar o próximo item do ROADMAP", "arquiteto",
-                      "Sua tarefa: passo 3 do seu ciclo (planejar o primeiro item de Agora sem tarefas). Sem item? Pare.\n"
+                      "Sua tarefa: passo 3 do seu ciclo: percorra Agora até comprovar trabalho faltante em um item "
+                      "SEM tarefa ABERTA. Planeje no máximo um item; sem lacuna comprovada, pare.\n"
                       "A ordem OFICIAL é a publicada na issue #2 (`gh issue view 2`), que o workflow atualiza; o "
                       "ROADMAP.md commitado na main fica velho (em 29/09 ele fez o #4 passar na frente dos bugs 🚨).\n"
-                      "Item que já tem issue Tarefa apontando pra ele, ABERTA OU FECHADA (`gh issue list --label tarefa --state all`), conta como "
-                      "planejado: leia o que as fechadas entregaram e planeje só o que FALTA (em 30/09 o item #21 foi replanejado por cima do "
-                      "que as #48 e #49 já tinham feito).\n"
+                      "Consulte tarefas ABERTAS E FECHADAS (`gh issue list --label tarefa --state all`). Tarefa aberta "
+                      "impede planejar aquele item; tarefa fechada exige conferir critérios e PRs entregues, não excluir "
+                      "o item por associação. Leia o que já foi entregue e planeje só o que FALTA, sem duplicar "
+                      "trabalho concluído. Se aquele item está coberto, siga para o próximo candidato. Não use "
+                      "planejamento para retomar tarefa aberta ou reiniciar orçamento de recuperação esgotado.\n"
                       "Tarefa que precisa de outra antes: escreva no corpo uma linha própria `Depende de #N, #M` com os "
                       "NÚMEROS das issues (o sincronizador lê essa linha e só libera a tarefa quando elas fecharem; "
                       "\"rode as anteriores antes\" sem número não é lido)."))
