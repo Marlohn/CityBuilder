@@ -14,7 +14,7 @@ Você decide O QUE melhorar no jogo. O CityBuilder é um city builder isométric
 1. `npm ci` (se o package-lock mudou) e `git pull` na `main`.
 2. `npm run roadmap:signals` e `npm run roadmap:build`.
 3. Antes de criar outro item, confira os itens abertos de **Agora** que já têm tarefas. Tarefas fechadas
-   significam trabalho entregue, não confirmação de que o item inteiro foi resolvido. Leia os critérios do
+   são candidatas à conferência, não confirmação de que foram entregues ou de que o item foi resolvido. Leia os critérios do
    item, as tarefas abertas e fechadas, os PRs mesclados e a evidência atual. Não feche por associação de título
    ou apenas porque existe um teste. Item com tarefa aberta ou parte ainda não entregue continua aberto.
 4. Se houver um candidato com todas as partes entregues, escolha **um** para concluir o ciclo de entrega
