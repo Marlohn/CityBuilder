@@ -28,7 +28,7 @@ class FactoryTests(unittest.TestCase):
                                          dict(type='step_finish',sessionID='ses_same',part=dict(reason='stop'))]))
             responses=[SimpleNamespace(stdout=x,stderr='',returncode=0) for x in [first,last]]
             saved=[]
-            with patch.dict(os.environ,{'FACTORY_OUTPUT':str(root)}),patch('factory.subprocess.run',side_effect=responses) as cli:
+            with patch.dict(os.environ,{'FACTORY_OUTPUT':str(root),'CI':'true'}),patch('factory.subprocess.run',side_effect=responses) as cli:
                 result=ask_model(root,'mission','build',build=True,checkpoint=saved.append,max_seconds=120)
             self.assertEqual(result['summary'],'finished')
             calls=cli.call_args_list
@@ -38,6 +38,11 @@ class FactoryTests(unittest.TestCase):
             self.assertLessEqual(calls[1].kwargs['timeout'],calls[0].kwargs['timeout'])
             permissions=json.loads(calls[0].kwargs['env']['OPENCODE_CONFIG_CONTENT'])['permission']
             self.assertEqual(permissions['edit']['tests/acceptance/*'],'deny')
+            self.assertNotIn('CI',calls[0].kwargs['env'])
+            bash=permissions['bash']
+            self.assertNotIn('npm test*',bash)
+            self.assertNotIn('npm run check*',bash)
+            self.assertEqual(bash['npm test -- tests/*'],'allow')
             self.assertEqual(len(saved),2)
             self.assertIn('Maximum steps',(root/'build.jsonl').read_text())
 
