@@ -148,7 +148,19 @@ class FactoryTests(unittest.TestCase):
             controller.dispatch_saved()
         self.assertEqual(finished,['blocked'])
         self.assertTrue(controller.state['needs_access'])
-        self.assertIn('Actions',controller.state['halted_reason'])
+        self.assertIn('Contents',controller.state['halted_reason'])
+
+    def test_dispatch_uses_existing_repository_permission_and_exact_request(self):
+        controller=Controller.__new__(Controller)
+        controller.state=dict(id='mission',phase='observe',request_id='request',base_sha='base')
+        controller.note=lambda text:None
+        with patch('factory.gh') as api: controller.dispatch_saved()
+        call=api.call_args
+        self.assertIn('repos/Marlohn/CityBuilder/dispatches',call.args)
+        payload=json.loads(call.kwargs['input'])
+        self.assertEqual(payload['event_type'],'factory-stage')
+        self.assertEqual(payload['client_payload']['request_id'],'request')
+        self.assertEqual(json.loads(payload['client_payload']['context'])['base_sha'],'base')
 
 
 if __name__ == '__main__':

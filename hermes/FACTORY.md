@@ -61,8 +61,10 @@ Space Bunny também respondeu a uma prova visual com HOME novo e sem chave/token
 OpenCode está fixado em 1.18.33; a oferta gratuita pode mudar e exige conferência no runner.
 Nenhum segredo é gravado em contexto ou artefatos; o modelo não recebe GH_TOKEN.
 Não substituir silenciosamente por um modelo textual.
-A credencial existente do controlador também precisa de **Actions: Read and write** para
-`workflow_dispatch`. Acesso de leitura a logs/artefatos não autoriza iniciar workflows.
+O controlador usa `repository_dispatch` (`factory-stage`), com **Contents: Read and write**
+já disponível para publicar branches. A API foi conferida com a credencial atual. O disparo
+manual `workflow_dispatch` continua disponível para operadores e exige Actions: write;
+o controlador não depende dessa ampliação de acesso.
 HTTP 401/403 no disparo bloqueia a missão e suspende o ciclo imediatamente, preservando
 o motivo em `halted_reason` e `needs_access`. Depois de corrigir a permissão, retirar esses
 dois campos e definir `next_at=0` para iniciar uma missão nova. Não reabrir orçamento de
