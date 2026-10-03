@@ -251,6 +251,7 @@ Ações: click com role/name exatos; point x/y; drag x/y/toX/toY; key key; wait 
 Cada resultado informa screenshot: use read para VER a imagem antes de decidir. Há no máximo 22 passos.
 Tente uma jornada de construção ou compreensão. Não confunda desafio, bot limitado ou recurso existente com defeito.
 Backlog e entregas recentes: {json.dumps(context.get('backlog',[]),ensure_ascii=False)}
+Memória dos últimos experimentos (sucessos e falhas): {json.dumps(context.get('recent',[]),ensure_ascii=False)}
 Observação inicial: {first}
 Escolha uma melhoria pequena que altere o que alguém faz ou entende numa partida e caiba em até 4 horas.
 Se não houver oportunidade fundamentada: retorne JSON decision=no_opportunity, reason, evidence=[IDs].
@@ -376,7 +377,7 @@ class Controller:
 
     def dispatch_saved(self):
         context={k:v for k,v in self.state.items() if k in ['id','seed','base_sha','candidate_sha','branch',
-                'discovery','feedback','backlog','published_sha','published_url','request_id']}
+                'discovery','feedback','backlog','recent','published_sha','published_url','request_id']}
         gh('workflow','run',WORKFLOW,'-R',REPO,'--ref','main','--json',input=json.dumps(
             {'phase':self.state['phase'],'mission':self.state['id'],'request_id':self.state['request_id'],
              'context':json.dumps(context,ensure_ascii=False)}))
@@ -393,8 +394,13 @@ class Controller:
         if not ci or ci[0]['status']!='completed' or ci[0]['conclusion']!='success':
             self.state['waiting_for_main']=base;self.save();return
         issues=json.loads(gh('issue','list','-R',REPO,'--limit','100','--json','number,title,labels'))
+        recent=[]
+        for path in sorted((self.directory/'history').glob('*.json'),reverse=True)[:8]:
+            experiment=json.loads(path.read_text())
+            recent.append({k:experiment[k] for k in ['id','discovery','outcome','reason','pr'] if k in experiment})
         self.state={'id':identifier,'seed':identifier,'base_sha':base,'started_at':time.time(),
-                    'round':0,'backlog':issues,'next_at':0,'consecutive_failures':self.state.get('consecutive_failures',0)}
+                    'round':0,'backlog':issues,'recent':recent,'next_at':0,
+                    'consecutive_failures':self.state.get('consecutive_failures',0)}
         card=json.loads(command([HERMES,'kanban','create','Explorar e melhorar a partida: '+identifier,
                           '--body-file','-','--created-by','factory','--idempotency-key',identifier,
                           '--completion-contract','local-only','--json'],input='Missão autônoma de produto. '+
