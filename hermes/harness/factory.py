@@ -234,7 +234,9 @@ def worker(phase, context):
         deadline = time.time()+150
         while time.time()<deadline:
             if (output/side/'address.json').exists(): break
-            if proc.poll() is not None: raise RuntimeError('Navegador encerrou antes de ficar pronto.')
+            if proc.poll() is not None:
+                raise RuntimeError('Navegador encerrou antes de ficar pronto: '+
+                                   (output/(side+'-browser.log')).read_text(encoding='utf-8')[-1500:])
             time.sleep(1)
         else: raise RuntimeError('Navegador não ficou pronto no limite.')
         return directory

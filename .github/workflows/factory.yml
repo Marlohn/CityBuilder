@@ -31,6 +31,9 @@ concurrency:
 jobs:
   stage:
     runs-on: ubuntu-latest
+    container:
+      image: mcr.microsoft.com/playwright:v1.63.0-noble
+      options: --init --ipc=host
     timeout-minutes: 55
     env:
       FACTORY_PHASE: ${{ inputs.phase || github.event.client_payload.phase }}
@@ -46,11 +49,6 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci --no-audit --no-fund
-      - uses: actions/cache@v4
-        with:
-          path: ~/.cache/ms-playwright
-          key: factory-chromium-1.63.0-${{ runner.os }}
-      - run: npx playwright install --with-deps chromium
       - run: npm install --global opencode-ai@1.18.33 --no-audit --no-fund
       - name: Identidade dos commits automáticos
         run: |
