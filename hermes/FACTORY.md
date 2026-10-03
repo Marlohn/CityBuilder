@@ -61,6 +61,12 @@ Space Bunny também respondeu a uma prova visual com HOME novo e sem chave/token
 OpenCode está fixado em 1.18.33; a oferta gratuita pode mudar e exige conferência no runner.
 Nenhum segredo é gravado em contexto ou artefatos; o modelo não recebe GH_TOKEN.
 Não substituir silenciosamente por um modelo textual.
+A credencial existente do controlador também precisa de **Actions: Read and write** para
+`workflow_dispatch`. Acesso de leitura a logs/artefatos não autoriza iniciar workflows.
+HTTP 401/403 no disparo bloqueia a missão e suspende o ciclo imediatamente, preservando
+o motivo em `halted_reason` e `needs_access`. Depois de corrigir a permissão, retirar esses
+dois campos e definir `next_at=0` para iniciar uma missão nova. Não reabrir orçamento de
+uma implementação anterior; neste caso nenhum modelo chegou a ser iniciado.
 
 Rollback: enabled=false impede novas chamadas, mas não interrompe jobs existentes.
 Antes de voltar ao sincronizador antigo, concluir/cancelar explicitamente a missão externa,
