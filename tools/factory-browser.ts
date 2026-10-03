@@ -116,7 +116,14 @@ export async function createBrowserBridge(page: Page, directory: string, url: st
               role:
                 element.getAttribute("role") ??
                 (element.tagName === "A" ? "link" : element.tagName.toLowerCase()),
-              name: element.getAttribute("aria-label") ?? element.textContent?.trim() ?? "",
+              name: (
+                element.getAttribute("aria-label") ??
+                (element as HTMLElement).innerText ??
+                element.textContent ??
+                ""
+              )
+                .replace(/\s+/g, " ")
+                .trim(),
               title: element.getAttribute("title"),
               disabled: element.hasAttribute("disabled"),
               x: Math.round(bounds.x + bounds.width / 2),
