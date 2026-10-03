@@ -3,6 +3,35 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { expect, test } from "@playwright/test";
 import { createBrowserBridge } from "../../tools/factory-browser";
+import { groundAt, screenOf } from "./helpers";
+
+test("ponte move a câmera com botão direito e tecla mantida, soltando os controles", async ({ page }) => {
+  const dir = await mkdtemp(join(tmpdir(), "city-camera-bridge-"));
+  const bridge = await createBrowserBridge(page, dir, "http://127.0.0.1:4173/?seed=factory-camera");
+  try {
+    const start = await groundAt(page, 600, 400);
+    const drag = await bridge.observe([
+      { type: "drag", button: "right", x: 600, y: 400, toX: 680, toY: 440 },
+    ]);
+    expect(drag.errors).toEqual([]);
+    const afterDrag = await groundAt(page, 680, 440);
+    expect(Math.abs(afterDrag.x - start.x)).toBeLessThan(0.3);
+    expect(Math.abs(afterDrag.z - start.z)).toBeLessThan(0.3);
+    const center = await groundAt(page, 640, 400);
+    const before = await screenOf(page, center.x, 0, center.z);
+    const held = await bridge.observe([{ type: "key", key: "w", ms: 400 }]);
+    expect(held.errors).toEqual([]);
+    const after = await screenOf(page, center.x, 0, center.z);
+    expect(after.y - before.y).toBeGreaterThan(20);
+    await page.waitForTimeout(400);
+    const released = await screenOf(page, center.x, 0, center.z);
+    expect(Math.abs(released.y - after.y)).toBeLessThan(2);
+    await expect(bridge.observe([{ type: "key", key: "w", ms: 60_000 }])).rejects.toThrow();
+  } finally {
+    await bridge.close();
+    await rm(dir, { recursive: true, force: true });
+  }
+});
 
 test("observação usa controles públicos e guarda prova mesmo quando uma ação falha", async ({ page }) => {
   const dir = await mkdtemp(join(tmpdir(), "city-observation-"));

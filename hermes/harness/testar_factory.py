@@ -5,8 +5,10 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from factory import check_changes, parse_model_result, validate_discovery, validate_evaluation, checks_green, Controller, command
+from factory import check_changes, parse_model_result, validate_discovery, validate_evaluation, checks_green, Controller, command, SessionIncomplete, snapshot_candidate, clone_candidate, ask_model
 from unittest.mock import patch
+import os
+from types import SimpleNamespace
 
 
 def observation(root, identifier, actions):
@@ -17,6 +19,117 @@ def observation(root, identifier, actions):
 
 
 class FactoryTests(unittest.TestCase):
+    def test_continuation_keeps_session_directory_and_total_deadline(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory)
+            first='\n'.join(map(json.dumps,[dict(type='text',sessionID='ses_same',part=dict(text='Maximum steps reached. Finish tests.')),
+                                          dict(type='step_finish',sessionID='ses_same',part=dict(reason='stop'))]))
+            last='\n'.join(map(json.dumps,[dict(type='text',sessionID='ses_same',part=dict(text='{"summary":"finished","tests":["tests/unit/x.test.ts"]}')),
+                                         dict(type='step_finish',sessionID='ses_same',part=dict(reason='stop'))]))
+            responses=[SimpleNamespace(stdout=x,stderr='',returncode=0) for x in [first,last]]
+            saved=[]
+            with patch.dict(os.environ,{'FACTORY_OUTPUT':str(root)}),patch('factory.subprocess.run',side_effect=responses) as cli:
+                result=ask_model(root,'mission','build',build=True,checkpoint=saved.append,max_seconds=120)
+            self.assertEqual(result['summary'],'finished')
+            calls=cli.call_args_list
+            self.assertEqual(len(calls),2)
+            self.assertIn('--session',calls[1].args[0]);self.assertIn('ses_same',calls[1].args[0])
+            self.assertEqual(calls[0].kwargs['cwd'],calls[1].kwargs['cwd'])
+            self.assertLessEqual(calls[1].kwargs['timeout'],calls[0].kwargs['timeout'])
+            permissions=json.loads(calls[0].kwargs['env']['OPENCODE_CONFIG_CONTENT'])['permission']
+            self.assertEqual(permissions['edit']['tests/acceptance/*'],'deny')
+            self.assertEqual(len(saved),2)
+            self.assertIn('Maximum steps',(root/'build.jsonl').read_text())
+
+    def test_step_limit_is_incomplete_even_if_summary_contains_json(self):
+        events=[dict(type='text',part=dict(text='{"summary":"earlier"}')),
+                dict(type='text',part=dict(text='Maximum steps reached. Still unfinished.')),
+                dict(type='step_finish',part=dict(reason='stop'))]
+        with self.assertRaises(SessionIncomplete): parse_model_result('\n'.join(map(json.dumps,events)))
+
+    def test_partial_source_survives_in_bundle_and_is_not_a_completed_feature(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);repo=root/'source';repo.mkdir()
+            command(['git','init',repo]);command(['git','config','user.name','Test'],cwd=repo)
+            command(['git','config','user.email','test@example.invalid'],cwd=repo)
+            (repo/'packages').mkdir();(repo/'packages/file.ts').write_text('before')
+            command(['git','add','.'],cwd=repo);command(['git','commit','-m','base'],cwd=repo)
+            base=command(['git','rev-parse','HEAD'],cwd=repo)
+            candidate=root/'candidate';clone_candidate(repo,candidate,base,'dev/test')
+            command(['git','config','user.name','Test'],cwd=candidate)
+            command(['git','config','user.email','test@example.invalid'],cwd=candidate)
+            (candidate/'packages/file.ts').write_text('unfinished')
+            (candidate/'packages/new.ts').write_text('new unfinished file')
+            out=root/'proof';out.mkdir()
+            sha=snapshot_candidate(candidate,base,out,'checkpoint')
+            self.assertEqual(command(['git','status','--porcelain'],cwd=repo),'')
+            self.assertTrue((candidate/'.git').is_dir())
+            fresh=root/'resumed';command(['git','clone',repo,fresh])
+            command(['git','fetch',out/'candidate.bundle','HEAD'],cwd=fresh)
+            command(['git','switch','--detach','FETCH_HEAD'],cwd=fresh)
+            self.assertEqual(command(['git','rev-parse','HEAD'],cwd=fresh),sha)
+            self.assertEqual((fresh/'packages/new.ts').read_text(),'new unfinished file')
+            (candidate/'AGENTS.md').write_text('change protections')
+            with self.assertRaises(ValueError): snapshot_candidate(candidate,base,out,'invalid')
+
+    def test_checkpoint_resumes_same_issue_without_pr_and_preserves_budget(self):
+        controller=Controller.__new__(Controller)
+        controller.state=dict(id='mission',phase='build',request_id='r',base_sha='base',issue=260,
+                              card='same-card',started_at=__import__('time').time(),build_model_seconds=300)
+        controller.note=lambda text:None;controller.save=lambda:None
+        controller.publish_candidate=lambda sha,directory:None
+        dispatched=[];controller.dispatch=lambda phase:dispatched.append(phase)
+        result=dict(mission='mission',phase='build',request_id='r',base_sha='base',status='checkpoint',
+                    candidate_sha='partial',build_model_seconds=600,error='unfinished',resume_summary='finish tests')
+        with patch('factory.gh') as api: controller.result(result,'run','directory')
+        self.assertEqual(controller.state['issue'],260)
+        self.assertEqual(controller.state['card'],'same-card')
+        self.assertEqual(controller.state['build_model_seconds'],600)
+        self.assertEqual(controller.state['candidate_sha'],'partial')
+        self.assertEqual(dispatched,['build']);api.assert_not_called()
+        self.assertNotIn('pr',controller.state)
+
+    def test_operator_resume_preserves_elapsed_budget_history_and_failure_counter(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);(root/'history').mkdir();checkpoint=root/'partial';checkpoint.mkdir()
+            mission='f202610030612-75692d'
+            archived=dict(id=mission,phase='build',base_sha='base',card='same-card',issue=260,
+                          branch='dev/test',started_at=1000,finished_at=2200,outcome='blocked',
+                          discovery={'acceptance':[{'id':'AC1','behavior':'fixed'}]})
+            history=root/'history'/(mission+'.json');history.write_text(json.dumps(archived))
+            metadata=dict(mission=mission,base_sha='base',candidate_sha='partial',build_model_seconds=435,summary='finish tests')
+            (checkpoint/'checkpoint.json').write_text(json.dumps(metadata))
+            controller=Controller.__new__(Controller);controller.directory=root
+            controller.state=dict(halted_reason='three failures',consecutive_failures=3)
+            controller.config=dict(enabled=True,max_mission_seconds=14400)
+            controller.save=lambda:None;controller.note=lambda text:None
+            controller.publish_candidate=lambda sha,directory:None
+            dispatched=[];controller.dispatch=dispatched.append
+            with patch('factory.command'),patch('factory.time.time',return_value=10000):
+                controller.resume(mission,checkpoint,'User authorized repair')
+            self.assertEqual(controller.state['started_at'],8800)
+            self.assertEqual(controller.state['consecutive_failures'],3)
+            self.assertEqual(controller.state['build_model_seconds'],435)
+            self.assertEqual(controller.state['discovery'],archived['discovery'])
+            self.assertEqual(controller.state['issue'],260)
+            self.assertEqual(json.loads(history.read_text()),archived)
+            self.assertEqual(dispatched,['build'])
+            controller.state={'consecutive_failures':3}
+            metadata['build_model_seconds']=1800;(checkpoint/'checkpoint.json').write_text(json.dumps(metadata))
+            with self.assertRaises(ValueError): controller.resume(mission,checkpoint,'No remaining time')
+
+    def test_checkpoint_limit_does_not_create_another_issue_or_renew_budget(self):
+        controller=Controller.__new__(Controller)
+        controller.state=dict(id='m',phase='build',request_id='r',base_sha='b',checkpoint_resumes=2,build_model_seconds=1700)
+        controller.note=lambda text:None;controller.save=lambda:None;controller.publish_candidate=lambda *args:None
+        stopped=[];controller.finish=lambda *args:stopped.append(args[0])
+        controller.dispatch=lambda phase:self.fail('Must stop after checkpoint limit')
+        result=dict(mission='m',phase='build',request_id='r',base_sha='b',status='checkpoint',candidate_sha='partial',build_model_seconds=1750)
+        controller.result(result,'run','directory')
+        self.assertEqual(stopped,['blocked'])
+        result['build_model_seconds']=0
+        with self.assertRaises(ValueError): controller.result(result,'run','directory')
+
     def test_exit_zero_without_final_answer_is_not_success(self):
         with self.assertRaises(ValueError):
             parse_model_result('{"type":"text","part":{"text":"{\"done\":true}"}}\n')
@@ -143,7 +256,8 @@ class FactoryTests(unittest.TestCase):
 
     def test_denied_dispatch_records_access_block_without_blind_retries(self):
         controller=Controller.__new__(Controller)
-        controller.state=dict(id='mission',phase='observe',request_id='request',base_sha='base')
+        controller.config={}
+        controller.state=dict(id='mission',phase='observe',request_id='request',base_sha='base',started_at=0)
         controller.save=lambda:None
         finished=[]
         def finish(outcome,reason):
@@ -157,7 +271,8 @@ class FactoryTests(unittest.TestCase):
 
     def test_dispatch_uses_existing_repository_permission_and_exact_request(self):
         controller=Controller.__new__(Controller)
-        controller.state=dict(id='mission',phase='observe',request_id='request',base_sha='base')
+        controller.config={}
+        controller.state=dict(id='mission',phase='observe',request_id='request',base_sha='base',started_at=0)
         controller.note=lambda text:None
         with patch('factory.gh') as api: controller.dispatch_saved()
         call=api.call_args
