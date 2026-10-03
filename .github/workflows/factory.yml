@@ -1,7 +1,9 @@
 name: Fábrica — etapa de produto
-run-name: Factory ${{ inputs.mission }} ${{ inputs.phase }} ${{ inputs.request_id }}
+run-name: Factory ${{ inputs.mission || github.event.client_payload.mission }} ${{ inputs.phase || github.event.client_payload.phase }} ${{ inputs.request_id || github.event.client_payload.request_id }}
 
 on:
+  repository_dispatch:
+    types: [factory-stage]
   workflow_dispatch:
     inputs:
       phase:
@@ -31,8 +33,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 55
     env:
-      FACTORY_PHASE: ${{ inputs.phase }}
-      FACTORY_CONTEXT: ${{ inputs.context }}
+      FACTORY_PHASE: ${{ inputs.phase || github.event.client_payload.phase }}
+      FACTORY_CONTEXT: ${{ inputs.context || github.event.client_payload.context }}
     steps:
       - uses: actions/checkout@v4
         with:

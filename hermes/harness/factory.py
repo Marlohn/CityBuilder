@@ -87,7 +87,8 @@ def evidence(ids, directory, interaction=True):
         if hashlib.sha256(screenshot.read_bytes()).hexdigest() != record.get('sha256'):
             raise ValueError('Imagem diferente da observação registrada.')
         records.append(record)
-    if interaction and not any(r.get('actions') for r in records):
+    if interaction and not any(a.get('type') in ['click','point','drag','key']
+                               for r in records for a in r.get('actions',[])):
         raise ValueError('Uma imagem inicial não comprova uma jornada.')
     return records
 
@@ -378,9 +379,17 @@ class Controller:
     def dispatch_saved(self):
         context={k:v for k,v in self.state.items() if k in ['id','seed','base_sha','candidate_sha','branch',
                 'discovery','feedback','backlog','recent','published_sha','published_url','request_id']}
-        gh('workflow','run',WORKFLOW,'-R',REPO,'--ref','main','--json',input=json.dumps(
-            {'phase':self.state['phase'],'mission':self.state['id'],'request_id':self.state['request_id'],
-             'context':json.dumps(context,ensure_ascii=False)}))
+        try:
+            gh('api',f'repos/{REPO}/dispatches','-X','POST','--input','-',input=json.dumps(
+                {'event_type':'factory-stage','client_payload':
+                 {'phase':self.state['phase'],'mission':self.state['id'],'request_id':self.state['request_id'],
+                  'context':json.dumps(context,ensure_ascii=False)}}))
+        except RuntimeError as error:
+            if not any(code in str(error) for code in ['HTTP 403','HTTP 401']): raise
+            reason='GitHub negou repository_dispatch. Conferir Contents: Read and write na credencial. '+str(error)
+            self.finish('blocked',reason)
+            self.state.update(halted_reason=reason,needs_access=True);self.save()
+            return
         self.note(f"Etapa {self.state['phase']} solicitada. Evidências serão vinculadas à execução GitHub; não é entrega.")
 
     def start(self):
@@ -394,6 +403,7 @@ class Controller:
         if not ci or ci[0]['status']!='completed' or ci[0]['conclusion']!='success':
             self.state['waiting_for_main']=base;self.save();return
         issues=json.loads(gh('issue','list','-R',REPO,'--limit','100','--json','number,title,labels'))
+        issues=[dict(number=i['number'],title=i['title'],labels=[l['name'] for l in i['labels']]) for i in issues]
         recent=[]
         for path in sorted((self.directory/'history').glob('*.json'),reverse=True)[:8]:
             experiment=json.loads(path.read_text())
