@@ -123,3 +123,8 @@ ignora --local quando CI=true. O CI externo continua completo e obrigatorio.
 O builder recebe permissao apenas para testes com caminhos e check --local/--only;
 nao deve repetir checks verdes. O container pode nao ter rg; grep/glob sao ferramentas
 disponiveis. O tempo de comandos tambem consome o orcamento da sessao.
+
+Observador e avaliador recebem o mesmo contrato completo de acoes no prompt, com
+exemplos e coordenadas em pixels da pagina. Nomes usam texto visivel normalizado,
+compatível com click por role/name. Eles nao precisam ler o codigo das ferramentas
+nem descobrir o schema por erros. Falta de prova ao fim exige rejeicao, sem inventar sucesso.

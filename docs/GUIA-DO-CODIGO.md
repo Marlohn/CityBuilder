@@ -341,6 +341,7 @@ Mudou isto → atualize aquilo **no mesmo PR**:
 | Ciclo de descoberta, execução e avaliação de produto | `hermes/FACTORY.md`, `hermes/factory/DIRECTION.md`, `hermes/harness/factory.py`, `tools/factory-browser.ts` e workflow `factory.yml`; cartões antigos conservam o fluxo anterior |
 | Retomada de código parcial ou controles da câmera dos agentes | `hermes/FACTORY.md`; provas em `testar_factory.py`, `testar_factory_startup.py` e `tests/e2e/factory-browser.spec.ts`; checkpoint não é entrega |
 | Check privado do builder em runner GitHub | `factory.py:local_checks` retira CI somente do subprocesso privado; CI externo continua completo. Bootstrap confere CHECK LOCAL OK e ausência da suíte Vitest; builder só executa testes com caminhos |
+| Nome de controle fornecido pela ponte | `factory-browser.ts` usa texto visível com espaços normalizados, compatível com click por role/name; teste `factory-browser.spec.ts` clica usando o próprio nome informado pela ponte |
 | Algo que o jogador vê | `docs/MANUAL.md` |
 | Volta de compras/saúde/lazer (motivo do dia, destino e volta para casa) | `packages/sim/src/traffic/trafficSystem.ts` (monta a volta) e números em `config/traffic.yaml` (routine.errand*) |
 | Mercado de saúde separado por tipo de prédio (UBS não é leito, leito não é posto de saúde) | filtro por `tipo.id` no construtor de `VacancyMarket` em `packages/sim/src/markets/markets.ts` (`clinics` = `ubs`, `hospitals` = `hospital`) |

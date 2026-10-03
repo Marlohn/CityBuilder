@@ -5,6 +5,22 @@ import { expect, test } from "@playwright/test";
 import { createBrowserBridge } from "../../tools/factory-browser";
 import { groundAt, screenOf } from "./helpers";
 
+test("nomes informados pela ponte permitem clicar no botão correspondente", async ({ page }) => {
+  const dir = await mkdtemp(join(tmpdir(), "city-control-name-"));
+  const bridge = await createBrowserBridge(page, dir, "http://127.0.0.1:4173/?seed=factory-label");
+  try {
+    const initial = await bridge.observe([]);
+    const road = initial.controls.find((c) => c.role === "button" && c.title?.startsWith("Rua"));
+    expect(road).toBeTruthy();
+    const clicked = await bridge.observe([{ type: "click", role: "button", name: road!.name }]);
+    expect(clicked.errors).toEqual([]);
+    await expect(page.getByRole("button", { name: /Rua/ })).toHaveClass(/active/);
+  } finally {
+    await bridge.close();
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
 test("ponte move a câmera com botão direito e tecla mantida, soltando os controles", async ({ page }) => {
   const dir = await mkdtemp(join(tmpdir(), "city-camera-bridge-"));
   const bridge = await createBrowserBridge(page, dir, "http://127.0.0.1:4173/?seed=factory-camera");

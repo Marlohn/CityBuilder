@@ -20,6 +20,20 @@ REQUIRED = {"npm run check", "teste de tela (Playwright)", "testes de aceitaçã
             "testes lentos (coorte IBGE e cidade de 50 mil)"}
 MODEL = "opencode/space-bunny-free"
 WORKFLOW = "factory.yml"
+BROWSER_ACTIONS = """Contrato pronto dos controles publicos (nao tente descobrir o schema):
+Todos os x/y/toX/toY sao PIXELS DA PAGINA, nunca quadradinhos do mapa.
+A resposta informa viewport, controls (name, role, x, y), screenshot e erros.
+Acoes JSON validas (substitua os nomes/coordenadas pelos controles e imagem observados):
+click: {"type":"click","role":"button","name":"nome EXATO de controls"};
+point: {"type":"point","x":400,"y":400};
+drag: {"type":"drag","x":400,"y":400,"toX":500,"toY":450,"button":"left"};
+key: {"type":"key","key":"w","ms":400}; wheel: {"type":"wheel","x":600,"y":400,"deltaY":-100};
+wait: {"type":"wait","ms":2000}; reset: {"type":"reset"}. Maximo 12 acoes por chamada.
+Arrastar com left usa a ferramenta selecionada; right move a camera; middle gira/inclina.
+W/A/S/D mantidas movem; Z/X e wheel dao zoom. ms vai de 0 a 3000; deltaY entre -2000 e 2000.
+Copie name exatamente de controls. Se houver nomes duplicados, point usa as coordenadas do controle.
+Use read para ver cada PNG. Use glob/read para arquivos permitidos; nao ls, wc, pipes head/tail
+nem a implementacao das ferramentas. Se faltar prova ao fim, conclua com rejeicao honesta."""
 HERMES = "/opt/hermes/.venv/bin/hermes"
 GH = os.environ.get("FACTORY_GH", "/opt/data/.local/bin/gh" if Path('/opt/data').exists() else "gh")
 
@@ -328,9 +342,7 @@ def worker(phase, context):
             prompt = f'''Você está no papel de observador do produto. Direção:\n{direction}
 Explore a partida PELA INTERFACE; não leia código nem window.__city. Use:
 npm run factory:browser -- act '[ações JSON]' baseline
-Ações: click com role/name exatos; point x/y; drag x/y/toX/toY e button left|right|middle;
-key key com ms opcional até 3000 (manter pressionada); wheel x/y/deltaY; wait ms<=3000; reset.
-Câmera: botão direito arrastando move o mapa; W/A/S/D mantidas movem; Z/X mantidas e wheel dão zoom.
+{BROWSER_ACTIONS}
 Cada resultado informa screenshot: use read para VER a imagem antes de decidir. Orçamento total: 15 minutos.
 Tente uma jornada de construção ou compreensão. Não confunda desafio, bot limitado ou recurso existente com defeito.
 Backlog e entregas recentes: {json.dumps(context.get('backlog',[]),ensure_ascii=False)}
@@ -407,7 +419,7 @@ Continue do código existente; prefira solução pequena e completa. Resposta fi
 Missão e critérios FIXADOS: {json.dumps(context['discovery'],ensure_ascii=False)}
 Compare a partida baseline e candidate com os MESMOS objetivos, seed e viewport.
 Use npm run factory:browser -- act '[ações JSON]' baseline OU candidate. Veja cada imagem com read.
-Arrastar com button=right move a câmera. key aceita ms<=3000 para manter W/A/S/D ou Z/X; wheel aceita x/y/deltaY.
+{BROWSER_ACTIONS}
 Não leia window.__city. Não altere arquivos, critérios, testes ou código. A descrição do executor não é prova.
 Inspecione out/factory/candidate.diff para revisão, sem confundir código correto com experiência melhor.
 Faça ações em AMBAS as versões. Critérios subjetivos precisam de evidência visível; não invente certeza.
