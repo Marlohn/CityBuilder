@@ -75,7 +75,7 @@ export async function createBrowserBridge(page: Page, directory: string, url: st
     await page.waitForTimeout(200);
     const id = String(++sequence).padStart(4, "0");
     const screenshot = resolve(output, id + ".png");
-    const png = await page.screenshot({ path: screenshot });
+    const png = await page.screenshot({ path: screenshot, timeout: 120_000 });
     const publicState = await page.evaluate(() => ({
       text: document.body.innerText.slice(0, 18000),
       controls: Array.from(document.querySelectorAll("button,[role=tab],a,input,select")).flatMap(
@@ -173,10 +173,11 @@ async function main() {
   await new Promise<void>((ready) => server.listen(0, "127.0.0.1", ready));
   const address = server.address();
   if (!address || typeof address === "string") throw new Error("Endereço do navegador ausente.");
+  const initial = await bridge.observe([]);
   await writeFile(addressFile, JSON.stringify({ url: `http://127.0.0.1:${address.port}`, token }), {
     mode: 0o600,
   });
-  process.stdout.write(JSON.stringify(await bridge.observe([])) + "\n");
+  process.stdout.write(JSON.stringify(initial) + "\n");
   const close = async () => {
     server.close();
     await browser.close();
