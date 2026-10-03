@@ -128,3 +128,7 @@ Observador e avaliador recebem o mesmo contrato completo de acoes no prompt, com
 exemplos e coordenadas em pixels da pagina. Nomes usam texto visivel normalizado,
 compatível com click por role/name. Eles nao precisam ler o codigo das ferramentas
 nem descobrir o schema por erros. Falta de prova ao fim exige rejeicao, sem inventar sucesso.
+
+O click por role/name aguarda até 15 segundos para o controle ficar acionável.
+Isso não altera o limite de wait/key (três segundos), nem dispensa visibilidade,
+estabilidade ou controles habilitados. Timeout continua sendo registrado como erro.
