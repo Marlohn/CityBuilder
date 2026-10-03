@@ -630,6 +630,11 @@ def diarios(todas, existentes, dia, corpos_tarefa):
 
 
 def main():
+    # Transição explícita: o cron continua, mas apenas um despachante fica ativo.
+    if os.path.isfile("/opt/data/factory/config.json"):
+        subprocess.run([sys.executable, os.path.join(os.path.dirname(__file__), "factory.py"), "tick"],
+                       check=True, timeout=90)
+        return
     tk = token()
     if not tk:
         return

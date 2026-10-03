@@ -338,6 +338,7 @@ Mudou isto → atualize aquilo **no mesmo PR**:
 | Bug que pode acontecer de novo | uma linha na seção 6 |
 | Papel de agente ou fluxo no GitHub | `agents/<papel>.md` e `hermes/<papel>/SOUL.md` |
 | Erro de provedor deixa OpenCode aberto | `hermes/harness/opencode_guard.py`, cenários em `testar_opencode_guard.py` e deploy em `hermes/OPERACAO.md` |
+| Ciclo de descoberta, execução e avaliação de produto | `hermes/FACTORY.md`, `hermes/factory/DIRECTION.md`, `hermes/harness/factory.py`, `tools/factory-browser.ts` e workflow `factory.yml`; cartões antigos conservam o fluxo anterior |
 | Algo que o jogador vê | `docs/MANUAL.md` |
 | Volta de compras/saúde/lazer (motivo do dia, destino e volta para casa) | `packages/sim/src/traffic/trafficSystem.ts` (monta a volta) e números em `config/traffic.yaml` (routine.errand*) |
 | Mercado de saúde separado por tipo de prédio (UBS não é leito, leito não é posto de saúde) | filtro por `tipo.id` no construtor de `VacancyMarket` em `packages/sim/src/markets/markets.ts` (`clinics` = `ubs`, `hospitals` = `hospital`) |

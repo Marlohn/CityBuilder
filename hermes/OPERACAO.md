@@ -4,6 +4,15 @@
 > Se algo divergir, **a máquina vence**: meça de novo antes de agir e corrija este arquivo.
 > O `hermes/README.md` ensina a instalar os perfis do zero. Este arquivo descreve **o que está rodando** e por quê.
 
+## Ciclo de produto (03/10)
+
+A arquitetura nova está em [FACTORY.md](FACTORY.md). Quando `/opt/data/factory/config.json`
+existe, o sincronizador chama seu controlador e deixa de despachar os perfis antigos.
+O controlador usa sessões diretas e partidas com navegador no GitHub, mantendo os cartões
+e branches antigos. As seções seguintes documentam o fluxo anterior e sua recuperação.
+Não operar os dois despachos ao mesmo tempo. A adoção e os resultados do piloto precisam
+ser registrados; código instalado não comprova autonomia ou melhoria do jogo.
+
 ## Em uma frase
 
 ### 02/10 — erro do CLI preservado ao filtrar a saída

@@ -1,0 +1,88 @@
+name: Fábrica — etapa de produto
+run-name: Factory ${{ inputs.mission }} ${{ inputs.phase }} ${{ inputs.request_id }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      phase:
+        description: Etapa solicitada pelo controlador
+        required: true
+        type: choice
+        options: [observe, build, evaluate, verify]
+      mission:
+        description: Identificador durável da missão
+        required: true
+      request_id:
+        description: Identificador único desta chamada
+        required: true
+      context:
+        description: Contexto JSON fixado pelo controlador
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: factory-product
+  cancel-in-progress: false
+
+jobs:
+  stage:
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    env:
+      FACTORY_PHASE: ${{ inputs.phase }}
+      FACTORY_CONTEXT: ${{ inputs.context }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: factory-chromium-1.63.0-${{ runner.os }}
+      - run: npx playwright install --with-deps chromium
+      - run: npm install --global opencode-ai@1.18.33 --no-audit --no-fund
+      - name: Identidade dos commits automáticos
+        run: |
+          git config --global user.name "CityBuilder Factory"
+          git config --global user.email "factory@users.noreply.github.com"
+      - name: Executar etapa diretamente, sem coordenador LLM
+        run: python3 hermes/harness/factory.py worker
+      - name: Preservar resultado mesmo se a etapa não concluiu
+        if: always()
+        run: |
+          python3 - <<'PY'
+          import json, os, pathlib
+          directory = pathlib.Path('out/factory')
+          directory.mkdir(parents=True, exist_ok=True)
+          result = directory / 'result.json'
+          if not result.exists():
+              context = json.loads(os.environ['FACTORY_CONTEXT'])
+              result.write_text(json.dumps(dict(status='failed', phase=os.environ['FACTORY_PHASE'],
+                  mission=context['id'], request_id=context['request_id'], base_sha=context['base_sha'],
+                  error='Etapa não concluiu. Consulte o log de preparação/execução.', failure_kind='environment')))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: factory-result
+          path: |
+            out/factory/result.json
+            out/factory/candidate.bundle
+          retention-days: 30
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: factory-evidence
+          path: |
+            out/factory/**
+            !out/factory/**/address.json
+          retention-days: 14

@@ -23,6 +23,8 @@ jobs:
       - run: npm ci
       - name: Cenários do guard OpenCode (sem rede ou LLM)
         run: python3 hermes/harness/testar_opencode_guard.py
+      - name: Integridade do ciclo de produto (sem rede ou LLM)
+        run: python3 hermes/harness/testar_factory.py
       - name: Cenários e mutantes do sincronizador (sem rede ou LLM)
         run: |
           python3 hermes/harness/testar_sinc.py hermes/harness/sincronizar_github.py --sem-rede
