@@ -98,7 +98,10 @@ describe("missão: estrada de acesso visível e aviso de via desconectada", () =
     // O chão pinta o destaque onde a avenida passa (e a faixa ao lado, que fica visível).
     const mask = accessRoadHighlight(map.accessRoad, map.width, map.height);
     const em = (x: number, y: number) => mask[y * map.width + x];
-    expect(em(0, LINHA), "o primeiro quadradinho da avenida de acesso tem que estar destacado").toBeGreaterThan(0);
+    expect(
+      em(0, LINHA),
+      "o primeiro quadradinho da avenida de acesso tem que estar destacado",
+    ).toBeGreaterThan(0);
     expect(em(20, LINHA), "a avenida de acesso tem que estar destacada no meio dela").toBeGreaterThan(0);
     expect(
       em(20, LINHA - 1),
@@ -130,18 +133,16 @@ describe("missão: estrada de acesso visível e aviso de via desconectada", () =
       "terminar uma via que não se liga à avenida de acesso precisa voltar com um aviso no mesmo " +
         "campo (reason) que o aviso de serviço sem encostar em via usa",
     ).toBeTruthy();
-    expect(
-      r.reason,
-      `o aviso "${r.reason}" precisa dizer que a via está desconectada`,
-    ).toMatch(/desconectada/i);
+    expect(r.reason, `o aviso "${r.reason}" precisa dizer que a via está desconectada`).toMatch(
+      /desconectada/i,
+    );
     expect(
       r.reason,
       `o aviso "${r.reason}" precisa dizer que nada será construído enquanto ela estiver desconectada`,
     ).toMatch(/nada ser[aá] constru[ií]do/i);
-    expect(
-      r.reason,
-      `o aviso "${r.reason}" precisa dizer o que fazer (ligar na avenida de acesso)`,
-    ).toMatch(/avenida de acesso/i);
+    expect(r.reason, `o aviso "${r.reason}" precisa dizer o que fazer (ligar na avenida de acesso)`).toMatch(
+      /avenida de acesso/i,
+    );
   });
 
   it("AC3: depois de ligar a via na avenida o aviso some e a zona ao lado ganha casas e moradores", () => {
@@ -157,7 +158,9 @@ describe("missão: estrada de acesso visível e aviso de via desconectada", () =
 
     // Liga a via na avenida de acesso com uma via de 3 quadradinhos.
     const ligacao = aplicar(game, { type: "buildRoad", kind: "street", x0: 44, y0: 61, x1: 44, y1: 64 });
-    expect(ligacao.ok, `a via de ligação tem que ser construída (motivo: ${ligacao.reason ?? "-"})`).toBe(true);
+    expect(ligacao.ok, `a via de ligação tem que ser construída (motivo: ${ligacao.reason ?? "-"})`).toBe(
+      true,
+    );
     expect(
       ligacao.reason ?? "",
       `a via que se liga na avenida de acesso não pode levar o aviso de desconectada ("${ligacao.reason}")`,
@@ -178,7 +181,7 @@ describe("missão: estrada de acesso visível e aviso de via desconectada", () =
     const game = cidade("mesmo-canal");
     const via = aplicar(game, { type: "buildRoad", kind: "street", x0: 44, y0: 60, x1: 64, y1: 60 });
     // Subestação longe de qualquer via (mesma situação do aviso que já existe no jogo).
-    const servico = aplicar(game, { type: "placeService", service: "substation", x: 100, y: 100 });
+    const servico = aplicar(game, { type: "placeService", service: "subestacao", x: 100, y: 100 });
     expect(via.reason, "o aviso de via desconectada não veio").toBeTruthy();
     expect(
       servico.reason,
@@ -219,11 +222,20 @@ describe("missão: estrada de acesso visível e aviso de via desconectada", () =
       root = createRoot(host);
       root.render(createElement(App, { store, client, tools, typeLabels: {} }));
     });
-    const painel = (host.textContent ?? "").toLowerCase();
+    const painelCidade = host.querySelector(".side .panel-body");
+    expect(
+      painelCidade,
+      "a aba Cidade (que abre junto com a partida) precisa aparecer sem o jogador trocar de aba",
+    ).toBeTruthy();
+    expect(
+      host.querySelector(".tabs .active")?.textContent,
+      "a partida precisa abrir na aba Cidade (e não na Ajuda) para a dica aparecer de saída",
+    ).toBe("Cidade");
+    // Só o corpo do painel: os avisos (`.toasts`) não podem servir de prova da dica.
+    const painel = (painelCidade?.textContent ?? "").toLowerCase();
     expect(
       painel,
-      "a aba Cidade (que abre junto com a partida) precisa dizer onde fica a avenida de acesso, " +
-        "sem o jogador ter que abrir a Ajuda",
+      "a aba Cidade precisa dizer onde fica a avenida de acesso, sem o jogador ter que abrir a Ajuda",
     ).toMatch(/acesso/);
     expect(painel, "a dica da aba Cidade precisa apontar o oeste do mapa").toMatch(/oeste/);
     await act(async () => {

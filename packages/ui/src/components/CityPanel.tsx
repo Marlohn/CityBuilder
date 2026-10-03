@@ -30,6 +30,11 @@ function Bar({ label, value, color }: { label: string; value: number; color: str
 export function CityPanel({ s }: { s: StatsView }) {
   return (
     <div className="panel-body">
+      <p className="note">
+        <b>Avenida de acesso (borda oeste):</b> a faixa dourada que entra pelo oeste é a ligação da cidade com
+        o resto do país. Toda rua nova precisa se ligar a ela; via solta não aparece aviso, mas também não sai
+        nada construído ao lado até a ligação existir.
+      </p>
       <h3>Demanda</h3>
       <Bar label="Residencial" value={s.demand.residential} color="#5fb36e" />
       <Bar label="Comercial" value={s.demand.commercial} color="#6f9fe0" />
