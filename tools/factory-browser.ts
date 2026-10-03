@@ -61,7 +61,7 @@ export async function createBrowserBridge(page: Page, directory: string, url: st
       try {
         switch (action.type) {
           case "click":
-            await page.getByRole(action.role, { name: action.name, exact: true }).click({ timeout: 3000 });
+            await page.getByRole(action.role, { name: action.name, exact: true }).click({ timeout: 15_000 });
             break;
           case "point":
             await page.mouse.click(action.x, action.y);
