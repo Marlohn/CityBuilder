@@ -9,11 +9,15 @@ from pathlib import Path
 import subprocess
 from unittest.mock import patch
 
-from factory import command, worker
+from factory import command, worker, clone_candidate, snapshot_candidate, local_checks
 
 
 def main():
     root=Path.cwd().resolve()
+    with patch.dict(os.environ,{'CI':'true'}):
+        checks=local_checks(root)
+        assert 'CHECK LOCAL OK' in checks and 'Testes (Vitest)' not in checks,checks
+        assert os.environ['CI']=='true','Check privado alterou o ambiente do CI externo.'
     # O runner monta um clone com outro UID. O teste deve usar o mesmo bootstrap
     # do worker: esta exceção só consulta o SHA necessário ao contexto da fixture.
     sha=command(['git','-c','safe.directory='+str(root),'rev-parse','HEAD'])
@@ -39,6 +43,16 @@ def main():
     probe=subprocess.run(['node','-e',
         "fetch('http://127.0.0.1:4173/').then(()=>process.exit(1)).catch(()=>process.exit(0))"],capture_output=True)
     assert probe.returncode==0,'Preview continuou ativo depois da etapa.'
+    # Mesmo checkout montado com outro UID; não pode voltar a falhar só no build.
+    candidate=root/'out/bootstrap-candidate'
+    clone_candidate(root,candidate,sha,'dev/bootstrap')
+    assert (candidate/'.git').is_dir(),'Candidata compartilha a raiz Git com o runner.'
+    (candidate/'packages/bootstrap-proof.txt').write_text('código parcial da fixture')
+    command(['git','config','user.name','Factory bootstrap'],cwd=candidate)
+    command(['git','config','user.email','factory@example.invalid'],cwd=candidate)
+    snapshot=snapshot_candidate(candidate,sha,root/'out/factory','checkpoint fixture')
+    assert snapshot!=sha and (root/'out/factory/candidate.bundle').is_file()
+    assert not (root/'packages/bootstrap-proof.txt').exists(),'Executor escreveu no checkout principal.'
     print('BOOTSTRAP REAL OK: cópia Git, imagem e ação pública; nenhum LLM chamado.')
 
 

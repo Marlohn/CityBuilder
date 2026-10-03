@@ -77,6 +77,7 @@ jobs:
           path: |
             out/factory/result.json
             out/factory/candidate.bundle
+            out/factory/checkpoint.json
           retention-days: 30
       - uses: actions/upload-artifact@v4
         if: always()

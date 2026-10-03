@@ -30,6 +30,31 @@ O arquivo local state.json guarda apenas o cursor necessário para retomar esse 
   suspendem o ciclo, com causa e evidência preservadas; não gerar missões indefinidamente.
 - Código e provas são preservados ao bloquear/descartar. Não renovar limite clonando tarefa.
 - Modelos e navegador trabalham sob demanda. Espera de job/CI não ocupa uma sessão de LLM.
+- O executor usa um clone Git independente, obtido por bundle do checkout. O OpenCode
+  recebe esse diretório explicitamente. Não compartilha a raiz de um worktree com a main.
+- Testes novos da missão ficam em `tests/unit` ou `tests/e2e`. `tests/acceptance` continua
+  protegido, inclusive na permissão de escrita do modelo.
+
+## Trabalho incompleto e retomada
+
+Limite de passos não é erro de JSON nem entrega. A sessão pode continuar pelo seu ID,
+mantendo o código e as observações: até três chamadas no build e duas na observação/avaliação,
+dentro do mesmo tempo total. Cada interrupção do build guarda commit, bundle, diff e resumo.
+Falha de teste também conserva a candidata; não exige recomeçar a implementação.
+
+O controlador publica um checkpoint apenas na branch da mesma missão, sem criar PR nem
+marcar entrega. Há até duas retomadas de build entre runners. O orçamento de modelo é
+**30 minutos somados**, descontando o tempo já usado; as quatro horas de execução da
+missão e as duas correções de CI/avaliação continuam limitados. O número de retomadas não
+renova esses limites. Sem código permitido ou sem orçamento, a missão permanece bloqueada.
+
+Para recuperar uma missão bloqueada depois de corrigir sua causa, existe o comando do operador:
+`python factory.py resume --mission <id> --checkpoint <diretório> --reason <motivo>`.
+Ele confere missão/base, orçamento e limite de retomadas; publica o bundle conferido e
+reserva o mesmo cartão, issue e critérios. Mantém o contador de falhas e arquiva a causa
+da suspensão. A pausa até a recuperação é registrada; o tempo ativo anterior continua
+descontado das quatro horas. Um orçamento já esgotado não pode ser reaberto por esse comando.
+O diretório precisa de `checkpoint.json` e `candidate.bundle`; código parcial não é aprovado.
 
 Para cartões antigos continuam valendo as regras do fluxo anterior. Missões geradas
 por este controlador seguem estas regras específicas; os agentes leem este documento.
@@ -39,6 +64,10 @@ por este controlador seguem estas regras específicas; os agentes leem este docu
 O agente chama `npm run factory:browser -- act '[ações JSON]' baseline` (ou candidate).
 Pode clicar controles por role/name, clicar coordenadas, arrastar, usar teclas, esperar
 até três segundos ou reiniciar a jornada. Não oferece evaluate ou comandos internos.
+`drag` aceita `button=left|right|middle` (left por padrão). `key` aceita `ms` de 0 a 3000;
+zero é um toque, valor positivo mantém a tecla e a solta ao terminar. `wheel` recebe
+x/y/deltaY. Botão direito arrastando move o mapa; W/A/S/D mantidas também movem;
+Z/X mantidas ou a roda controlam o zoom. Os controles são soltos mesmo se a ação falhar.
 Cada resposta traz imagem, texto da interface, controles, ações, erros e hash da imagem.
 Ver a imagem exige usar a ferramenta read no caminho retornado.
 
@@ -88,3 +117,9 @@ OpenCode 1.18.33 aplica a permissão `read` ao caminho relativo ao worktree: ima
 e registros usam `out/factory/*`. A leitura de uma captura real foi conferida com o
 modelo gratuito. IDs de critérios aceitam letras maiúsculas e minúsculas (ex.: `AC1`);
 o avaliador continua obrigado a usar exatamente os IDs fixados na descoberta.
+
+O builder e o check privado retiram CI do ambiente dos seus subprocessos: o wrapper
+ignora --local quando CI=true. O CI externo continua completo e obrigatorio.
+O builder recebe permissao apenas para testes com caminhos e check --local/--only;
+nao deve repetir checks verdes. O container pode nao ter rg; grep/glob sao ferramentas
+disponiveis. O tempo de comandos tambem consome o orcamento da sessao.

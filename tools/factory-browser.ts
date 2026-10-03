@@ -17,8 +17,25 @@ const actionsSchema = z
         name: z.string().min(1).max(200),
       }),
       z.object({ type: z.literal("point"), x: coordinate, y: coordinate }),
-      z.object({ type: z.literal("drag"), x: coordinate, y: coordinate, toX: coordinate, toY: coordinate }),
-      z.object({ type: z.literal("key"), key: z.string().min(1).max(30) }),
+      z.object({
+        type: z.literal("drag"),
+        x: coordinate,
+        y: coordinate,
+        toX: coordinate,
+        toY: coordinate,
+        button: z.enum(["left", "right", "middle"]).default("left"),
+      }),
+      z.object({
+        type: z.literal("key"),
+        key: z.string().min(1).max(30),
+        ms: z.number().int().min(0).max(3000).default(0),
+      }),
+      z.object({
+        type: z.literal("wheel"),
+        x: coordinate,
+        y: coordinate,
+        deltaY: z.number().int().min(-2000).max(2000),
+      }),
       z.object({ type: z.literal("wait"), ms: z.number().int().min(0).max(3000) }),
       z.object({ type: z.literal("reset") }),
     ]),
@@ -51,15 +68,27 @@ export async function createBrowserBridge(page: Page, directory: string, url: st
             break;
           case "drag":
             await page.mouse.move(action.x, action.y);
-            await page.mouse.down();
+            await page.mouse.down({ button: action.button });
             try {
               await page.mouse.move(action.toX, action.toY, { steps: 12 });
             } finally {
-              await page.mouse.up();
+              await page.mouse.up({ button: action.button });
             }
             break;
           case "key":
-            await page.keyboard.press(action.key);
+            if (action.ms === 0) await page.keyboard.press(action.key);
+            else {
+              await page.keyboard.down(action.key);
+              try {
+                await page.waitForTimeout(action.ms);
+              } finally {
+                await page.keyboard.up(action.key);
+              }
+            }
+            break;
+          case "wheel":
+            await page.mouse.move(action.x, action.y);
+            await page.mouse.wheel(0, action.deltaY);
             break;
           case "wait":
             await page.waitForTimeout(action.ms);
