@@ -21,6 +21,7 @@
     "build": "vite build --config packages/web/vite.config.ts",
     "preview": "vite preview --config packages/web/vite.config.ts",
     "test:e2e": "playwright test",
+    "factory:browser": "tsx tools/factory-browser.ts",
     "roadmap:signals": "tsx packages/roadmap/src/cli.ts signals",
     "roadmap:build": "tsx packages/roadmap/src/cli.ts build",
     "roadmap:check": "tsx packages/roadmap/src/cli.ts check"

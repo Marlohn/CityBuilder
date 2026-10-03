@@ -25,6 +25,8 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run build
+      - name: Identificar a versão publicada
+        run: node -e 'require("node:fs").writeFileSync("dist/version.json", JSON.stringify({commit:process.env.GITHUB_SHA}))'
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist

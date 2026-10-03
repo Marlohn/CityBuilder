@@ -3,6 +3,10 @@
 Leia isto antes de qualquer tarefa. Vale para todos os papéis (Designer, Arquiteto, Revisor, QA, Dev).
 Seu papel específico está em `agents/<papel>.md`.
 
+Nas sessões diretas do ciclo de produto, o papel segue `hermes/FACTORY.md` e a missão.
+Observação e avaliação da partida usam direção, imagens e controles públicos; não precisam
+ler receitas de implementação nem instruções dos perfis antigos antes de jogar.
+
 **Guia completo do código** (onde fica cada coisa, receitas para as mudanças comuns, armadilhas): `docs/GUIA-DO-CODIGO.md`.
 Cada pacote tem um `AGENTS.md` com as regras dele (ex.: `packages/sim/AGENTS.md`).
 
@@ -23,7 +27,7 @@ Cada pacote tem um `AGENTS.md` com as regras dele (ex.: `packages/sim/AGENTS.md`
 5. **Não quebre camadas.** O motor (`packages/sim/src`) não pode importar tela, UI, `fs`, Babylon ou React.
 6. **Não use `Math.pow`, `Math.exp`, `Math.log`, `Math.sin`... no motor.** Eles podem dar resultados diferentes em cada navegador. Use tabelas prontas (geradas em `tools/`) ou só `+ - * /`.
 7. **Sorteio só pelo `Rng`** do sistema (`this.rng`), nunca `Math.random()`.
-8. **Tarefa pequena:** no máximo ~3 arquivos por mudança.
+8. **Tarefa pequena:** no fluxo anterior, no máximo ~3 arquivos por mudança. Missões do ciclo de produto limitam o comportamento e a dificuldade; veja `hermes/FACTORY.md`.
 9. **Documentação junto com o código.** Mudou comando, pasta, regra ou jeito de fazer algo? Atualize a doc no mesmo PR (tabela no fim de `docs/GUIA-DO-CODIGO.md`).
 10. **Não presuma: confira.** Antes de afirmar algo sobre o código, leia o arquivo ou rode o comando.
 
@@ -46,9 +50,12 @@ Cada pacote tem um `AGENTS.md` com as regras dele (ex.: `packages/sim/AGENTS.md`
 | `npm run roadmap:signals` | Gera os sinais automáticos para o roadmap. |
 | `npm run roadmap:build` | Recalcula a ordem do roadmap e gera `ROADMAP.md` (`--issues=arquivo.json` para rodar sem a API). |
 | `npm run roadmap:check` | Confere a métrica de sucesso dos itens com a etiqueta `entregue`. |
-| `npm run dev` | Abre o jogo no navegador (só para humanos; agentes preferem o relatório em texto). |
+| `npm run dev` | Abre o jogo no navegador. Agentes de produto também experimentam a interface; o relatório sem tela complementa essa observação. |
+| `npm run factory:browser -- act '<ações JSON>' baseline` | Ações públicas e evidência da partida no ciclo de produto (navegador iniciado pelo worker). |
 
 ## Fluxo de trabalho (GitHub)
+
+**Missões do ciclo de produto aprovado em 03/10:** siga `hermes/FACTORY.md`. O executor direto implementa um comportamento completo; critérios prévios, CI e avaliação independente continuam obrigatórios. Os passos abaixo continuam para os cartões antigos.
 
 1. Designer: `ideia`/sinal → Issue `roadmap` (formulário padrão).
 2. Arquiteto: Issue `roadmap` → Issues `tarefa` pequenas, etiqueta `pronto-pra-teste`.
