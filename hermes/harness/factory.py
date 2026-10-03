@@ -194,6 +194,12 @@ def ask_model(root, prompt, name, image=None, build=False):
 
 def worker(phase, context):
     root = Path.cwd().resolve()
+    # Checkout montado pelo runner pode pertencer a outro UID. Confiança limitada
+    # a este checkout e somente aos subprocessos desta etapa; sem config global.
+    git_count = int(os.environ.get('GIT_CONFIG_COUNT','0'))
+    os.environ.update({'GIT_CONFIG_COUNT':str(git_count+1),
+                       f'GIT_CONFIG_KEY_{git_count}':'safe.directory',
+                       f'GIT_CONFIG_VALUE_{git_count}':str(root)})
     output = root / 'out/factory'
     output.mkdir(parents=True,exist_ok=True)
     os.environ['FACTORY_OUTPUT'] = str(output)
@@ -335,7 +341,11 @@ Se faltar prova, rejeite e explique o que falta. Não acrescentar requisito novo
         for proc,stream in reversed(processes):
             if proc.poll() is None:
                 import signal
-                os.killpg(proc.pid,signal.SIGTERM)
+                try: os.killpg(proc.pid,signal.SIGTERM)
+                except ProcessLookupError: pass
+                try: proc.wait(timeout=10)
+                except subprocess.TimeoutExpired:
+                    os.killpg(proc.pid,signal.SIGKILL);proc.wait(timeout=10)
             stream.close()
     print(json.dumps({k:v for k,v in result.items() if k not in ['discovery','evaluation']},ensure_ascii=False))
     return 0 if result['status']=='success' else 1
