@@ -9,11 +9,15 @@ from pathlib import Path
 import subprocess
 from unittest.mock import patch
 
-from factory import command, worker, clone_candidate, snapshot_candidate
+from factory import command, worker, clone_candidate, snapshot_candidate, local_checks
 
 
 def main():
     root=Path.cwd().resolve()
+    with patch.dict(os.environ,{'CI':'true'}):
+        checks=local_checks(root)
+        assert 'CHECK LOCAL OK' in checks and 'Testes (Vitest)' not in checks,checks
+        assert os.environ['CI']=='true','Check privado alterou o ambiente do CI externo.'
     # O runner monta um clone com outro UID. O teste deve usar o mesmo bootstrap
     # do worker: esta exceção só consulta o SHA necessário ao contexto da fixture.
     sha=command(['git','-c','safe.directory='+str(root),'rev-parse','HEAD'])

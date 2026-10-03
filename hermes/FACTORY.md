@@ -117,3 +117,9 @@ OpenCode 1.18.33 aplica a permissão `read` ao caminho relativo ao worktree: ima
 e registros usam `out/factory/*`. A leitura de uma captura real foi conferida com o
 modelo gratuito. IDs de critérios aceitam letras maiúsculas e minúsculas (ex.: `AC1`);
 o avaliador continua obrigado a usar exatamente os IDs fixados na descoberta.
+
+O builder e o check privado retiram CI do ambiente dos seus subprocessos: o wrapper
+ignora --local quando CI=true. O CI externo continua completo e obrigatorio.
+O builder recebe permissao apenas para testes com caminhos e check --local/--only;
+nao deve repetir checks verdes. O container pode nao ter rg; grep/glob sao ferramentas
+disponiveis. O tempo de comandos tambem consome o orcamento da sessao.

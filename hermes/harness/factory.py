@@ -186,16 +186,26 @@ def snapshot_candidate(candidate, base, output, message):
     return sha
 
 
+def local_checks(directory):
+    # A etapa roda num runner, mas este check e privado e antecede o CI completo.
+    # O wrapper antigo ignora --local com CI=true; preservar gates externos completos.
+    env=os.environ.copy();env.pop('CI',None)
+    return command(['npm','run','check','--','--local'],cwd=directory,timeout=120,env=env)
+
+
 def ask_model(root, prompt, name, image=None, build=False, checkpoint=None, max_seconds=None):
     env = os.environ.copy()
     for key in ['GH_TOKEN','GITHUB_TOKEN','FACTORY_GITHUB_TOKEN']:
         env.pop(key,None)
     bash = {'*':'deny', 'npm run factory:browser -- act *':'allow'}
     if build:
-        bash.update({'npm run check*':'allow','npm run format*':'allow','npm test*':'allow',
-                     'npm run test:e2e*':'allow','npx vitest *':'allow','npx biome *':'allow',
-                     'npx tsc *':'allow','npx playwright test *':'allow','git diff*':'allow','git status*':'allow',
-                     'rg *':'allow','ls *':'allow'})
+        env.pop('CI',None)
+        bash.update({'npm run check -- --local*':'allow','npm run check -- --only=*':'allow',
+                     'npm run format*':'allow','npm test -- tests/*':'allow','npm test -- packages/*':'allow',
+                     'npx vitest run tests/*':'allow','npx vitest run packages/*':'allow',
+                     'npm run test:e2e -- tests/e2e/*':'allow','npx playwright test tests/e2e/*':'allow',
+                     'npx biome *':'allow','npx tsc *':'allow','git diff*':'allow','git status*':'allow',
+                     'git log*':'allow','rg *':'allow','ls *':'allow'})
     # OpenCode 1.18.33 compara read com o caminho relativo ao worktree.
     read_permissions = {'*':'allow' if build else 'deny','out/factory/*':'allow',
                         'docs/VISAO.md':'allow','*.env':'deny','.git/*':'deny'}
@@ -348,7 +358,10 @@ Escreva teste apropriado em tests/unit ou tests/e2e, com prova de falha antes da
 Não crie nem altere tests/acceptance: são protegidos. Não redefina critérios para satisfazer seu teste.
 Não altere infraestrutura, ferramentas, AGENTS.md, CI, dependências ou avaliador. Não faça commit, push, merge nem gh.
 Regras/dados novos da simulação exigem fonte. Uma melhoria de interface exige prova funcional.
-Rode format para os arquivos alterados, check --local e testes afetados. Documente mudanças relevantes.
+Rode format para os arquivos alterados, npm run check -- --local e apenas testes afetados.
+A suite completa pertence ao CI externo: npm test sem arquivos nao e permitido. Nao repita checks que ja passaram.
+Use comandos sem pipes head/tail; git log, git status e git diff sao consultas permitidas.
+O container pode nao ter rg: use a ferramenta grep/glob. Documente mudanças relevantes.
 O orçamento TOTAL de modelo para implementar é 30 minutos, incluindo sessões anteriores e retomadas.
 Continue do código existente; prefira solução pequena e completa. Resposta final JSON:
 {{"summary":"benefício concreto","tests":["caminhos de testes afetados"],"limitations":[]}}.'''
@@ -376,7 +389,7 @@ Continue do código existente; prefira solução pequena e completa. Resposta fi
                 if not isinstance(test,str) or '..' in test or not re.fullmatch(r'[a-zA-Z0-9_./-]+\.(test|spec)\.tsx?',test):
                     raise ValueError('Caminho de teste inválido.')
                 if not (candidate/test).is_file(): raise ValueError('Teste indicado não existe.')
-            checks = command(['npm','run','check','--','--local'],cwd=candidate,timeout=300)
+            checks = local_checks(candidate)
             (output/'local-check.log').write_text(checks)
             unit = [t for t in tests if not t.startswith('tests/e2e/')]
             browser = [t for t in tests if t.startswith('tests/e2e/')]
