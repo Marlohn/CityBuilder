@@ -153,8 +153,8 @@ export class CityRenderer {
     this.trees.update(map, this.occupied);
     if (first && !this.targetChosen) {
       // A partida começa olhando a estrada de acesso: é por ela que a cidade se liga ao país.
-      const alvo = startTarget(map.accessRoad, map.width, map.height);
-      this.camera.target.set(alvo.x, 0, alvo.z);
+      const target = startTarget(map.accessRoad, map.width, map.height);
+      this.camera.target.set(target.x, 0, target.z);
     }
   }
 

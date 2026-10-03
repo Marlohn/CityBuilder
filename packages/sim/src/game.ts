@@ -83,8 +83,8 @@ function placeStartingRoad(sim: Simulation) {
   if (!sr.enabled) return;
   const w = sim.world;
   const y = Math.floor(w.height / 2);
-  const ultimo = Math.min(sr.length, w.width) - 1;
-  for (let x = 0; x <= ultimo; x++) {
+  const lastX = Math.min(sr.length, w.width) - 1;
+  for (let x = 0; x <= lastX; x++) {
     const i = w.idx(x, y);
     w.roads[i] = ROAD_ID[sr.kind];
     w.trees[i] = 0;
@@ -93,5 +93,5 @@ function placeStartingRoad(sim: Simulation) {
   w.zoneVersion++;
   w.mapVersion++;
   // A tela precisa saber onde ela está para destacar (é a ligação da cidade com o resto do país).
-  sim.accessRoad = { x0: 0, y0: y, x1: ultimo, y1: y };
+  sim.accessRoad = { x0: 0, y0: y, x1: lastX, y1: y };
 }

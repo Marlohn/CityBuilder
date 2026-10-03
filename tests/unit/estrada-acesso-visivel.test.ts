@@ -2,7 +2,7 @@
 /**
  * Teste de aceitação da missão "Estrada de acesso visível e aviso de rua desconectada".
  *
- * Um `it` por critério (AC1..AC4). Hoje os quatro falham:
+ * Um `it` por critério (AC1..AC4). Verifica os quatro comportamentos:
  *  - AC1: nada diz onde fica a avenida de acesso do oeste (só a aba Ajuda) e a câmera começa no
  *    meio do mapa, longe dela;
  *  - AC2: terminar uma via solta devolve `reason` vazio, então nenhum aviso aparece;

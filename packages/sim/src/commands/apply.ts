@@ -88,7 +88,7 @@ function clampRect(world: World, x0: number, y0: number, x1: number, y1: number)
  * (a malha ligada à borda do mapa). Sem ligação, nenhuma construtora começa obra ali — o mesmo
  * formato do aviso que o serviço sem via já devolve (mensagem em `reason`).
  */
-const AVISO_SEM_ACESSO =
+const DISCONNECTED_ROAD_WARNING =
   "Via desconectada: nada será construído ao lado dela até ela se ligar à avenida de acesso do oeste.";
 
 function buildRoad(
@@ -128,7 +128,11 @@ function buildRoad(
   world.roadVersion++;
   world.zoneVersion++;
   world.mapVersion++;
-  return { ok: true, cost, ...(ctx.network.exitFor(tiles[0]!) < 0 ? { reason: AVISO_SEM_ACESSO } : {}) };
+  return {
+    ok: true,
+    cost,
+    ...(ctx.network.exitFor(tiles[0]!) < 0 ? { reason: DISCONNECTED_ROAD_WARNING } : {}),
+  };
 }
 
 function zone(ctx: CommandContext, zoneId: number, x0: number, y0: number, x1: number, y1: number): Partial {

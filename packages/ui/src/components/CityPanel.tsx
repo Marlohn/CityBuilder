@@ -32,8 +32,8 @@ export function CityPanel({ s }: { s: StatsView }) {
     <div className="panel-body">
       <p className="note">
         <b>Avenida de acesso (borda oeste):</b> a faixa dourada que entra pelo oeste é a ligação da cidade com
-        o resto do país. Toda rua nova precisa se ligar a ela; via solta não aparece aviso, mas também não sai
-        nada construído ao lado até a ligação existir.
+        o resto do país. Ligue suas ruas a ela. Ao construir uma via desconectada, o aviso explica que as
+        zonas ao lado só poderão crescer depois da ligação.
       </p>
       <h3>Demanda</h3>
       <Bar label="Residencial" value={s.demand.residential} color="#5fb36e" />

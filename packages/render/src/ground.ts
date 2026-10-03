@@ -58,7 +58,7 @@ export class GroundLayer {
         let g = 160 + noise * 16;
         let b = 80 + noise * 8;
         let border = false;
-        let livre = true;
+        let available = true;
         if (map.water?.[i]) {
           // Água: azul, um pouco mais escuro perto da margem (dá sensação de profundidade).
           const edge =
@@ -69,24 +69,24 @@ export class GroundLayer {
           r = edge ? 95 : 60 + noise * 8;
           g = edge ? 150 : 120 + noise * 10;
           b = edge ? 190 : 185 + noise * 10;
-          livre = false;
+          available = false;
         } else if (map.roads[i]) {
           r = g = b = 105;
-          livre = false;
+          available = false;
         } else if (occupied[i]) {
           r = 170;
           g = 170;
           b = 160;
-          livre = false;
+          available = false;
         } else if (map.zones[i]) {
           const c = ZONE_COLORS[map.zones[i]!]!;
           [r, g, b] = c;
           border = true;
-          livre = false;
+          available = false;
         }
         // Estrada de acesso: faixa dourada no chão ao lado da avenida que entra pelo oeste.
-        const marca = this.highlight[i] ?? 0;
-        if (marca === ACCESS_BORDER && livre) {
+        const mark = this.highlight[i] ?? 0;
+        if (mark === ACCESS_BORDER && available) {
           r = 224 + noise * 12;
           g = 182 + noise * 12;
           b = 84;
@@ -95,11 +95,11 @@ export class GroundLayer {
           for (let px = 0; px < PX; px++) {
             const edge = border && (px === 0 || py === 0);
             // Borda dourada dentro do quadradinho da avenida (a via é coberta pelo modelo 3D).
-            const linha = marca === ACCESS_ROAD && (py === 0 || py === PX - 1);
+            const roadEdge = mark === ACCESS_ROAD && (py === 0 || py === PX - 1);
             const k = ((ty * PX + py) * w + (tx * PX + px)) * 4;
-            d[k] = edge ? r * 0.8 : linha ? 244 : r;
-            d[k + 1] = edge ? g * 0.8 : linha ? 208 : g;
-            d[k + 2] = edge ? b * 0.8 : linha ? 96 : b;
+            d[k] = edge ? r * 0.8 : roadEdge ? 244 : r;
+            d[k + 1] = edge ? g * 0.8 : roadEdge ? 208 : g;
+            d[k + 2] = edge ? b * 0.8 : roadEdge ? 96 : b;
             d[k + 3] = 255;
           }
         }
