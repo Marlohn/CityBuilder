@@ -344,6 +344,7 @@ Mudou isto → atualize aquilo **no mesmo PR**:
 | Nome de controle fornecido pela ponte | `factory-browser.ts` usa texto visível com espaços normalizados, compatível com click por role/name; teste `factory-browser.spec.ts` clica usando o próprio nome informado pela ponte |
 | Click da ponte expirando antes de estabilizar no runner | `factory-browser.ts` aguarda até 15 s no click, mantendo verificações de visibilidade/estabilidade e registro de erro; wait/key continuam limitados a 3 s |
 | Algo que o jogador vê | `docs/MANUAL.md` |
+| Destaque da avenida de acesso e aviso de rua desconectada | `MapView.accessRoad` recebe o retângulo derivado de `world.startingRoad`; `mapViews.ts` e `worker.ts` enviam, `accessRoad.ts`/`ground.ts` destacam e `camera.ts:startTarget` enquadra. `apply.ts` consulta `network.exitFor` e devolve aviso em `CommandResult.reason`; regras de crescimento e formato do save permanecem os mesmos |
 | Volta de compras/saúde/lazer (motivo do dia, destino e volta para casa) | `packages/sim/src/traffic/trafficSystem.ts` (monta a volta) e números em `config/traffic.yaml` (routine.errand*) |
 | Mercado de saúde separado por tipo de prédio (UBS não é leito, leito não é posto de saúde) | filtro por `tipo.id` no construtor de `VacancyMarket` em `packages/sim/src/markets/markets.ts` (`clinics` = `ubs`, `hospitals` = `hospital`) |
 | Parâmetro novo do prefeito automático (`schoolTrigger`, `clinicTrigger`, `nearbyTiles` em `MayorOptions`) | JSDoc do campo em `packages/bots/src/mayor.ts` com a conta e a fonte (ou `PENDENTE`) |

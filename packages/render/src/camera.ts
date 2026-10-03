@@ -2,6 +2,7 @@
  * Contas da câmera e do clique, sem Babylon (testáveis sem navegador).
  * Coordenadas do mundo: x e z no chão (1 unidade = 1 quadradinho), y para cima.
  */
+import type { TileRect } from "@city/contract";
 
 export interface Vec3 {
   x: number;
@@ -36,6 +37,26 @@ export function rayBox(o: Vec3, d: Vec3, min: Vec3, max: Vec3): number | null {
   }
   if (tmax < Math.max(tmin, 0)) return null;
   return Math.max(tmin, 0);
+}
+
+/**
+ * Onde a câmera começa a partida: na ponta leste da estrada de acesso (a avenida que entra pelo
+ * oeste), para o jogador ver de saída por onde a cidade se liga ao resto do país e ter espaço
+ * livre à frente para construir. Sem estrada de acesso, no meio do mapa.
+ */
+export function startTarget(
+  accessRoad: TileRect | null | undefined,
+  width: number,
+  height: number,
+): { x: number; z: number } {
+  if (!accessRoad) return { x: width / 2, z: height / 2 };
+  const x1 = Math.max(accessRoad.x0, accessRoad.x1);
+  const y0 = Math.min(accessRoad.y0, accessRoad.y1);
+  const y1 = Math.max(accessRoad.y0, accessRoad.y1);
+  return {
+    x: Math.max(0, Math.min(width, x1 - 6)),
+    z: Math.max(0, Math.min(height, (y0 + y1) / 2)),
+  };
 }
 
 export interface PickBox {

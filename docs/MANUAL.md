@@ -6,6 +6,11 @@ Você é quem planeja a cidade: abre ruas, define onde pode ter casa, comércio 
 
 O mapa começa vazio, com um **rio** no leste, alguns **lagos** e uma **avenida saindo da borda oeste**. Não dá para construir, zonear nem abrir via na água (ponte ainda não existe). Ela liga a cidade ao resto do mundo: é por ela que as famílias chegam e que o material das obras entra. Toda rua precisa se ligar a ela, senão nada é construído ali.
 
+A partida abre com a câmera voltada para a avenida de acesso, marcada por uma faixa dourada.
+A dica no painel Cidade explica essa ligação. Ao terminar uma rua desconectada, aparece um aviso
+no mesmo lugar dos demais avisos de construção. Conecte a rua à avenida para permitir o crescimento
+das zonas próximas; o aviso é temporário, e a via de ligação não gera outro aviso de desconexão.
+
 ## O tempo
 
 - **Cada dia do jogo = um ano de vida.** Em um dia, cada pessoa faz um aniversário.

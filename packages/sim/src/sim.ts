@@ -4,7 +4,7 @@
  * Princípio: a performance nunca muda o resultado, só a velocidade.
  * Mesma semente + mesmos comandos nos mesmos ticks = mesma cidade.
  */
-import type { Command, CommandResult, DirectorParam, TimedCommand } from "@city/contract";
+import type { Command, CommandResult, DirectorParam, TileRect, TimedCommand } from "@city/contract";
 import { applyCommand, type CommandContext } from "./commands/apply";
 import type { GameData } from "./config/load";
 import type { GameConfig } from "./config/schema";
@@ -50,6 +50,11 @@ export class Simulation {
   readonly buildings: Buildings;
   readonly treasury: Treasury;
   readonly systems: System[] = [];
+  /**
+   * Retângulo da estrada de acesso que já existe no começo (a avenida que entra pelo oeste).
+   * A tela usa para destacar onde a cidade se liga ao resto do país. Null se a config não a põe.
+   */
+  accessRoad: TileRect | null = null;
   /** Todos os comandos aplicados, com o tick (para save e replay). */
   readonly commandLog: TimedCommand[] = [];
   /** Multiplicadores ajustados pela diretora (IA opcional). 1 = regra normal. */

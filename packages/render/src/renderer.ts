@@ -21,7 +21,7 @@ import {
   Vector3,
 } from "@babylonjs/core";
 import type { BuildingView, MapView, VehiclesView } from "@city/contract";
-import { type PickBox, pickTile, rayGround, screenAxesOnGround } from "./camera";
+import { type PickBox, pickTile, rayGround, screenAxesOnGround, startTarget } from "./camera";
 import { GroundLayer } from "./ground";
 import { BuildingLayer, type BuildingVisual, RoadLayer, TreeLayer, VehicleLayer } from "./layers";
 import { ModelLibrary } from "./models";
@@ -152,7 +152,9 @@ export class CityRenderer {
     this.roads.update(map);
     this.trees.update(map, this.occupied);
     if (first && !this.targetChosen) {
-      this.camera.target.set(map.width / 2, 0, map.height / 2);
+      // A partida começa olhando a estrada de acesso: é por ela que a cidade se liga ao país.
+      const target = startTarget(map.accessRoad, map.width, map.height);
+      this.camera.target.set(target.x, 0, target.z);
     }
   }
 
