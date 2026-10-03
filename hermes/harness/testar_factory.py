@@ -47,6 +47,21 @@ class FactoryTests(unittest.TestCase):
                 dict(type='step_finish',part=dict(reason='stop'))]
         with self.assertRaises(SessionIncomplete): parse_model_result('\n'.join(map(json.dumps,events)))
 
+    def test_shallow_checkout_fails_before_creating_candidate(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);repo=root/'source';repo.mkdir()
+            command(['git','init',repo]);command(['git','config','user.name','Test'],cwd=repo)
+            command(['git','config','user.email','test@example.invalid'],cwd=repo)
+            (repo/'file').write_text('base');command(['git','add','.'],cwd=repo)
+            command(['git','commit','-m','base'],cwd=repo)
+            (repo/'file').write_text('next');command(['git','commit','-am','next'],cwd=repo)
+            shallow=root/'shallow';command(['git','clone','--depth','1',repo.as_uri(),shallow])
+            candidate=root/'candidate';sha=command(['git','rev-parse','HEAD'],cwd=shallow)
+            with self.assertRaisesRegex(ValueError,'fetch-depth: 0'):
+                clone_candidate(shallow,candidate,sha,'dev/test')
+            self.assertFalse(candidate.exists())
+            self.assertFalse(candidate.with_suffix('.source.bundle').exists())
+
     def test_partial_source_survives_in_bundle_and_is_not_a_completed_feature(self):
         with tempfile.TemporaryDirectory() as directory:
             root=Path(directory);repo=root/'source';repo.mkdir()
@@ -227,6 +242,8 @@ class FactoryTests(unittest.TestCase):
             controller.state=dict(base_sha=base,branch='dev/factory-test')
             bare=root/'integration.git'
             command(['git','clone','--bare',repo,bare])
+            # Fetch pode iniciar maintenance em background e disputar a limpeza da fixture.
+            command(['git','--git-dir',bare,'config','maintenance.auto','false'])
             command(['git','--git-dir',bare,'remote','set-url','origin',repo])
             (repo/'packages/proof.txt').write_text('after')
             command(['git','add','.'],cwd=repo);command(['git','commit','-m','candidate'],cwd=repo)

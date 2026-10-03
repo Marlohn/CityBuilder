@@ -161,6 +161,8 @@ def clone_candidate(root, directory, ref, branch):
     # impede que ferramentas escrevam no checkout principal em vez da candidata.
     # O clone local de .git de outro UID também é rejeitado pelo Git. Um bundle
     # criado pelo processo contém os objetos e dispensa essa confiança adicional.
+    if command(['git','rev-parse','--is-shallow-repository'],cwd=root) == 'true':
+        raise ValueError('Checkout incompleto: a fabrica exige fetch-depth: 0 para preservar o historico da candidata.')
     source=Path(directory).with_suffix('.source.bundle')
     command(['git','bundle','create',source,'--all'],cwd=root,timeout=120)
     try: command(['git','clone','--no-checkout',source,directory],timeout=120)
