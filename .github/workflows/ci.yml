@@ -99,12 +99,18 @@ jobs:
       - name: Conferir versão da imagem e do pacote
         run: |
           node -e 'const actual = require("@playwright/test/package.json").version; if (actual !== "1.63.0") throw new Error("Atualize também a imagem Playwright do CI: pacote " + actual); console.log("Playwright " + actual + ": imagem e pacote compatíveis");'
+      - name: Bootstrap real da fábrica (Git, build e navegador, sem LLM)
+        if: matrix.shard == 1
+        run: python3 hermes/harness/testar_factory_startup.py
       - run: npm run test:e2e -- --shard=${{ matrix.shard }}/2
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: prints-da-tela-${{ matrix.shard }}
-          path: test-results/
+          path: |
+            test-results/
+            out/factory/**
+            !out/factory/**/address.json
 
   e2e:
     name: teste de tela (Playwright)
