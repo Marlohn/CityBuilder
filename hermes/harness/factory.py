@@ -105,7 +105,7 @@ def validate_discovery(value, directory):
     if not isinstance(criteria, list) or not 1 <= len(criteria) <= 4: raise ValueError('Use 1 a 4 critérios.')
     identifiers = []
     for criterion in criteria:
-        if not re.fullmatch(r'[a-z][a-z0-9_-]{0,30}', str(criterion.get('id', ''))): raise ValueError('ID de critério inválido.')
+        if not re.fullmatch(r'[A-Za-z][A-Za-z0-9_-]{0,30}', str(criterion.get('id', ''))): raise ValueError('ID de critério inválido.')
         if not criterion.get('behavior'): raise ValueError('Critério sem comportamento.')
         identifiers.append(criterion['id'])
     if len(set(identifiers)) != len(identifiers): raise ValueError('Critérios duplicados.')
@@ -160,8 +160,9 @@ def ask_model(root, prompt, name, image=None, build=False):
                      'npm run test:e2e*':'allow','npx vitest *':'allow','npx biome *':'allow',
                      'npx tsc *':'allow','npx playwright test *':'allow','git diff*':'allow','git status*':'allow',
                      'rg *':'allow','ls *':'allow'})
-    read_permissions = {'*':'allow' if build else 'deny','*/out/factory/*':'allow',
-                        '*/docs/VISAO.md':'allow','*.env':'deny','*/.git/*':'deny'}
+    # OpenCode 1.18.33 compara read com o caminho relativo ao worktree.
+    read_permissions = {'*':'allow' if build else 'deny','out/factory/*':'allow',
+                        'docs/VISAO.md':'allow','*.env':'deny','.git/*':'deny'}
     config = {'autoupdate':False, 'permission':{'*':'deny', 'read':read_permissions, 'glob':'allow', 'grep':'allow' if build else 'deny',
               'edit':'allow' if build else 'deny', 'bash':bash, 'task':'deny', 'webfetch':'allow' if build else 'deny'},
               'agent':{'build':{'steps':60 if build else 22}}}
@@ -265,7 +266,7 @@ Observação inicial: {first}
 Escolha uma melhoria pequena que altere o que alguém faz ou entende numa partida e caiba em até 4 horas.
 Se não houver oportunidade fundamentada: retorne JSON decision=no_opportunity, reason, evidence=[IDs].
 Se houver: JSON decision=mission,title,problem,hypothesis,player_benefit,category,
-evidence=[IDs reais de observações com ações bem-sucedidas],acceptance=[{{id,behavior}}] (1 a 4).
+evidence=[IDs reais de observações com ações bem-sucedidas],acceptance=[{{id:"AC1",behavior}}] (1 a 4).
 Critérios descrevem benefício e comportamento, não arquivos nem solução técnica. Não repita backlog.
 Separe fato e hipótese no texto. Português claro. Somente o JSON na resposta final.'''
             value = ask_model(root,prompt,'observe',output/'baseline/0001.png')

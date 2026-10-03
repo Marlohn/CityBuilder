@@ -83,3 +83,8 @@ A primeira missão é o piloto de descoberta e entrega. Imagem inicial sozinha n
 Uma entrega só conta após versão publicada identificada e conferência de abertura/controle.
 Disponibilidade do modelo, qualidade das escolhas e autonomia de 24 horas ainda precisam
 ser medidas em funcionamento. Este fluxo não transforma um teste verde em prova de diversão.
+
+OpenCode 1.18.33 aplica a permissão `read` ao caminho relativo ao worktree: imagens
+e registros usam `out/factory/*`. A leitura de uma captura real foi conferida com o
+modelo gratuito. IDs de critérios aceitam letras maiúsculas e minúsculas (ex.: `AC1`);
+o avaliador continua obrigado a usar exatamente os IDs fixados na descoberta.
