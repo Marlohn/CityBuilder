@@ -242,6 +242,8 @@ class FactoryTests(unittest.TestCase):
             controller.state=dict(base_sha=base,branch='dev/factory-test')
             bare=root/'integration.git'
             command(['git','clone','--bare',repo,bare])
+            # Fetch pode iniciar maintenance em background e disputar a limpeza da fixture.
+            command(['git','--git-dir',bare,'config','maintenance.auto','false'])
             command(['git','--git-dir',bare,'remote','set-url','origin',repo])
             (repo/'packages/proof.txt').write_text('after')
             command(['git','add','.'],cwd=repo);command(['git','commit','-m','candidate'],cwd=repo)
