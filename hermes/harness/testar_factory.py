@@ -42,6 +42,11 @@ class FactoryTests(unittest.TestCase):
                 validate_discovery(proposal, root)
             proposal['evidence'] = ['0002']
             self.assertEqual(validate_discovery(proposal,root)['decision'],'mission')
+            proposal['acceptance'][0]['id'] = 'AC1'
+            self.assertEqual(validate_discovery(proposal,root)['acceptance'][0]['id'],'AC1')
+            proposal['acceptance'][0]['id'] = '../AC1'
+            with self.assertRaises(ValueError): validate_discovery(proposal,root)
+            proposal['acceptance'][0]['id'] = 'AC1'
             observation(root,'0002',[{'type':'wait','ms':3000},{'type':'reset'}])
             with self.assertRaises(ValueError): validate_discovery(proposal,root)
 
