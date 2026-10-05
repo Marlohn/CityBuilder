@@ -37,9 +37,10 @@ const ROLE_COLORS: Record<SemanticRole, readonly (readonly [number, number, numb
     [0.49, 0.4, 0.67],
   ],
   roof: [
-    [0.82, 0.84, 0.82],
-    [0.67, 0.71, 0.72],
-    [0.89, 0.82, 0.7],
+    [0.66, 0.7, 0.68],
+    [0.45, 0.52, 0.55],
+    [0.75, 0.57, 0.42],
+    [0.37, 0.55, 0.59],
   ],
   glass: [
     [0.25, 0.66, 0.75],
@@ -569,6 +570,36 @@ export class PocV3Showcase {
       this.box(`${id}-parapet-${name}`, "trim", x + rx, roofY, z + rz, sx, 0.2, sz, 1);
     }
 
+    if (variant % 3 === 0) {
+      this.box(
+        `${id}-skylight`,
+        "glass",
+        x - w * 0.16,
+        roofY + 0.12,
+        z + d * 0.06,
+        Math.min(0.8, w * 0.34),
+        0.08,
+        Math.min(0.62, d * 0.34),
+        variant,
+      );
+      this.box(
+        `${id}-solar`,
+        "glass",
+        x + w * 0.2,
+        roofY + 0.13,
+        z - d * 0.08,
+        Math.min(0.7, w * 0.28),
+        0.07,
+        Math.min(0.52, d * 0.28),
+        variant + 1,
+      );
+    } else if (variant % 3 === 1) {
+      this.cylinder(`${id}-vent-a`, "trim", x - w * 0.18, roofY + 0.1, z, 0.22, 0.28, 1);
+      this.cylinder(`${id}-vent-b`, "trim", x + w * 0.12, roofY + 0.1, z + d * 0.16, 0.18, 0.24, 0);
+    } else {
+      this.box(`${id}-roof-accent`, "accent", x, roofY + 0.1, z, w * 0.36, 0.16, d * 0.24, variant);
+    }
+
     if (h > 2.1) {
       this.box(`${id}-roof-unit-a`, "trim", x - 0.48, roofY + 0.14, z + 0.12, 0.5, 0.3, 0.44, 1);
       this.box(`${id}-roof-unit-b`, "trim", x + 0.38, roofY + 0.14, z + 0.16, 0.34, 0.24, 0.34, 0);
@@ -694,6 +725,23 @@ export class PocV3Showcase {
     this.car("traffic-c", 67.25, 63.72, 1);
     this.car("traffic-d", 63.72, 67.4, 0, true);
 
+    // Small transit stop and street furniture add a second human-scale focal point.
+    this.box("bus-stop-base", "paving", 70.55, 0.04, 64.95, 1.6, 0.07, 0.48, 1);
+    this.box("bus-stop-back", "glass", 70.65, 0.12, 65.08, 1.25, 0.92, 0.05, 1);
+    this.box("bus-stop-side", "glass", 69.99, 0.12, 64.88, 0.05, 0.92, 0.42, 0);
+    this.box("bus-stop-roof", "accent", 70.35, 1.03, 64.97, 1.48, 0.09, 0.56, 1);
+    this.box("bus-stop-bench", "trim", 70.42, 0.11, 64.92, 0.72, 0.2, 0.2, 1);
+    this.box("bus-stop-sign", "accent", 69.78, 0.14, 64.95, 0.12, 0.7, 0.12, 2);
+
+    for (const [name, x, z, sx, sz, variant] of [
+      ["green-pocket-nw", 56.95, 60.6, 0.72, 2.0, 0],
+      ["green-pocket-ne", 71.0, 60.4, 0.68, 2.2, 1],
+      ["green-pocket-sw", 57.0, 67.5, 0.7, 2.0, 2],
+      ["green-pocket-se", 71.0, 67.7, 0.72, 2.2, 0],
+    ] as const) {
+      this.box(name, "vegetation", x, 0.015, z, sx, 0.04, sz, variant);
+    }
+
     for (const [x, z, v, scale] of [
       [56.95, 58.75, 0, 0.9],
       [61.95, 58.75, 1, 0.82],
@@ -706,6 +754,12 @@ export class PocV3Showcase {
       [62.55, 69.35, 0, 0.9],
       [70.95, 65.65, 1, 0.9],
       [70.75, 69.55, 2, 0.94],
+      [56.85, 60.35, 2, 0.78],
+      [56.9, 67.55, 0, 0.82],
+      [71.05, 60.35, 1, 0.82],
+      [71.0, 67.65, 2, 0.84],
+      [65.55, 69.55, 0, 0.74],
+      [68.2, 69.62, 1, 0.76],
     ] as const) {
       this.tree(x, z, v, scale);
     }
@@ -755,6 +809,8 @@ export class PocV3Showcase {
       ["person-j", 69.6, 65.5, 1],
       ["person-k", 70.45, 65.6, 2],
       ["person-l", 68.0, 65.55, 3],
+      ["person-m", 70.15, 64.9, 0],
+      ["person-n", 70.7, 65.0, 2],
     ] as const) {
       this.person(name, x, z, variant);
     }
