@@ -178,16 +178,19 @@ function buildPocV3Gallery() {
   // Blocos curtos e repetíveis: a cena mede leitura urbana, não capacidade máxima do mapa.
   const gridX = [68, 72, 76, 80, 84, 88, 92];
   const gridY = [116, 120, 124, 128, 132, 136, 140];
+  // Liga primeiro a espinha dorsal à estrada de acesso; assim as vias seguintes já nascem conectadas
+  // e a screenshot da POC não fica coberta por avisos transitórios de rua desconectada.
+  client.command({ type: "buildRoad", kind: "avenue", x0: 47, y0: 128, x1: 98, y1: 128 });
   for (const x of gridX)
     client.command({ type: "buildRoad", kind: "street", x0: x, y0: gridY[0]!, x1: x, y1: gridY.at(-1)! });
   for (const y of gridY) {
-    const avenue = y === 128;
+    if (y === 128) continue;
     client.command({
       type: "buildRoad",
-      kind: avenue ? "avenue" : "street",
-      x0: avenue ? 47 : gridX[0]!,
+      kind: "street",
+      x0: gridX[0]!,
       y0: y,
-      x1: avenue ? 98 : gridX.at(-1)!,
+      x1: gridX.at(-1)!,
       y1: y,
     });
   }
