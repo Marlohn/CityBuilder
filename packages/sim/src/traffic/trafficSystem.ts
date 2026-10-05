@@ -435,22 +435,76 @@ export class TrafficSystem implements System {
     return Math.ceil(bs.homesCapacity(b) * cars.parkingPerHome + bs.jobsCapacity(b) * cars.parkingPerJob);
   }
 
+  private hasRoad(tile: number): boolean {
+    return tile >= 0 && this.city.sim.world.roads[tile] !== 0;
+  }
+
+  /** Vende o carro quando não existe nenhum lugar físico válido para deixá-lo. */
+  private sellCar(v: number) {
+    const veh = this.vehicles;
+    const h = veh.owner[v]!;
+    this.removeCar(v);
+    veh.driver[v] = -1;
+    if (h >= 0 && this.city.hh.alive[h] && this.city.hh.car[h] === v) {
+      this.city.hh.car[h] = -1;
+      this.city.hh.cars[h] = 0;
+    }
+  }
+
+  /**
+   * Um estacionamento deixou de existir: tenta a rua local, depois a casa da família.
+   * Sem nenhum dos dois, o carro é vendido em vez de ficar apontando para terreno vazio.
+   */
+  private relocateParkedCar(v: number, preferredTile = -1, avoidBuilding = -1) {
+    const city = this.city;
+    const veh = this.vehicles;
+    const bs = city.sim.buildings;
+    veh.state[v] = VSTATE.parked;
+    veh.routes[v] = null;
+    veh.routeCum[v] = null;
+    veh.parkedAt[v] = -1;
+    veh.streetTile[v] = -1;
+
+    if (this.hasRoad(preferredTile)) {
+      veh.streetTile[v] = preferredTile;
+      return;
+    }
+
+    const h = veh.owner[v]!;
+    const home = h >= 0 && city.hh.alive[h] ? city.hh.home[h]! : -1;
+    if (home >= 0 && home !== avoidBuilding && bs.isActive(home) && this.hasRoad(bs.access[home]!)) {
+      // O carro foi buscado/guinchado para casa; o motorista não continua preso no local removido.
+      veh.driver[v] = -1;
+      this.park(v, home);
+      return;
+    }
+
+    this.sellCar(v);
+  }
+
   private park(v: number, b: number) {
     const veh = this.vehicles;
     const bs = this.city.sim.buildings;
     veh.state[v] = VSTATE.parked;
     veh.routes[v] = null;
     veh.routeCum[v] = null;
-    if (b >= 0 && bs.parked[b]! < this.parkingCapacity(b)) {
+    if (b >= 0 && bs.isActive(b) && bs.parked[b]! < this.parkingCapacity(b)) {
       veh.parkedAt[v] = b;
       veh.streetTile[v] = -1;
       bs.parked[b]!++;
-    } else {
-      // Sem vaga no prédio: estaciona na rua em frente (e conta como desejo não atendido).
-      veh.parkedAt[v] = -1;
-      veh.streetTile[v] = b >= 0 ? bs.access[b]! : -1;
-      this.city.year.parkingMisses++;
+      return;
     }
+
+    // Sem vaga no prédio: estaciona na rua em frente, mas só se a via ainda existir.
+    const access = b >= 0 ? bs.access[b]! : -1;
+    if (this.hasRoad(access)) {
+      veh.parkedAt[v] = -1;
+      veh.streetTile[v] = access;
+      this.city.year.parkingMisses++;
+      return;
+    }
+
+    this.relocateParkedCar(v, -1, b);
   }
 
   private unpark(v: number) {
@@ -681,16 +735,27 @@ export class TrafficSystem implements System {
     this.arrivals[at]!.push({ code: t.toDest ? t.person : -1 - t.person, purpose: t.purpose });
   }
 
-  /** Prédio demolido: carros estacionados nele vão para a rua em frente. */
+  /** Prédio demolido: carros vão para a rua local; sem via, voltam para casa ou são vendidos. */
   onBuildingRemoved(b: number) {
     const veh = this.vehicles;
     const bs = this.city.sim.buildings;
+    const access = bs.access[b]!;
     for (let v = 0; v < veh.count; v++) {
       if (veh.state[v] === VSTATE.parked && veh.parkedAt[v] === b) {
         bs.parked[b]!--;
-        veh.parkedAt[v] = -1;
-        veh.streetTile[v] = bs.access[b]!;
+        this.relocateParkedCar(v, access, b);
       }
+    }
+  }
+
+  /** Via demolida: nenhum carro estacionado pode continuar apontando para o quadradinho removido. */
+  onRoadsRemoved() {
+    const veh = this.vehicles;
+    const world = this.city.sim.world;
+    for (let v = 0; v < veh.count; v++) {
+      if (veh.state[v] !== VSTATE.parked || veh.parkedAt[v]! >= 0) continue;
+      const tile = veh.streetTile[v]!;
+      if (tile >= 0 && world.roads[tile] === 0) this.relocateParkedCar(v);
     }
   }
 
@@ -700,12 +765,10 @@ export class TrafficSystem implements System {
     veh.moving.delete(v);
     const dest = veh.destBuilding[v]!;
     if (dest >= 0 && this.city.sim.buildings.state[dest] === 3) {
-      // O destino foi demolido durante a viagem: estaciona na rua.
-      veh.state[v] = VSTATE.parked;
-      veh.routes[v] = null;
-      veh.routeCum[v] = null;
-      veh.parkedAt[v] = -1;
-      veh.streetTile[v] = this.city.sim.buildings.access[dest]!;
+      // O destino foi demolido durante a viagem: usa a via antiga só se ela ainda existir.
+      this.relocateParkedCar(v, this.city.sim.buildings.access[dest]!, dest);
+      // A viagem perdeu o destino; ninguém continua "dirigindo" um carro já realocado.
+      veh.driver[v] = -1;
       return;
     }
     if (dest === OUTSIDE_JOB) {
