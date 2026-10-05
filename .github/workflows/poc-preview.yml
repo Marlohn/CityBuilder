@@ -41,7 +41,7 @@ jobs:
           test("galeria visual da POC", async ({ page }) => {
             const errors: string[] = [];
             page.on("pageerror", (e) => errors.push(e.message));
-            await page.goto("/?seed=poc-gallery&modo=livre");
+            await page.goto("/?seed=poc-gallery&modo=livre&visual=poc");
             await page.waitForFunction(() => window.__city?.store.get().ready, null, { timeout: 120_000 });
             await page.evaluate(() => {
               const c = window.__city.client;
