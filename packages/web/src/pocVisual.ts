@@ -90,8 +90,8 @@ export class IsometricPocVisual {
       ["accent", P.coral, "box"], ["accent2", P.teal, "box"], ["dark", P.dark, "box"], ["construction", P.construction, "box"],
       ["trunk", P.trunk, "cylinder"], ["tree", P.tree, "sphere"], ["tree2", P.tree2, "sphere"], ["person", P.blue, "box"], ["head", P.cream, "sphere"], ["carTop", P.white, "box"],
     ];
-    bodyColors.forEach((x, i) => defs.push([`body${i}`, x, "box"]));
-    carColors.forEach((x, i) => defs.push([`car${i}`, x, "box"]));
+    for (let i = 0; i < bodyColors.length; i++) defs.push([`body${i}`, bodyColors[i]!, "box"]);
+    for (let i = 0; i < carColors.length; i++) defs.push([`car${i}`, carColors[i]!, "box"]);
     for (const [key, rgb, shape] of defs) {
       const mesh = shape === "sphere" ? this.sphere(`poc/${key}`, rgb) : shape === "cylinder" ? this.cylinder(`poc/${key}`, rgb) : this.box(`poc/${key}`, rgb);
       this.batches.set(key, new Batch(mesh));
@@ -119,7 +119,7 @@ export class IsometricPocVisual {
   setVehicles(v: VehiclesView) {
     if (!this.active) return;
     const keys = [...carColors.map((_, i) => `car${i}`), "carTop", "person", "head"];
-    keys.forEach((k) => this.b(k).reset());
+    for (const k of keys) this.b(k).reset();
     for (let i = 0; i < v.count; i++) {
       const x = v.data[i * 4]!, z = v.data[i * 4 + 1]!, a = v.data[i * 4 + 2]!, type = v.data[i * 4 + 3]! | 0;
       if (type >= pedestrianType) {
@@ -128,7 +128,7 @@ export class IsometricPocVisual {
         this.b(`car${type % carColors.length}`).push(x, 0.055, z, a, 0.22, 0.09, 0.11); this.b("carTop").push(x, 0.115, z, a, 0.11, 0.055, 0.095);
       }
     }
-    keys.forEach((k) => this.b(k).apply());
+    for (const k of keys) this.b(k).apply();
   }
 
   setTimeOfDay(minute: number) {
@@ -146,7 +146,7 @@ export class IsometricPocVisual {
     if (!this.active || !this.map) return;
     const map = this.map;
     const staticKeys = ["road", "avenue", "sidewalk", "line", "yellow", "water", "lot", "lawn", "window", "roof", "accent", "accent2", "dark", "construction", "trunk", "tree", "tree2", ...bodyColors.map((_, i) => `body${i}`)];
-    staticKeys.forEach((k) => this.b(k).reset());
+    for (const k of staticKeys) this.b(k).reset();
     this.platform.scaling.set(map.width + 0.8, 0.2, map.height + 0.8); this.platform.position.set(map.width / 2, -0.105, map.height / 2);
     this.lip.scaling.set(map.width + 1.05, 0.09, map.height + 1.05); this.lip.position.set(map.width / 2, -0.205, map.height / 2);
 
@@ -162,7 +162,7 @@ export class IsometricPocVisual {
       }
     }
     for (const building of this.buildings) this.building(building);
-    staticKeys.forEach((k) => this.b(k).apply());
+    for (const k of staticKeys) this.b(k).apply();
   }
 
   private road(map: MapView, x: number, y: number, kind: number) {
