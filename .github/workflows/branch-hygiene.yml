@@ -1,0 +1,112 @@
+name: branch hygiene
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/branch-hygiene.yml
+  pull_request:
+    types:
+      - closed
+
+permissions:
+  contents: write
+  pull-requests: read
+
+jobs:
+  sweep-obsolete-branches:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Delete branches that are definitely obsolete
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          OWNER: ${{ github.repository_owner }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          mapfile -t OPEN_HEADS < <(
+            gh api --method GET "repos/$REPO/pulls"               -f state=open -f per_page=100 --paginate --jq '.[].head.ref'
+          )
+
+          is_open_head() {
+            local branch="$1"
+            for h in "${OPEN_HEADS[@]}"; do
+              [[ "$branch" == "$h" ]] && return 0
+            done
+            return 1
+          }
+
+          is_explicitly_superseded() {
+            case "$1" in
+              qa/bug-motivo-volta-fixo|qa/196|dev/196|qa/239) return 0 ;;
+              *) return 1 ;;
+            esac
+          }
+
+          delete_branch() {
+            local branch="$1"
+            echo "DELETE $branch"
+            gh api --method DELETE "repos/$REPO/git/refs/heads/$branch"
+          }
+
+          mapfile -t BRANCHES < <(
+            gh api --method GET "repos/$REPO/branches"               -f per_page=100 --paginate --jq '.[].name'
+          )
+
+          for branch in "${BRANCHES[@]}"; do
+            [[ "$branch" == "main" ]] && continue
+
+            if is_open_head "$branch"; then
+              echo "KEEP open-pr $branch"
+              continue
+            fi
+
+            sha="$(gh api "repos/$REPO/git/ref/heads/$branch" --jq '.object.sha')"
+            ahead="$(gh api "repos/$REPO/compare/main...$sha" --jq '.ahead_by')"
+
+            if [[ "$ahead" == "0" ]]; then
+              delete_branch "$branch"
+              continue
+            fi
+
+            merged_tip="$(
+              gh api --method GET "repos/$REPO/pulls"                 -f state=closed -f head="$OWNER:$branch" -f per_page=100                 --jq ".[] | select(.merged_at != null and .head.sha == \"$sha\") | .number"                 | head -n 1
+            )"
+
+            if [[ -n "$merged_tip" ]]; then
+              echo "merged via PR #$merged_tip"
+              delete_branch "$branch"
+              continue
+            fi
+
+            if is_explicitly_superseded "$branch"; then
+              echo "superseded branch"
+              delete_branch "$branch"
+              continue
+            fi
+
+            echo "KEEP ambiguous $branch ahead=$ahead"
+          done
+
+  delete-merged-pr-branch:
+    if: >-
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.merged == true &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.pull_request.head.ref != 'main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Delete merged PR head branch
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          BRANCH: ${{ github.event.pull_request.head.ref }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "DELETE merged PR branch $BRANCH"
+          gh api --method DELETE "repos/$REPO/git/refs/heads/$BRANCH"
