@@ -81,7 +81,7 @@ export function aggregateInfantMortalityValue(
     infantDeaths += s.infantDeaths;
   }
   if (samples.length === 0 || births < minBirths) return null;
-  return Math.round(((infantDeaths / births) * 1000) * 100) / 100;
+  return Math.round((infantDeaths / births) * 1000 * 100) / 100;
 }
 
 /**
