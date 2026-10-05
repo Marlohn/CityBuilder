@@ -20,7 +20,7 @@ const NEW_PURPOSE_MIN = 3;
 /** Só entram na conta quem faz volta em pelo menos este tanto dia observado. */
 const MIN_DAYS = 10;
 
-describe("bug #71: o motivo da volta tem de variar com o dia", () => {
+describe("bug #73: o motivo da volta tem de variar com o dia", () => {
   it("pessoas que resolvem volta todo dia mudam de motivo pelo menos uma vez", () => {
     const game = createTestGame({
       seed: SEED,
