@@ -148,6 +148,30 @@ describe("fórmula e regras", () => {
     expect(depRanked.score).toBeGreaterThanOrEqual(r.plan.blocked[0]!.score);
   });
 
+  it("dependência auxiliar aberta bloqueia item de roadmap", () => {
+    const blocker: IssueInput = {
+      number: 900,
+      title: "decisão auxiliar",
+      body: "aguardando decisão do dono",
+      labels: ["do-dono"],
+      state: "open",
+    };
+    const dependent = item({ Dependências: "#900", Alcance: "5000" }, ["roadmap"], 901);
+
+    const blocked = computeRoadmap([dependent, blocker], signals, cfg);
+    expect(blocked.plan.blocked.map((x) => x.item.number)).toEqual([901]);
+    expect(blocked.plan.blocked[0]!.blockedBy).toEqual([900]);
+    expect(blocked.plan.now.map((x) => x.item.number)).not.toContain(901);
+
+    blocker.state = "closed";
+    const released = computeRoadmap([dependent, blocker], signals, cfg);
+    expect(released.plan.blocked).toHaveLength(0);
+    const releasedNumbers = [...released.plan.now, ...released.plan.next, ...released.plan.later].map(
+      (x) => x.item.number,
+    );
+    expect(releasedNumbers).toContain(901);
+  });
+
   it("mistura garantida: correções entram em Agora mesmo com nota menor", () => {
     const issues = [
       ...Array.from({ length: 12 }, (_, k) => item({ Alcance: String(10000 + k) })),
@@ -170,14 +194,18 @@ describe("fórmula e regras", () => {
     expect(plan([], cfg).now).toHaveLength(0);
   });
 
-  it("confere a métrica dos itens entregues", () => {
+  it("confere só itens entregues que ainda estão abertos", () => {
     const ok = item({ "Métrica de sucesso": "population > 100" }, ["roadmap", "entregue"]);
     const bad = item({ "Métrica de sucesso": "unmet.university < 500" }, ["roadmap", "entregue"]);
-    const r = computeRoadmap([ok, bad], signals, cfg);
+    const closed = item({ "Métrica de sucesso": "population > 100" }, ["roadmap", "entregue"]);
+    closed.state = "closed";
+    const r = computeRoadmap([ok, bad, closed], signals, cfg);
+    expect(r.deliveries.map((d) => d.item.number)).toEqual([ok.number, bad.number]);
     expect(r.deliveries.map((d) => d.check?.ok)).toEqual([true, false]);
     const md = renderRoadmap(r, signals, cfg);
     expect(md).toMatch(/✅ resolveu/);
     expect(md).toMatch(/não-resolveu/);
+    expect(md).not.toContain(`#${closed.number}`);
   });
 });
 
@@ -202,6 +230,24 @@ describe("sinais", () => {
     expect(merged.map((s) => s.id)).toEqual(["desejo:university"]);
     expect(merged[0]!.reach).toBe(200);
     expect(merged[0]!.seen).toBe(2);
+  });
+
+  it("funde comparação e realismo quando a associação do tema é explícita", () => {
+    const merged = mergeRuns([
+      [
+        { ...sig("comparacao:faculdade", 50), source: "comparacao" },
+        {
+          ...sig("realismo:higherEducation", 300),
+          source: "realismo",
+          category: "realismo",
+          evidence: "dataAndSource",
+          metric: "realism.higherEducation entre 15 e 45",
+        },
+      ],
+    ]);
+    expect(merged.map((s) => s.id)).toEqual(["realismo:higherEducation"]);
+    expect(merged[0]!.reach).toBe(300);
+    expect(merged[0]!.evidence).toBe("dataAndSource");
   });
 
   it("mortalidade infantil usa a amostra agregada, não outlier de uma corrida", () => {

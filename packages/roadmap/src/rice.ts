@@ -88,15 +88,20 @@ export interface Plan {
  * 2. Item bloqueado espera; a dependência herda a nota de quem ela bloqueia (sobe na fila).
  * 3. "Agora" tem mistura garantida por grupo (features / correções / técnico).
  */
-export function plan(ranked: Ranked[], cfg: RoadmapConfig): Plan {
+export function plan(
+  ranked: Ranked[],
+  cfg: RoadmapConfig,
+  openIssueNumbers: ReadonlySet<number> = new Set(ranked.map((r) => r.item.number)),
+): Plan {
   const open = new Map(ranked.map((r) => [r.item.number, r]));
-  for (const r of ranked) r.blockedBy = r.item.deps.filter((d) => open.has(d));
+  for (const r of ranked) r.blockedBy = r.item.deps.filter((d) => openIssueNumbers.has(d));
   // Dependência sobe: herda a maior nota entre quem depende dela (repete para cadeias).
   for (let pass = 0; pass < ranked.length; pass++) {
     let changed = false;
     for (const r of ranked) {
       for (const d of r.blockedBy) {
-        const dep = open.get(d)!;
+        const dep = open.get(d);
+        if (!dep) continue;
         if (dep.score < r.score) {
           dep.score = r.score;
           dep.why += ` · sobe: bloqueia #${r.item.number}`;

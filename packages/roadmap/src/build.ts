@@ -27,9 +27,10 @@ export function computeRoadmap(
   testExists?: (path: string) => boolean,
 ): Roadmap {
   const open = issues.filter((i) => i.state === "open");
+  const openNumbers = new Set(open.map((i) => i.number));
   const items = issues.filter(isRoadmapItem).map(parseItem);
   const deliveries: Delivery[] = items
-    .filter((i) => i.delivered && i.metric)
+    .filter((i) => openNumbers.has(i.number) && i.delivered && i.metric)
     .map((item) => {
       if (!signals) return { item, check: null, error: "sem sinais medidos" };
       try {
@@ -38,7 +39,6 @@ export function computeRoadmap(
         return { item, check: null, error: (e as Error).message };
       }
     });
-  const openNumbers = new Set(open.map((i) => i.number));
   const active = items.filter((i) => openNumbers.has(i.number) && !i.delivered);
   const incomplete: Incomplete[] = [];
   const ranked: Ranked[] = [];
@@ -53,7 +53,7 @@ export function computeRoadmap(
     .map((signal) => ({ signal, score: scoreSignal(signal, cfg) }))
     .sort((a, b) => Number(b.signal.urgent) - Number(a.signal.urgent) || b.score - a.score);
   const ideas = open.filter((i) => i.labels.includes("ideia") && !isRoadmapItem(i));
-  return { plan: plan(ranked, cfg), incomplete, ideas, unlinked, deliveries };
+  return { plan: plan(ranked, cfg, openNumbers), incomplete, ideas, unlinked, deliveries };
 }
 
 function n(v: number): string {
