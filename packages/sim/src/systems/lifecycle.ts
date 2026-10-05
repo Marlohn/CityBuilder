@@ -177,8 +177,9 @@ export class LifecycleSystem implements System {
     maybeLeaveParents(city, p);
     this.homelessCouple(p);
 
-    // 5. Internação: episódio novo para quem ainda não tem leito. UBS e hospital são
-    // independentes: ter atendimento primário não impede precisar de internação.
+    // 5. Internação: cada aniversário substitui o episódio anual anterior pelo sorteio
+    // deste ano. A taxa é anual; a fila não pode virar um histórico de quem já precisou internar.
+    city.seekHospital.delete(p);
     if (pop.hospital[p]! < 0 && city.rng.hospital.chance(config.health.hospitalAdmissionRatePerYear))
       city.seekHospital.add(p);
 
