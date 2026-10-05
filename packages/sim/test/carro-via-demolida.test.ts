@@ -14,7 +14,7 @@ import { loadDefaults } from "./helpers";
 
 /** Carros parados "na rua" cujo quadradinho não tem mais via. */
 function carsOnMissingRoad(game: ReturnType<typeof createGame>): number[] {
-  const veh = game.city.traffic.vehicles;
+  const veh = game.city.traffic!.vehicles;
   const world = game.sim.world;
   const out: number[] = [];
   for (let v = 0; v < veh.count; v++) {
@@ -42,7 +42,7 @@ describe("carro em via demolida", () => {
   it("não fica apontando para um quadradinho que não tem mais via", () => {
     const { game } = cityWithStreet();
     const sim = game.sim;
-    const veh = game.city.traffic.vehicles;
+    const veh = game.city.traffic!.vehicles;
     const bs = sim.buildings;
     const world = sim.world;
 
