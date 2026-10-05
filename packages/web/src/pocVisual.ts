@@ -279,7 +279,7 @@ export class IsometricPocVisual {
         if (map.water[i]) this.b("water").push(x + 0.5, 0.045, y + 0.5, 0, 0.99, 0.045, 0.99);
         if (!kind && !map.water[i] && !occupied[i] && map.zones[i]) {
           const zoneKey = ["", "zoneLow", "zoneHigh", "zoneCommercial", "zoneIndustrial"][map.zones[i]!]!;
-          if (zoneKey) this.b(zoneKey).push(x + 0.5, 0.023, y + 0.5, 0, 0.86, 0.025, 0.86);
+          if (zoneKey) this.b(zoneKey).push(x + 0.5, 0.023, y + 0.5, 0, 0.985, 0.025, 0.985);
         }
         if (kind) this.road(map, x, y, kind);
         if (map.trees[i] && !kind && !map.water[i] && !occupied[i]) {
