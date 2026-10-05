@@ -333,6 +333,8 @@ describe("sinais", () => {
       source: "pendente",
       category: "realismo",
       title: "Valores sem fonte em config/a.yaml (1)",
+      seen: 1,
+      runs: 1,
     };
     const file: SignalsFile = {
       ...signals,
