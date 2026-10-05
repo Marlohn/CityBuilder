@@ -166,9 +166,7 @@ describe("issue #176: manual e sinal de roadmap do hospital", () => {
     ).toBe(waiting);
     expect(semLeito).toBe(waiting);
     expect(semLeito).toBeLessThan(population);
-    const noRelatorio = waiting
-      .toString()
-      .replace(/\\B(?=(\\d{3})+(?!\\d))/g, ".");
+    const noRelatorio = new Intl.NumberFormat("pt-BR").format(waiting);
     expect(reportText(game)).toContain(`sem hospital: ${noRelatorio}`);
 
     expect(
