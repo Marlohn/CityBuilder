@@ -141,32 +141,51 @@ export function renderRoadmap(r: Roadmap, signals: SignalsFile | null, cfg: Road
   for (const i of r.ideas) L.push(`- ${i.url ? `[#${i.number}](${i.url})` : `#${i.number}`} ${i.title}`);
   L.push("");
 
-  L.push("## Sinais sem item (candidatos para o Designer)");
+  const renderSignals = (items: Roadmap["unlinked"]) => {
+    if (items.length === 0) {
+      L.push("_Nenhum._");
+      L.push("");
+      return;
+    }
+    for (const { signal: s, score } of items) {
+      L.push(`### ${s.urgent ? "🚨 " : ""}${s.title}`);
+      L.push("");
+      L.push(`- **Sinal:** \`${s.id}\` · categoria ${s.category} · nota provisória ${n(score)}`);
+      L.push(`- **Medido:** ${s.detail}`);
+      L.push(
+        `- **Alcance:** ${n(s.reach)} pessoas · impacto ${String(s.impact).replace(".", ",")} · prova: ${
+          s.evidence === "dataAndSource"
+            ? "dado do jogo + fonte"
+            : s.evidence === "sourceOnly"
+              ? "só fonte"
+              : "só dado do jogo, falta fonte"
+        }`,
+      );
+      if (s.research)
+        L.push(`- **Fonte:** ${s.research.source}${s.research.url ? ` (${s.research.url})` : ""}`);
+      if (s.proposal) L.push(`- **Sugestão:** ${s.proposal}`);
+      if (s.metric) L.push(`- **Métrica sugerida:** \`${s.metric}\``);
+      L.push("");
+    }
+  };
+
+  const productSignals = r.unlinked.filter(({ signal }) => signal.source !== "pendente");
+  const pendingResearch = r.unlinked.filter(({ signal }) => signal.source === "pendente");
+
+  L.push("## Sinais de produto sem item (candidatos para o Designer)");
   L.push("");
   L.push(
     'Medidos pelo jogo e ainda não viraram issue. A nota é provisória (esforço padrão). Para criar o item, use o formulário "Item do roadmap" e cite o id no campo "Sinal de origem".',
   );
   L.push("");
-  if (r.unlinked.length === 0) L.push("_Nenhum._");
-  for (const { signal: s, score } of r.unlinked) {
-    L.push(`### ${s.urgent ? "🚨 " : ""}${s.title}`);
-    L.push("");
-    L.push(`- **Sinal:** \`${s.id}\` · categoria ${s.category} · nota provisória ${n(score)}`);
-    L.push(`- **Medido:** ${s.detail}`);
-    L.push(
-      `- **Alcance:** ${n(s.reach)} pessoas · impacto ${String(s.impact).replace(".", ",")} · prova: ${
-        s.evidence === "dataAndSource"
-          ? "dado do jogo + fonte"
-          : s.evidence === "sourceOnly"
-            ? "só fonte"
-            : "só dado do jogo, falta fonte"
-      }`,
-    );
-    if (s.research)
-      L.push(`- **Fonte:** ${s.research.source}${s.research.url ? ` (${s.research.url})` : ""}`);
-    if (s.proposal) L.push(`- **Sugestão:** ${s.proposal}`);
-    if (s.metric) L.push(`- **Métrica sugerida:** \`${s.metric}\``);
-    L.push("");
-  }
+  renderSignals(productSignals);
+
+  L.push("## Pesquisa e calibração pendente");
+  L.push("");
+  L.push(
+    "Valores de config ainda sem fonte ou decisão explícita. Continuam visíveis, mas ficam separados das escolhas de produto.",
+  );
+  L.push("");
+  renderSignals(pendingResearch);
   return `${L.join("\n").trimEnd()}\n`;
 }
