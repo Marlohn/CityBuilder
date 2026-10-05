@@ -1,11 +1,13 @@
 name: Roadmap
 
 # Mede cidades de teste, lê as issues, ordena pela fórmula e publica a visão atual na issue de roadmap.
-# Não roda em toda edição de issue: recalcular as cidades é caro e não muda os sinais nesses eventos.
+# Recalcular os sinais em eventos de issue custa mais, mas mantém a visão publicada correta sem cache/estado oculto.
 on:
   schedule:
     - cron: "17 6 * * 1" # toda segunda de manhã
   workflow_dispatch:
+  issues:
+    types: [opened, edited, labeled, unlabeled, closed, reopened]
   push:
     branches: [main]
     paths:
@@ -32,6 +34,8 @@ concurrency:
 
 jobs:
   build:
+    # A própria issue gerada não dispara recursivamente o workflow.
+    if: github.event_name != 'issues' || !contains(github.event.issue.labels.*.name, 'roadmap-gerado')
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
