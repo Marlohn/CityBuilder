@@ -622,42 +622,47 @@ describe("issue #239: fila de internação e alta hospitalar", () => {
       `depois da alta o hospital ${h} deveria voltar ao mercado (open.has): ` +
         "o leito liberado não voltou ao mercado de hospitais",
     ).toBe(true);
-    // (b) Cadência: só muda a permanência (mesma semente, mesmos comandos, mesmos dias).
+    // (b) Cadência controlada: a fotografia final de uma cidade pode cair entre episódios
+    // de internação e mostrar zero nas duas variantes. Para medir a permanência sem esse acaso,
+    // limpamos a demanda natural, internamos o mesmo grupo e avançamos exatamente um tick.
     const curta = cidade("stay-curta", {
       economy: { mode: "sandbox" },
       health: { maxDistanceMeters: 200, hospitalAvgLengthOfStayDays: 0.01 },
     });
-    const padrao = cidade("base", OVERRIDES_BASE);
-    for (const [nome, jogo] of [
-      ["permanência curta", curta],
-      ["permanência padrão", padrao],
-    ] as const) {
-      expect(
-        contaVivos(jogo),
-        `a cidade ${nome} esvaziou (população 0): sem gente o teste não prova nada`,
-      ).toBeGreaterThan(0);
-      expect(
-        ativosDoTipo(jogo, "hospital").length,
-        `a cidade ${nome} deveria ter os ${HOSPITAL_COMMANDS.length} hospitais ativos: ` +
-          "sem hospital o teste não prova nada",
-      ).toBe(HOSPITAL_COMMANDS.length);
-    }
-    const leitosPorLeito = (jogo: Game): number => {
-      const ids = ativosDoTipo(jogo, "hospital");
-      let total = 0;
-      for (const id of ids) total += jogo.sim.buildings.patientsCapacity(id);
-      if (total === 0) return 0;
-      return pessoasComLeito(jogo) / total;
+    const padrao = cidade("stay-padrao-controlada", OVERRIDES_BASE);
+    const preparaCoorte = (jogo: Game): number => {
+      for (const internado of jogo.city.hospitalized.toArray()) unregisterHospital(jogo.city, internado);
+      for (const aguardando of jogo.city.seekHospital.toArray()) jogo.city.seekHospital.delete(aguardando);
+      const hospital = ativosDoTipo(jogo, "hospital")[0];
+      expect(hospital, "a cidade controlada precisa de hospital ativo").toBeDefined();
+      if (hospital === undefined) return 0;
+      const usados = new Set<number>();
+      for (let i = 0; i < 16; i++) {
+        const pessoa = primeiraPessoaComCasa(jogo, false, usados);
+        expect(pessoa, "faltou pessoa viva com casa para montar a coorte de alta").toBeGreaterThanOrEqual(0);
+        if (pessoa < 0) break;
+        usados.add(pessoa);
+        registerHospital(jogo.city, pessoa, hospital);
+      }
+      return usados.size;
     };
-    const taxaCurta = leitosPorLeito(curta);
-    const taxaPadrao = leitosPorLeito(padrao);
+    const nCurta = preparaCoorte(curta);
+    const nPadrao = preparaCoorte(padrao);
+    expect(nCurta).toBe(16);
+    expect(nPadrao).toBe(16);
+    expect(curta.city.hospitalized.size).toBe(16);
+    expect(padrao.city.hospitalized.size).toBe(16);
+
+    curta.sim.step(1);
+    padrao.sim.step(1);
+
     expect(
-      taxaCurta < taxaPadrao / 4,
-      `a cidade de permanência curta (0,01 dia) tem ${taxaCurta.toFixed(3)} internados por ` +
-        `leito e a padrão tem ${taxaPadrao.toFixed(3)}: com alta quase todo dia a ocupação ` +
-        "deveria ser bem menos de um quarto da padrão; na main o campo nem existe no " +
-        "schema e as duas cidades ficam iguais. Sem este critério a alta poderia ser " +
-        "instantânea ou nunca acontecer e ninguém perceberia",
-    ).toBe(true);
+      curta.city.hospitalized.size,
+      "com permanência média de 0,01 dia, todos os 16 pacientes visitados devem receber alta no tick",
+    ).toBe(0);
+    expect(
+      padrao.city.hospitalized.size,
+      "com permanência padrão de 5,3 dias, ao menos um paciente deve continuar internado após um tick",
+    ).toBeGreaterThan(0);
   });
 });
