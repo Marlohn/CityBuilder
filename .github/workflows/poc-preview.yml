@@ -1,0 +1,30 @@
+name: POC visual preview
+
+on:
+  pull_request:
+
+jobs:
+  preview:
+    if: github.head_ref == 'poc/isometric-visual-refresh'
+    runs-on: ubuntu-latest
+    container:
+      image: mcr.microsoft.com/playwright:v1.63.0-noble
+      options: --init --ipc=host
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Capturar cenário da POC
+        run: npx playwright test tests/e2e/smoke.spec.ts --reporter=line
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: poc-visual-preview
+          path: test-results/
+          retention-days: 7
