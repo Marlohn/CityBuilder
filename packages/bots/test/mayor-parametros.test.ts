@@ -105,7 +105,10 @@ describe("issue #202: prefeito lê schoolTrigger, clinicTrigger e nearbyTiles de
     expect(conta(game16, "ubs"), "dia 16 deve ter exatamente 2 UBS (conduta congelada)").toBe(2);
 
     expect(conta(game40, "escola"), "dia 40 deve ter exatamente 3 escolas (conduta congelada)").toBe(3);
-    expect(conta(game40, "ubs"), "dia 40 deve ter exatamente 5 UBS (conduta congelada)").toBe(5);
+    // Issue #223: queda para 4 UBS é esperada — o maior risco de morte das crianças sem esgoto
+    // mudou a cidade de referência de propósito (fonte: Wolf et al. 2014, RR 0,72 => multiplicador
+    // 1,39 em config/health.yaml).
+    expect(conta(game40, "ubs"), "dia 40 deve ter exatamente 4 UBS (conduta congelada)").toBe(4);
   });
 
   it("mudar os gatilhos muda a conduta", { timeout: 600000 }, () => {
