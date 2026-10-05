@@ -1,4 +1,5 @@
 import {
+  type AbstractMesh,
   Color3,
   Mesh,
   MeshBuilder,
@@ -60,7 +61,7 @@ function styleMaterial(material: unknown, seen: Set<unknown>) {
  * Deixa os GLBs existentes com leitura mais próxima de uma ilustração:
  * superfícies foscas, sem brilho plástico e com a paleta original preservada.
  */
-export function stylizeIllustratedMeshes(meshes: Mesh[]) {
+export function stylizeIllustratedMeshes(meshes: AbstractMesh[]) {
   const seen = new Set<unknown>();
   for (const mesh of meshes) styleMaterial(mesh.material, seen);
 }
