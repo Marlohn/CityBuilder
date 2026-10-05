@@ -70,12 +70,12 @@ const SMALL_TOWN_REVENUE = {
   url: "https://jornal.usp.br/radio-usp/municipios-pequenos-recebem-mais-recursos-per-capita-que-metropoles-com-maiores-desafios-urbanos/",
 };
 
-/** Desejos não atendidos (fonte 1). `ref` liga o desejo a uma linha da tabela de referência. */
 /** Associação explícita entre serviço ausente e indicador de realismo do mesmo tema. */
 const REALISM_BY_REFERENCE: Record<string, string> = {
   faculdade: "higherEducation",
 };
 
+/** Desejos não atendidos (fonte 1). `ref` liga o desejo a uma linha da tabela de referência. */
 const DESIRES: {
   key: string;
   what: string;
