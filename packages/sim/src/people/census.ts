@@ -17,7 +17,7 @@ export interface Census {
   children6to17: number;
   /** Pessoas sem UBS (cadastradas em nenhuma). */
   withoutClinic: number;
-  /** Pessoas sem leito de hospital (cadastradas em nenhum). */
+  /** Pessoas na fila de internação sem leito (`seekHospital`). */
   withoutHospital: number;
   /** Jovens 18-24 que querem faculdade e não têm onde estudar. */
   wantUniversity: number;
@@ -54,7 +54,7 @@ export function takeCensus(city: City): Census {
     childrenWithoutSchool: 0,
     children6to17: 0,
     withoutClinic: 0,
-    withoutHospital: 0,
+    withoutHospital: city.seekHospital.size,
     wantUniversity: 0,
     youth18to24: 0,
     householdsWaitingHome: 0,
@@ -119,10 +119,7 @@ export function takeCensus(city: City): Census {
       c.withoutClinic++;
       if (clinicsExist || c.samples.health!.length < 50) sample("health", p);
     }
-    if (pop.hospital[p]! < 0) {
-      c.withoutHospital++;
-      sample("hospital", p);
-    }
+    if (city.seekHospital.has(p)) sample("hospital", p);
     if (utilitiesOn) {
       const home = city.homeBuilding(p);
       if (home >= 0) {

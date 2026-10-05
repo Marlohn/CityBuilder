@@ -167,17 +167,15 @@ describe("issue #175: prefeito so constroi hospital com receita do ano", () => {
       `o gatilho de populacao do hospital nao disparou: esperado mais de ${HOSPITAL_MIN_POPULATION} ` +
         `habitantes (data/reference/cidade-real.yaml), mas a cidade tem ${census.population}`,
     ).toBeGreaterThan(HOSPITAL_MIN_POPULATION);
-    expect(
-      census.withoutHospital,
-      `era esperado gente fora do raio do hospital (withoutHospital maior que 0) com ` +
-        `${census.population} habitantes e nenhum hospital, mas veio 0: sem demanda o teste nao prova nada`,
-    ).toBeGreaterThan(0);
+    // Depois da #241, withoutHospital é a fila real de internação. No estado final ela
+    // pode estar zerada justamente porque o hospital construído pelo prefeito atendeu a fila;
+    // exigir demanda pendente aqui contradiz o critério deste teste (hospital ativo).
     const active = activeHospitals(game);
     expect(
       active.length,
-      `com ${census.population} habitantes (gatilho: ${HOSPITAL_MIN_POPULATION}) e ` +
-        `${census.withoutHospital} pessoas sem leito, era esperado pelo menos 1 hospital ativo no modo ` +
-        `sandbox, mas nao ha nenhum: o prefeito nunca constroi hospital (packages/bots/src/mayor.ts)`,
+      `com ${census.population} habitantes (gatilho: ${HOSPITAL_MIN_POPULATION}), era esperado ` +
+        `pelo menos 1 hospital ativo no modo sandbox, mas nao ha nenhum: o prefeito nunca constroi ` +
+        `hospital (packages/bots/src/mayor.ts)`,
     ).toBeGreaterThanOrEqual(1);
   });
 
