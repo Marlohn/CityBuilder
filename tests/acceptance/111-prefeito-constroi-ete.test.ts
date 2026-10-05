@@ -37,8 +37,20 @@ const DAYS = 90;
 const OVERRIDES = { economy: { mode: "sandbox" } };
 /** Dias da cidade com dinheiro contado (modo `budget`, config normal). */
 const BUDGET_DAYS = 60;
-/** Semente do cenário de dinheiro contado: a única com dia sem caixa para a ETE e com lugar de ETE. */
+/** Semente do cenário de dinheiro contado. */
 const BUDGET_SEED = "ete-5";
+/**
+ * Receita controlada só para este teste: reproduz o antigo R$ 5.300 por morador/ano em todas as
+ * faixas. O critério testa se o prefeito guarda dinheiro quando não paga a ETE, não a calibração
+ * de receita municipal (coberta pela issue #196).
+ */
+const BUDGET_REVENUE = {
+  "0": 5300,
+  "5000": 5300,
+  "20000": 5300,
+  "50000": 5300,
+  "100000": 5300,
+};
 /** Gente sem esgoto que obriga o prefeito a construir a ETE. */
 const SEWAGE_TRIGGER = 300;
 
@@ -226,8 +238,10 @@ describe("issue #111: prefeito constrói a ETE quando falta esgoto", () => {
   });
 
   it("sem dinheiro para a ETE o prefeito guarda e não abre rua nova", { timeout: 600000 }, () => {
-    // Dinheiro contado: config normal (modo `budget`), semente "ete-5", 60 dias.
-    const { config, data } = loadConfigAndData();
+    // Dinheiro contado: mantém budget, mas fixa a receita antiga para isolar a regra do prefeito.
+    const { config, data } = loadConfigAndData({
+      economy: { revenuePerResidentByPopulation: BUDGET_REVENUE },
+    });
     const run = createRun({ config, data, seed: BUDGET_SEED, days: BUDGET_DAYS, bot: true });
     // Custo lido do catálogo, nunca escrito à mão: se o preço mudar o cenário acompanha.
     const tipoEte = run.game.sim.buildings.catalog.find((tipo) => tipo.id === "ete");
