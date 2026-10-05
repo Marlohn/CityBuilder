@@ -80,6 +80,7 @@ export class BuildingLayer {
     private lib: ModelLibrary,
     visuals: BuildingVisual[],
     private tileMeters: number,
+    private modelFootprint = 0.92,
   ) {
     for (const v of visuals) this.visuals.set(v.id, v);
   }
@@ -113,7 +114,7 @@ export class BuildingLayer {
       }
       const model = vis.models[b.variant % vis.models.length]!;
       const info = this.lib.get(model);
-      const footprint = Math.min(b.w, b.h) * (model.startsWith("proc/") ? 1 : 0.92);
+      const footprint = Math.min(b.w, b.h) * (model.startsWith("proc/") ? 1 : this.modelFootprint);
       const s = footprint / Math.max(info.size.x, info.size.z);
       const target = (vis.floors * FLOOR_METERS + 2) / this.tileMeters;
       const natural = info.size.y * s;
