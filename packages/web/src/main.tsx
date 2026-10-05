@@ -92,7 +92,7 @@ function buildArtV2Gallery() {
 
   client.send({ type: "advance", ticks: 7600 });
   renderer.lookAt(80.5, 128.5);
-  renderer.zoomBy(10 / renderer.cameraState().zoom);
+  renderer.zoomBy(6.5 / renderer.cameraState().zoom);
 }
 
 client.onReady = () => {
