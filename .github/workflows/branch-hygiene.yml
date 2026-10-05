@@ -42,15 +42,16 @@ jobs:
 
           delete_branch() {
             local branch="$1"
+            local delete_error
             echo "DELETE $branch"
-            if gh api --silent --method DELETE "repos/$REPO/git/refs/heads/$branch"; then
+            if delete_error="$(gh api --silent --method DELETE "repos/$REPO/git/refs/heads/$branch" 2>&1)"; then
               return 0
             fi
-            if ! gh api "repos/$REPO/git/ref/heads/$branch" >/dev/null 2>&1; then
+            if [[ "$delete_error" == *"HTTP 404"* ]]; then
               echo "SKIP already gone $branch"
               return 0
             fi
-            echo "ERROR branch still exists after delete failure: $branch" >&2
+            echo "$delete_error" >&2
             return 1
           }
 
@@ -66,9 +67,15 @@ jobs:
               continue
             fi
 
-            if ! sha="$(gh api "repos/$REPO/git/ref/heads/$branch" --jq '.object.sha' 2>/dev/null)"; then
+            ref_error=""
+            if sha="$(gh api "repos/$REPO/git/ref/heads/$branch" --jq '.object.sha' 2>&1)"; then
+              :
+            elif [[ "$sha" == *"HTTP 404"* ]]; then
               echo "SKIP vanished before inspection $branch"
               continue
+            else
+              echo "$sha" >&2
+              exit 1
             fi
             ahead="$(gh api "repos/$REPO/compare/main...$sha" --jq '.ahead_by')"
 
