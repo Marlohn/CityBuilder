@@ -1,5 +1,5 @@
-import { expect, test } from "@playwright/test";
 import { mkdir, writeFile } from "node:fs/promises";
+import { expect, test } from "@playwright/test";
 import { openGame } from "./helpers";
 
 async function waitForPoc(page: import("@playwright/test").Page) {
