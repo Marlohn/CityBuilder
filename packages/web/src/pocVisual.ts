@@ -32,6 +32,12 @@ const P = {
   white: [0.96, 0.96, 0.92],
   yellow: [0.96, 0.74, 0.18],
   water: [0.14, 0.64, 0.8],
+  terrain: [0.56, 0.76, 0.42],
+  zoneLow: [0.66, 0.84, 0.54],
+  zoneHigh: [0.5, 0.75, 0.58],
+  zoneCommercial: [0.55, 0.73, 0.88],
+  zoneIndustrial: [0.9, 0.79, 0.46],
+  parking: [0.67, 0.7, 0.68],
   lot: [0.88, 0.87, 0.8],
   lawn: [0.46, 0.72, 0.35],
   tree: [0.22, 0.64, 0.28],
@@ -108,6 +114,7 @@ export class IsometricPocVisual {
   private map: MapView | null = null;
   private buildings: BuildingView[] = [];
   private active = false;
+  private readonly terrain: Mesh;
   private readonly platform: Mesh;
   private readonly lip: Mesh;
 
@@ -116,6 +123,7 @@ export class IsometricPocVisual {
     visuals: PocBuildingVisual[],
   ) {
     for (const v of visuals) this.info.set(v.id, v);
+    this.terrain = this.box("poc/terrain", P.terrain);
     this.platform = this.box("poc/platform", P.platform);
     this.lip = this.box("poc/lip", P.platform2);
     const defs: Array<[string, RGB, "box" | "sphere" | "cylinder"]> = [
@@ -125,6 +133,11 @@ export class IsometricPocVisual {
       ["line", P.white, "box"],
       ["yellow", P.yellow, "box"],
       ["water", P.water, "box"],
+      ["zoneLow", P.zoneLow, "box"],
+      ["zoneHigh", P.zoneHigh, "box"],
+      ["zoneCommercial", P.zoneCommercial, "box"],
+      ["zoneIndustrial", P.zoneIndustrial, "box"],
+      ["parking", P.parking, "box"],
       ["lot", P.lot, "box"],
       ["lawn", P.lawn, "box"],
       ["window", P.window, "box"],
@@ -158,7 +171,8 @@ export class IsometricPocVisual {
     this.active = true;
     for (const mesh of this.scene.meshes) {
       if (mesh.name.startsWith("poc/")) continue;
-      if (/^(roads|suburban|commercial|cars|proc)\//.test(mesh.name)) mesh.visibility = 0;
+      if (/^(roads|suburban|commercial|cars|proc)\//.test(mesh.name) || mesh.name === "ground" || mesh.name === "ground-empty")
+        mesh.visibility = 0;
     }
     this.scene.ambientColor = new Color3(0.42, 0.44, 0.42);
     this.scene.imageProcessingConfiguration.contrast = 1.04;
@@ -228,6 +242,11 @@ export class IsometricPocVisual {
       "line",
       "yellow",
       "water",
+      "zoneLow",
+      "zoneHigh",
+      "zoneCommercial",
+      "zoneIndustrial",
+      "parking",
       "lot",
       "lawn",
       "window",
@@ -242,10 +261,12 @@ export class IsometricPocVisual {
       ...bodyColors.map((_, i) => `body${i}`),
     ];
     for (const k of staticKeys) this.b(k).reset();
-    this.platform.scaling.set(map.width + 0.8, 0.2, map.height + 0.8);
-    this.platform.position.set(map.width / 2, -0.105, map.height / 2);
+    this.terrain.scaling.set(map.width + 0.55, 0.06, map.height + 0.55);
+    this.terrain.position.set(map.width / 2, -0.025, map.height / 2);
+    this.platform.scaling.set(map.width + 0.8, 0.22, map.height + 0.8);
+    this.platform.position.set(map.width / 2, -0.16, map.height / 2);
     this.lip.scaling.set(map.width + 1.05, 0.09, map.height + 1.05);
-    this.lip.position.set(map.width / 2, -0.205, map.height / 2);
+    this.lip.position.set(map.width / 2, -0.315, map.height / 2);
 
     const occupied = new Uint8Array(map.width * map.height);
     for (const b of this.buildings)
@@ -255,14 +276,18 @@ export class IsometricPocVisual {
       for (let x = 0; x < map.width; x++) {
         const i = y * map.width + x,
           kind = map.roads[i]!;
-        if (map.water[i]) this.b("water").push(x + 0.5, 0.026, y + 0.5, 0, 0.985, 0.026, 0.985);
+        if (map.water[i]) this.b("water").push(x + 0.5, 0.045, y + 0.5, 0, 0.99, 0.045, 0.99);
+        if (!kind && !map.water[i] && !occupied[i] && map.zones[i]) {
+          const zoneKey = ["", "zoneLow", "zoneHigh", "zoneCommercial", "zoneIndustrial"][map.zones[i]!]!;
+          if (zoneKey) this.b(zoneKey).push(x + 0.5, 0.023, y + 0.5, 0, 0.86, 0.025, 0.86);
+        }
         if (kind) this.road(map, x, y, kind);
         if (map.trees[i] && !kind && !map.water[i] && !occupied[i]) {
-          const tx = x + 0.28 + hash(i * 17) * 0.44,
-            tz = y + 0.28 + hash(i * 31) * 0.44,
-            s = 0.18 + hash(i * 47) * 0.07;
-          this.b("trunk").push(tx, 0.11, tz, 0, 0.035, 0.22, 0.035);
-          this.b(i % 3 ? "tree" : "tree2").push(tx, 0.31, tz, 0, s, s * 1.15, s);
+          const tx = x + 0.24 + hash(i * 17) * 0.52,
+            tz = y + 0.24 + hash(i * 31) * 0.52,
+            treeScale = 0.26 + hash(i * 47) * 0.1;
+          this.b("trunk").push(tx, 0.14, tz, 0, 0.045, 0.28, 0.045);
+          this.b(i % 3 ? "tree" : "tree2").push(tx, 0.4, tz, 0, treeScale, treeScale * 1.12, treeScale);
         }
       }
     for (const building of this.buildings) this.building(building);
@@ -275,11 +300,11 @@ export class IsometricPocVisual {
       e = x < map.width - 1 && map.roads[i + 1],
       s = y < map.height - 1 && map.roads[i + map.width],
       w = x > 0 && map.roads[i - 1];
-    this.b(kind === 2 ? "avenue" : "road").push(x + 0.5, 0.032, y + 0.5, 0, 0.94, 0.035, 0.94);
-    if (!n) this.b("sidewalk").push(x + 0.5, 0.055, y + 0.055, 0, 0.96, 0.035, 0.11);
-    if (!s) this.b("sidewalk").push(x + 0.5, 0.055, y + 0.945, 0, 0.96, 0.035, 0.11);
-    if (!w) this.b("sidewalk").push(x + 0.055, 0.055, y + 0.5, 0, 0.11, 0.035, 0.96);
-    if (!e) this.b("sidewalk").push(x + 0.945, 0.055, y + 0.5, 0, 0.11, 0.035, 0.96);
+    this.b(kind === 2 ? "avenue" : "road").push(x + 0.5, 0.052, y + 0.5, 0, 0.99, 0.055, 0.99);
+    if (!n) this.b("sidewalk").push(x + 0.5, 0.086, y + 0.065, 0, 0.99, 0.045, 0.13);
+    if (!s) this.b("sidewalk").push(x + 0.5, 0.086, y + 0.935, 0, 0.99, 0.045, 0.13);
+    if (!w) this.b("sidewalk").push(x + 0.065, 0.086, y + 0.5, 0, 0.13, 0.045, 0.99);
+    if (!e) this.b("sidewalk").push(x + 0.935, 0.086, y + 0.5, 0, 0.13, 0.045, 0.99);
     const horizontal = !!e && !!w && !n && !s,
       vertical = !!n && !!s && !e && !w;
     if (horizontal || vertical) {
@@ -287,7 +312,7 @@ export class IsometricPocVisual {
       if (horizontal)
         this.b(key).push(
           x + 0.5,
-          0.058,
+          0.108,
           y + 0.5,
           0,
           kind === 2 ? 0.74 : 0.42,
@@ -297,13 +322,20 @@ export class IsometricPocVisual {
       else
         this.b(key).push(
           x + 0.5,
-          0.058,
+          0.108,
           y + 0.5,
           0,
           kind === 2 ? 0.025 : 0.018,
           0.01,
           kind === 2 ? 0.74 : 0.42,
         );
+    }
+    const degree = Number(!!n) + Number(!!e) + Number(!!s) + Number(!!w);
+    if (degree >= 3) {
+      for (const offset of [-0.18, 0, 0.18]) {
+        this.b("line").push(x + 0.5 + offset, 0.112, y + 0.27, 0, 0.09, 0.01, 0.035);
+        this.b("line").push(x + 0.5 + offset, 0.112, y + 0.73, 0, 0.09, 0.01, 0.035);
+      }
     }
   }
 
@@ -312,10 +344,10 @@ export class IsometricPocVisual {
     if (!meta) return;
     const cx = b.x + b.w / 2,
       cz = b.y + b.h / 2,
-      lotW = b.w * 0.92,
-      lotD = b.h * 0.92;
-    this.b("lot").push(cx, 0.055, cz, 0, lotW, 0.055, lotD);
-    this.b("lawn").push(cx, 0.086, cz, 0, lotW * 0.88, 0.022, lotD * 0.88);
+      lotW = b.w * 0.96,
+      lotD = b.h * 0.96;
+    this.b("lot").push(cx, 0.065, cz, 0, lotW, 0.065, lotD);
+    this.b("lawn").push(cx, 0.103, cz, 0, lotW * 0.9, 0.025, lotD * 0.9);
     if (b.state === 0) {
       this.b("construction").push(cx, 0.24, cz, 0, b.w * 0.62, 0.42, b.h * 0.62);
       return;
@@ -325,22 +357,48 @@ export class IsometricPocVisual {
       bd = Math.max(0.42, b.h * (meta.zone === "industrial" ? 0.72 : 0.58));
     const h = 0.22 + floors * (meta.zone === "residential_low" ? 0.28 : 0.31),
       body = (b.variant + (meta.service ? 1 : 0)) % bodyColors.length;
-    this.b(`body${body}`).push(cx, 0.1 + h / 2, cz, 0, bw, h, bd);
-    this.b("roof").push(cx, 0.115 + h, cz, 0, bw * 1.04, 0.055, bd * 1.04);
+    this.b(`body${body}`).push(cx, 0.12 + h / 2, cz, 0, bw, h, bd);
+    this.b("roof").push(cx, 0.135 + h, cz, 0, bw * 1.04, 0.055, bd * 1.04);
+    if (floors >= 3) {
+      const roofOffset = b.variant % 2 === 0 ? 0.12 : -0.12;
+      this.b("dark").push(cx + roofOffset, 0.2 + h, cz, 0, bw * 0.2, 0.11, bd * 0.22);
+    }
     const rows = Math.min(floors, 6),
       cols = Math.max(2, Math.min(5, Math.round(bw / 0.2)));
     for (let row = 0; row < rows; row++)
       for (let col = 0; col < cols; col++) {
         const wx = cx - bw * 0.36 + (col / Math.max(1, cols - 1)) * bw * 0.72,
-          wy = 0.22 + row * (h / floors);
+          wy = 0.25 + row * (h / floors);
         this.b("window").push(wx, wy, cz - bd / 2 - 0.012, 0, 0.085, 0.105, 0.02);
         this.b("window").push(wx, wy, cz + bd / 2 + 0.012, 0, 0.085, 0.105, 0.02);
+      }
+    const sideCols = Math.max(1, Math.min(3, Math.round(bd / 0.28)));
+    for (let row = 0; row < rows; row++)
+      for (let col = 0; col < sideCols; col++) {
+        const wz = cz - bd * 0.32 + (col / Math.max(1, sideCols - 1)) * bd * 0.64,
+          wy = 0.25 + row * (h / floors);
+        this.b("window").push(cx - bw / 2 - 0.012, wy, wz, 0, 0.02, 0.105, 0.085);
+        this.b("window").push(cx + bw / 2 + 0.012, wy, wz, 0, 0.02, 0.105, 0.085);
       }
     const accent =
       meta.service === "water" || meta.service === "sewage" || meta.service === "power"
         ? "accent2"
         : "accent";
-    this.b(accent).push(cx, 0.2, cz + bd / 2 + 0.02, 0, Math.min(0.28, bw * 0.48), 0.18, 0.035);
+    this.b(accent).push(cx, 0.22, cz + bd / 2 + 0.02, 0, Math.min(0.28, bw * 0.48), 0.18, 0.035);
+    this.b(accent).push(cx + bw * 0.34, 0.16 + h * 0.55, cz + bd / 2 + 0.024, 0, 0.055, h * 0.58, 0.025);
+
+    if (meta.zone !== "industrial") {
+      const tx = cx - lotW * 0.37,
+        tz = cz - lotD * 0.36;
+      this.b("trunk").push(tx, 0.18, tz, 0, 0.035, 0.22, 0.035);
+      this.b(b.variant % 2 ? "tree" : "tree2").push(tx, 0.38, tz, 0, 0.19, 0.23, 0.19);
+    }
+    if ((meta.zone === "commercial" || meta.service) && b.h >= 2) {
+      const pz = cz + lotD * 0.36;
+      this.b("parking").push(cx, 0.115, pz, 0, lotW * 0.62, 0.02, Math.min(0.25, lotD * 0.18));
+      for (const offset of [-0.18, 0, 0.18])
+        this.b("line").push(cx + lotW * offset, 0.128, pz, 0, 0.012, 0.012, Math.min(0.2, lotD * 0.15));
+    }
     if (meta.service === "health") {
       this.b("accent").push(cx, 0.17 + h, cz, 0, 0.22, 0.035, 0.065);
       this.b("accent").push(cx, 0.17 + h, cz, 0, 0.065, 0.035, 0.22);
