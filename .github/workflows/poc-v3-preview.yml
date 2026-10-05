@@ -1,0 +1,60 @@
+name: POC visual v3 preview
+
+on:
+  pull_request:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: poc-v3-preview-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  preview:
+    if: github.head_ref == 'poc/visual-v3-babylon'
+    runs-on: ubuntu-latest
+    container:
+      image: mcr.microsoft.com/playwright:v1.63.0-noble
+      options: --init --ipc=host
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Validar e capturar evidências da POC v3
+        run: npx playwright test tests/e2e/poc-v3.spec.ts --reporter=line
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: poc-v3-evidence
+          path: test-results/
+          retention-days: 7
+      - name: Build estático
+        run: npm run build
+      - name: Publicar preview isolado
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          LIVE="${RUNNER_TEMP}/citybuilder-poc-v3"
+          rm -rf "$LIVE"
+          mkdir -p "$LIVE"
+          cp -a dist/. "$LIVE/"
+          touch "$LIVE/.nojekyll"
+          printf '%s\n' "${GITHUB_SHA}" > "$LIVE/VERSION.txt"
+          cd "$LIVE"
+          git init
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b poc-v3-live
+          git add .
+          git commit -m "preview: visual POC v3 ${GITHUB_SHA}"
+          git remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git push --force origin poc-v3-live
