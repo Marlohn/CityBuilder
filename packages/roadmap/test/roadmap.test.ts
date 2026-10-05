@@ -324,6 +324,30 @@ describe("sinais", () => {
     };
     const r = computeRoadmap([], file, cfg);
     expect(r.unlinked.map((u) => u.signal.id)).toEqual(["saude:x", "desejo:a"]);
-    expect(renderRoadmap(r, file, cfg)).toMatch(/## Sinais sem item/);
+    expect(renderRoadmap(r, file, cfg)).toMatch(/## Sinais de produto sem item/);
+  });
+
+  it("separa dívida de pesquisa dos sinais de produto sem mudar unlinked", () => {
+    const pending: Signal = {
+      ...sig("pendente:a.yaml", 100),
+      source: "pendente",
+      category: "realismo",
+      title: "Valores sem fonte em config/a.yaml (1)",
+    };
+    const file: SignalsFile = {
+      ...signals,
+      signals: mergeRuns([[sig("desejo:a", 10), pending]]),
+    };
+    const r = computeRoadmap([], file, cfg);
+    expect(r.unlinked.map((u) => u.signal.id).sort()).toEqual(["desejo:a", "pendente:a.yaml"]);
+
+    const md = renderRoadmap(r, file, cfg);
+    const productAt = md.indexOf("## Sinais de produto sem item");
+    const pendingAt = md.indexOf("## Pesquisa e calibração pendente");
+    expect(productAt).toBeGreaterThanOrEqual(0);
+    expect(pendingAt).toBeGreaterThan(productAt);
+    expect(md.slice(productAt, pendingAt)).toContain("desejo:a");
+    expect(md.slice(productAt, pendingAt)).not.toContain("pendente:a.yaml");
+    expect(md.slice(pendingAt)).toContain("pendente:a.yaml");
   });
 });
