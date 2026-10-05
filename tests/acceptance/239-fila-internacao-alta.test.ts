@@ -241,9 +241,7 @@ describe("issue #239: fila de internação e alta hospitalar", () => {
     ).toBe(false);
   });
 
-  it(
-    "2. existe hospitalAdmission depois de lifecycle e matching, sem reordenar os sistemas antigos",
-    () => {
+  it("2. hospitalAdmission roda depois de matching sem mover lifecycle", () => {
     const game = cidade("base", OVERRIDES_BASE);
     const nomes = game.sim.systems.map((s) => s.name);
     const iMatch = nomes.indexOf("matching");
@@ -275,8 +273,7 @@ describe("issue #239: fila de internação e alta hospitalar", () => {
         `(posição ${iMatch}): a UBS resolve primeiro e a internação usa leitos ` +
         "liberados no lifecycle do mesmo tick",
     ).toBe(true);
-    },
-  );
+  });
 
   it("3. a fila é admitida em leito livre dentro de `hospitalMaxDistanceMeters`", () => {
     const game = cidade("adm", OVERRIDES_BASE);
@@ -568,9 +565,7 @@ describe("issue #239: fila de internação e alta hospitalar", () => {
     // a prova aqui é a diferença entre as duas cidades (n1 > n0), não um número de ocupação.
   });
 
-  it(
-    "7. a alta libera o leito e devolve a vaga ao mercado na cadência configurada",
-    () => {
+  it("7. a alta libera o leito na cadência configurada", () => {
     // (a) Controle pontual: internação forçada, espera curta, alta forçada.
     const pontual = cidade("alta-pontual", OVERRIDES_BASE);
     const permanencia = saudeNova(pontual).hospitalAvgLengthOfStayDays;
@@ -666,6 +661,5 @@ describe("issue #239: fila de internação e alta hospitalar", () => {
         "schema e as duas cidades ficam iguais. Sem este critério a alta poderia ser " +
         "instantânea ou nunca acontecer e ninguém perceberia",
     ).toBe(true);
-    },
-  );
+  });
 });
