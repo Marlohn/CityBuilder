@@ -119,7 +119,12 @@ function checkVehicles(city: City, add: (m: string) => void) {
     else if (city.hh.car[owner] !== v) add(`carro ${v}: a família ${owner} não aponta para ele`);
     if (st === 0) {
       if (veh.parkedAt[v]! >= 0) parked[veh.parkedAt[v]!]!++;
-      else if (veh.streetTile[v]! < 0 && veh.driver[v] === -1) add(`carro ${v}: estacionado em lugar nenhum`);
+      else {
+        const tile = veh.streetTile[v]!;
+        if (tile < 0 && veh.driver[v] === -1) add(`carro ${v}: estacionado em lugar nenhum`);
+        else if (tile >= 0 && city.sim.world.roads[tile] === 0)
+          add(`carro ${v}: estacionado no quadradinho ${tile}, mas não existe via ali`);
+      }
     }
     if (st === 1 && !veh.routes[v]) add(`carro ${v}: andando sem rota`);
     if (st === 1 && !veh.moving.has(v)) add(`carro ${v}: andando fora da lista de movimento`);
