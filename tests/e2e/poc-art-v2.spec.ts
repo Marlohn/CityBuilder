@@ -27,7 +27,7 @@ test("POC v2 abre como vitrine isométrica densa e sem erros de página", async 
       camera: window.__city.renderer.cameraState(),
       cinema: document.body.classList.contains("poc-cinema"),
       // A vitrine usa quadras curtas; estes eixos internos não existiam na POC anterior.
-      denseGrid: [road(74, 120), road(86, 120), road(76, 122), road(76, 134)].every(Boolean),
+      denseGrid: [road(72, 118), road(84, 118), road(70, 120), road(70, 136)].every(Boolean),
     };
   });
 
