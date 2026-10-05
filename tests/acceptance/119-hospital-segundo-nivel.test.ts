@@ -43,6 +43,11 @@ interface CensusWithHospital {
 const SEED = "hospital-segundo-nivel";
 /** Dias de jogo das cidades do cenário (o hospital leva 30 meses de obra = 2,5 dias). */
 const DAYS = 80;
+/**
+ * A #119 testa o fallback UBS -> hospital do MatchingSystem. A #239 adiciona episódios
+ * hospitalares independentes da UBS; aqui a taxa fica praticamente zero para isolar a regra antiga.
+ */
+const MATCHING_ONLY_ADMISSION_RATE = 1e-12;
 
 /** Cidades já rodadas (não roda a mesma cidade duas vezes). */
 const jogos = new Map<string, Game>();
@@ -87,6 +92,7 @@ function cidadeComUbs(): Game {
   const { config, data } = loadConfigAndData({
     ...scenario.overrides,
     economy: { mode: "sandbox" },
+    health: { hospitalAdmissionRatePerYear: MATCHING_ONLY_ADMISSION_RATE },
   });
   const game = runGame({
     config,
@@ -118,7 +124,10 @@ function cidadeSemUbs(comHospital: boolean): Game {
   const { config, data } = loadConfigAndData({
     ...scenario.overrides,
     economy: { mode: "sandbox" },
-    health: { maxDistanceMeters: 200 },
+    health: {
+      maxDistanceMeters: 200,
+      hospitalAdmissionRatePerYear: MATCHING_ONLY_ADMISSION_RATE,
+    },
   });
   const game = runGame({
     config,
