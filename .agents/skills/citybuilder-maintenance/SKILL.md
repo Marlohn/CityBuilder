@@ -77,6 +77,10 @@ Ajuste a prioridade quando dependências ou o contexto atual do repositório jus
 
 A `main` usa checks obrigatórios em modo estrito. Antes do merge, a branch da PR precisa conter o HEAD atual da `main`; CI verde de um merge sintético antigo não satisfaz essa regra. Se a API de merge responder `405` dizendo que os checks obrigatórios estão “expected” apesar de um CI verde, confira se a base avançou, sincronize a branch com a `main` atual e valide novamente o novo HEAD.
 
+Quando houver várias PRs em `em-revisão`, preserve a fila serial do sincronizador: só a PR elegível mais antiga deve ser atualizada contra a `main` e consumir CI. Não antecipe `update-branch` nas seguintes, porque o primeiro merge as deixará atrasadas novamente.
+
+O CI mantém os mesmos checks obrigatórios para mudanças operacionais/documentais reconhecidas, mas pode usar o caminho leve e dispensar Vitest completo, simulações lentas e Playwright. Código/config/dados/testes comuns e mudanças no próprio workflow de CI continuam exigindo a suíte completa.
+
 Ao revisar uma PR:
 
 1. Leia a issue/tarefa relacionada e as regras do repositório.
