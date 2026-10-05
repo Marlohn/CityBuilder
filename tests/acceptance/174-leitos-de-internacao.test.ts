@@ -493,7 +493,7 @@ const ESPERADO_BOT = {
   buildings: 628,
   cars: 147,
   money: 3296044,
-  events: 10376,
+  events: 10362,
   unmet: {
     school: 0,
     university: 0,
