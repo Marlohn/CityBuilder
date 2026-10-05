@@ -15,7 +15,7 @@ import {
 import type { MapView } from "@city/contract";
 import { BatchSet } from "./instances";
 
-export type PocV3Scene = "kenney" | "hero" | "live";
+export type PocV3Scene = "kenney" | "hero" | "live" | "play";
 export type PocV3CameraMode = "orthographic" | "perspective";
 
 type SemanticRole =
@@ -149,7 +149,7 @@ export class PocV3Showcase {
     private baseUrl: string,
   ) {}
 
-  async build(kind: Exclude<PocV3Scene, "live">) {
+  async build(kind: "kenney" | "hero") {
     if (kind === "kenney") await this.buildKenney();
     else this.buildHero();
   }
