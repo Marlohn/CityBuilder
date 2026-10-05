@@ -113,12 +113,14 @@ jobs:
     steps:
       - name: Conferir todas as partes
         env:
+          CLASSIFY_RESULT: ${{ needs.classify.result }}
           FULL_SUITE: ${{ needs.classify.outputs.full_suite }}
           STATIC_RESULT: ${{ needs.static-check.result }}
           TESTS_RESULT: ${{ needs.tests.result }}
         shell: bash
         run: |
           set -euo pipefail
+          test "$CLASSIFY_RESULT" = success
           test "$STATIC_RESULT" = success
           if [[ "$FULL_SUITE" == "true" ]]; then
             test "$TESTS_RESULT" = success
@@ -130,11 +132,15 @@ jobs:
   slow:
     name: testes lentos (coorte IBGE e cidade de 50 mil)
     needs: classify
+    if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
+      - name: Conferir classificação
+        if: needs.classify.result != 'success'
+        run: exit 1
       - name: CI leve
-        if: needs.classify.outputs.full_suite != 'true'
+        if: needs.classify.result == 'success' && needs.classify.outputs.full_suite != 'true'
         run: echo "Testes lentos dispensados para mudança exclusivamente operacional/documental."
       - uses: actions/checkout@v4
         if: needs.classify.outputs.full_suite == 'true'
