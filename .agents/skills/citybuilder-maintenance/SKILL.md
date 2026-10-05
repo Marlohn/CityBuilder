@@ -106,6 +106,8 @@ Nunca apague uma branch apenas por ser antiga.
 
 Prefira deixar uma branch possivelmente removível a apagar trabalho que ainda possa ter valor.
 
+O workflow `.github/workflows/branch-hygiene.yml` pode apagar uma branch ao mesmo tempo em que um sweep a percorre. Ao manter esse fluxo, trate uma ref que desapareceu entre a listagem e a leitura/remoção como já limpa; erros de remoção de uma branch que ainda existe devem continuar falhando o job.
+
 ## Correção de bugs
 
 Para bugs:
