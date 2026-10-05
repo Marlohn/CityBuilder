@@ -71,27 +71,26 @@ function buildArtV2Gallery() {
   if (!artV2 || artV2GalleryBuilt) return;
   artV2GalleryBuilt = true;
 
-  // Quatro quadras compactas: a POC avalia composição e leitura urbana, não cobertura do mapa inteiro.
-  client.command({ type: "buildRoad", kind: "avenue", x0: 47, y0: 128, x1: 103, y1: 128 });
-  for (const x of [58, 73, 88, 103])
-    client.command({ type: "buildRoad", kind: "street", x0: x, y0: 113, x1: x, y1: 143 });
-  client.command({ type: "buildRoad", kind: "street", x0: 58, y0: 113, x1: 103, y1: 113 });
-  client.command({ type: "buildRoad", kind: "street", x0: 58, y0: 143, x1: 103, y1: 143 });
+  // Quatro quadras pequenas ao redor de uma avenida: a tela precisa parecer um diorama urbano,
+  // não um mapa inteiro com prédios perdidos no gramado.
+  client.command({ type: "buildRoad", kind: "avenue", x0: 47, y0: 128, x1: 96, y1: 128 });
+  for (const x of [68, 80, 92])
+    client.command({ type: "buildRoad", kind: "street", x0: x, y0: 116, x1: x, y1: 140 });
+  client.command({ type: "buildRoad", kind: "street", x0: 68, y0: 116, x1: 92, y1: 116 });
+  client.command({ type: "buildRoad", kind: "street", x0: 68, y0: 140, x1: 92, y1: 140 });
 
-  client.command({ type: "placeService", service: "poco", x: 50, y: 129 });
-  client.command({ type: "placeService", service: "subestacao", x: 53, y: 129 });
-  client.command({ type: "placeService", service: "escola", x: 59, y: 129 });
-  client.command({ type: "placeService", service: "ubs", x: 74, y: 129 });
-  client.command({ type: "placeService", service: "hospital", x: 89, y: 129 });
+  // Infraestrutura fica na borda da vitrine; o miolo é reservado para arquitetura urbana.
+  client.command({ type: "placeService", service: "poco", x: 62, y: 129 });
+  client.command({ type: "placeService", service: "subestacao", x: 64, y: 129 });
 
-  client.command({ type: "zone", zone: "residential_low", x0: 59, y0: 114, x1: 71, y1: 127 });
-  client.command({ type: "zone", zone: "residential_high", x0: 74, y0: 114, x1: 86, y1: 127 });
-  client.command({ type: "zone", zone: "commercial", x0: 89, y0: 114, x1: 101, y1: 127 });
-  client.command({ type: "zone", zone: "commercial", x0: 74, y0: 134, x1: 86, y1: 142 });
-  client.command({ type: "zone", zone: "residential_low", x0: 89, y0: 134, x1: 101, y1: 142 });
+  client.command({ type: "zone", zone: "residential_low", x0: 69, y0: 117, x1: 79, y1: 127 });
+  client.command({ type: "zone", zone: "residential_high", x0: 81, y0: 117, x1: 91, y1: 127 });
+  client.command({ type: "zone", zone: "commercial", x0: 69, y0: 129, x1: 79, y1: 139 });
+  client.command({ type: "zone", zone: "residential_low", x0: 81, y0: 129, x1: 91, y1: 139 });
+  client.command({ type: "zone", zone: "industrial", x0: 93, y0: 129, x1: 96, y1: 139 });
 
-  client.send({ type: "advance", ticks: 7600 });
-  renderer.lookAt(80.5, 128.5);
+  client.send({ type: "advance", ticks: 9000 });
+  renderer.lookAt(80, 128);
   renderer.zoomBy(6.5 / renderer.cameraState().zoom);
 }
 
