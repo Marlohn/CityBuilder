@@ -63,6 +63,51 @@ function fmt(v: number): string {
     .replace(/\B(?=(\d{3})+(?!\d))/g, ".");
 }
 
+export interface InfantMortalitySample {
+  births: number;
+  infantDeaths: number;
+  population: number;
+}
+
+/**
+ * Mortalidade infantil é evento raro: classifica pela soma dos numeradores/denominadores
+ * de todas as cidades de avaliação, em vez de transformar um outlier isolado em prioridade.
+ */
+export function aggregateInfantMortalitySignal(
+  samples: InfantMortalitySample[],
+  range: { min: number; max: number; source: string },
+  minBirths: number,
+): Signal | null {
+  let births = 0;
+  let infantDeaths = 0;
+  let population = 0;
+  for (const s of samples) {
+    births += s.births;
+    infantDeaths += s.infantDeaths;
+    population += s.population;
+  }
+  if (samples.length === 0 || births < minBirths) return null;
+  const value = (infantDeaths / births) * 1000;
+  if (value >= range.min && value <= range.max) return null;
+  const rounded = Math.round(value * 100) / 100;
+  return {
+    id: "realismo:infantMortality",
+    source: "realismo",
+    category: "realismo",
+    title: `Realismo: Mortalidade infantil ${value < range.min ? "abaixo" : "acima"} da vida real`,
+    detail: `Na amostra agregada: ${rounded} por mil em ${fmt(births)} nascimentos. Na vida real: ${range.min} a ${range.max}.`,
+    reach: Math.round(population / samples.length),
+    impact: 2,
+    evidence: "dataAndSource",
+    urgent: false,
+    seen: samples.length,
+    runs: samples.length,
+    research: { source: range.source },
+    metric: `realism.infantMortality entre ${range.min} e ${range.max}`,
+    proposal: "Achar a regra que gera esse número (relatório + log) e corrigir com base na fonte.",
+  };
+}
+
 /** Receita real de municípios pequenos: base para conferir a economia do jogo. */
 const SMALL_TOWN_REVENUE = {
   source:
