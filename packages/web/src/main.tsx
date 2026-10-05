@@ -74,7 +74,28 @@ client.onLoadRequested = (save) => {
   store.set({ ready: false, error: null });
   client.send({ type: "load", save, configTexts, dataTexts });
 };
-client.onReady = () => store.set({ ready: true });
+let pocGalleryBuilt = false;
+function buildPocGallery() {
+  if (!pocVisual || params.get("poc") !== "galeria" || pocGalleryBuilt) return;
+  pocGalleryBuilt = true;
+  client.command({ type: "buildRoad", kind: "avenue", x0: 47, y0: 128, x1: 106, y1: 128 });
+  for (const x of [60, 75, 90, 105])
+    client.command({ type: "buildRoad", kind: "street", x0: x, y0: 110, x1: x, y1: 146 });
+  client.command({ type: "placeService", service: "poco", x: 50, y: 129 });
+  client.command({ type: "placeService", service: "subestacao", x: 53, y: 129 });
+  client.command({ type: "placeService", service: "escola", x: 61, y: 129 });
+  client.command({ type: "placeService", service: "ubs", x: 76, y: 129 });
+  client.command({ type: "placeService", service: "hospital", x: 91, y: 129 });
+  client.command({ type: "zone", zone: "residential_low", x0: 61, y0: 113, x1: 73, y1: 127 });
+  client.command({ type: "zone", zone: "residential_high", x0: 76, y0: 113, x1: 88, y1: 127 });
+  client.command({ type: "zone", zone: "commercial", x0: 91, y0: 113, x1: 103, y1: 127 });
+  client.send({ type: "advance", ticks: 6200 });
+  renderer.lookAt(79, 128);
+}
+client.onReady = () => {
+  store.set({ ready: true });
+  buildPocGallery();
+};
 client.onFrame = (f) => {
   if (f.map) {
     lastMap = f.map;
