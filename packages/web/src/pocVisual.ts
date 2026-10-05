@@ -126,7 +126,7 @@ export class IsometricPocVisual {
     this.terrain = this.box("poc/terrain", P.terrain);
     this.platform = this.box("poc/platform", P.platform);
     this.lip = this.box("poc/lip", P.platform2);
-    const defs: Array<[string, RGB, "box" | "sphere" | "cylinder"]> = [
+    const defs: Array<[string, RGB, "box" | "sphere" | "cylinder" | "pyramid"]> = [
       ["road", P.road, "box"],
       ["avenue", P.avenue, "box"],
       ["sidewalk", P.sidewalk, "box"],
@@ -142,6 +142,9 @@ export class IsometricPocVisual {
       ["lawn", P.lawn, "box"],
       ["window", P.window, "box"],
       ["roof", P.roof, "box"],
+      ["roofHip", P.roof, "pyramid"],
+      ["tankWater", P.cyan, "cylinder"],
+      ["tankSewage", P.teal, "cylinder"],
       ["accent", P.coral, "box"],
       ["accent2", P.teal, "box"],
       ["dark", P.dark, "box"],
@@ -161,7 +164,9 @@ export class IsometricPocVisual {
           ? this.sphere(`poc/${key}`, rgb)
           : shape === "cylinder"
             ? this.cylinder(`poc/${key}`, rgb)
-            : this.box(`poc/${key}`, rgb);
+            : shape === "pyramid"
+              ? this.pyramid(`poc/${key}`, rgb)
+              : this.box(`poc/${key}`, rgb);
       this.batches.set(key, new Batch(mesh));
     }
   }
@@ -251,6 +256,9 @@ export class IsometricPocVisual {
       "lawn",
       "window",
       "roof",
+      "roofHip",
+      "tankWater",
+      "tankSewage",
       "accent",
       "accent2",
       "dark",
@@ -350,12 +358,28 @@ export class IsometricPocVisual {
       return;
     }
     const floors = Math.max(1, meta.floors),
-      bw = Math.max(0.42, b.w * (meta.zone === "industrial" ? 0.72 : 0.58)),
-      bd = Math.max(0.42, b.h * (meta.zone === "industrial" ? 0.72 : 0.58));
+      footprint =
+        meta.zone === "industrial"
+          ? 0.78
+          : meta.zone === "commercial"
+            ? 0.72
+            : meta.zone === "residential_low"
+              ? 0.7
+              : meta.zone === "residential_high"
+                ? 0.64
+                : meta.service
+                  ? 0.52
+                  : 0.62,
+      bw = Math.max(0.42, b.w * footprint),
+      bd = Math.max(0.42, b.h * footprint);
     const h = 0.22 + floors * (meta.zone === "residential_low" ? 0.28 : 0.31),
       body = (b.variant + (meta.service ? 1 : 0)) % bodyColors.length;
+    if (floors >= 3)
+      this.b(`body${body}`).push(cx, 0.19, cz, 0, bw * 1.14, 0.18, bd * 1.14);
     this.b(`body${body}`).push(cx, 0.12 + h / 2, cz, 0, bw, h, bd);
-    this.b("roof").push(cx, 0.135 + h, cz, 0, bw * 1.04, 0.055, bd * 1.04);
+    if (meta.zone === "residential_low")
+      this.b("roofHip").push(cx, 0.16 + h, cz, Math.PI / 4, bw * 1.08, 0.22, bd * 1.08);
+    else this.b("roof").push(cx, 0.135 + h, cz, 0, bw * 1.04, 0.055, bd * 1.04);
     if (floors >= 3) {
       const roofOffset = b.variant % 2 === 0 ? 0.12 : -0.12;
       this.b("dark").push(cx + roofOffset, 0.2 + h, cz, 0, bw * 0.2, 0.11, bd * 0.22);
@@ -396,9 +420,30 @@ export class IsometricPocVisual {
       for (const offset of [-0.18, 0, 0.18])
         this.b("line").push(cx + lotW * offset, 0.128, pz, 0, 0.012, 0.012, Math.min(0.2, lotD * 0.15));
     }
+    if (meta.service === "school") {
+      const courtX = cx + lotW * 0.32,
+        courtZ = cz + lotD * 0.32;
+      this.b("accent2").push(courtX, 0.12, courtZ, 0, Math.min(1.35, lotW * 0.3), 0.025, Math.min(1.8, lotD * 0.32));
+      this.b("line").push(courtX, 0.135, courtZ, 0, Math.min(1.05, lotW * 0.24), 0.01, 0.025);
+    }
     if (meta.service === "health") {
       this.b("accent").push(cx, 0.17 + h, cz, 0, 0.22, 0.035, 0.065);
       this.b("accent").push(cx, 0.17 + h, cz, 0, 0.065, 0.035, 0.22);
+    }
+    if (meta.service === "water") {
+      const dx = Math.min(0.55, lotW * 0.24),
+        dz = Math.min(0.55, lotD * 0.24);
+      this.b("tankWater").push(cx + dx, 0.2, cz + dz, 0, 0.38, 0.22, 0.38);
+      if (b.w > 1) this.b("tankWater").push(cx - dx, 0.2, cz + dz, 0, 0.38, 0.22, 0.38);
+    }
+    if (meta.service === "sewage") {
+      const dx = Math.min(0.58, lotW * 0.25);
+      this.b("tankSewage").push(cx + dx, 0.16, cz + lotD * 0.22, 0, 0.46, 0.14, 0.46);
+      this.b("tankSewage").push(cx - dx, 0.16, cz + lotD * 0.22, 0, 0.46, 0.14, 0.46);
+    }
+    if (meta.service === "power") {
+      for (const dx of [-0.28, 0.28])
+        this.b("yellow").push(cx + dx, 0.2, cz + lotD * 0.24, 0, 0.28, 0.22, 0.34);
     }
   }
 
@@ -431,7 +476,17 @@ export class IsometricPocVisual {
     return m;
   }
   private cylinder(name: string, rgb: RGB) {
-    const m = MeshBuilder.CreateCylinder(name, { height: 1, diameter: 1, tessellation: 6 }, this.scene);
+    const m = MeshBuilder.CreateCylinder(name, { height: 1, diameter: 1, tessellation: 8 }, this.scene);
+    m.material = this.mat(name, rgb);
+    m.isPickable = false;
+    return m;
+  }
+  private pyramid(name: string, rgb: RGB) {
+    const m = MeshBuilder.CreateCylinder(
+      name,
+      { height: 1, diameterTop: 0, diameterBottom: 1, tessellation: 4 },
+      this.scene,
+    );
     m.material = this.mat(name, rgb);
     m.isPickable = false;
     return m;
