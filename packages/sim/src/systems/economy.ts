@@ -1,18 +1,23 @@
 /**
  * Economia da prefeitura. Receita e despesa entram hora a hora (1 dia do jogo = 1 ano).
- * - Receita: R$ 5.300 por morador por ano (receita corrente média dos municípios, FNP/Censo).
+ * - Receita: R$ por morador por ano varia com o porte da cidade
+ *   (tabela revenuePerResidentByPopulation em config/economy.yaml).
  * - Despesas: escolas (custo por aluno, Fundeb), UBS (custo anual), manutenção das vias.
  */
 import type { City } from "../city";
+import { makeTableLookup } from "../config/load";
 import type { System } from "../sim";
 
 export class EconomySystem implements System {
   readonly name = "economy";
+  private readonly revenuePerResident: (pop: number) => number;
 
   constructor(
     private city: City,
     private onYearEnd: () => void,
-  ) {}
+  ) {
+    this.revenuePerResident = makeTableLookup(city.sim.config.economy.revenuePerResidentByPopulation);
+  }
 
   tick() {
     const city = this.city;
@@ -22,10 +27,9 @@ export class EconomySystem implements System {
     const ticksPerHour = Math.max(1, Math.round(60 / sim.config.time.minutesPerTick));
     if (clock.tick % ticksPerHour !== 0) return;
     const hoursPerYear = 24;
-    const cfg = sim.config;
     const t = sim.treasury;
     t.earn(
-      (city.pop.aliveCount * cfg.economy.revenuePerResidentPerYear) / hoursPerYear,
+      (city.pop.aliveCount * this.revenuePerResident(city.pop.aliveCount)) / hoursPerYear,
       "impostos_e_repasses",
     );
     const b = sim.buildings;
