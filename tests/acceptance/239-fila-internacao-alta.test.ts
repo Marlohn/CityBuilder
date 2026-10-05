@@ -40,6 +40,7 @@ import type { Command } from "@city/contract";
 import { BSTATE, type Game } from "@city/sim";
 import { describe, expect, it } from "vitest";
 import { registerHospital, unregisterHospital } from "../../packages/sim/src/people/actions";
+import { HospitalAdmissionSystem } from "../../packages/sim/src/systems/hospitalAdmission";
 import { createTestGame } from "../helpers";
 
 /** Fila nova da issue #239 (ainda não existe na main): mesmo formato da IndexedSet. */
@@ -321,7 +322,9 @@ describe("issue #239: fila de internação e alta hospitalar", () => {
     let ocupadosAntes = 0;
     for (const h of hospitais) ocupadosAntes += game.sim.buildings.patients[h]!;
     fila.add(p);
-    game.sim.step(1);
+    // Testa somente a admissão: um sim.step() também rodaria LifecycleSystem e poderia
+    // liberar um leito por alta antes da admissão, deixando de ser um cenário "sem vaga".
+    new HospitalAdmissionSystem(game.city).tick();
     expect(
       fila.has(p),
       `a pessoa ${p} continua na fila \`seekHospital\` depois de 1 tick: ` +
@@ -499,7 +502,7 @@ describe("issue #239: fila de internação e alta hospitalar", () => {
     ).toBeGreaterThan(0);
   });
 
-  it("6. no aniversário a internação é sorteada por `hospitalAdmissionRatePerYear` (rng.life)", () => {
+  it("6. no aniversário a internação é sorteada por `hospitalAdmissionRatePerYear`", () => {
     const jogo1 = cidade("taxa-1", {
       economy: { mode: "sandbox" },
       health: { maxDistanceMeters: 200, hospitalAdmissionRatePerYear: 1 },
@@ -530,7 +533,7 @@ describe("issue #239: fila de internação e alta hospitalar", () => {
       n1 > n0,
       `a cidade com taxa 1 internou ${n1} pessoas e a com taxa mínima (0.0001) internou ${n0}: ` +
         "com hospitalAdmissionRatePerYear = 1 todo aniversário com doença pede internação " +
-        "(sorteio por city.rng.life no LifecycleSystem), então a taxa 1 deveria ter MAIS " +
+        "(sorteio por city.rng.hospital no LifecycleSystem), então a taxa 1 deveria ter MAIS " +
         "gente internada; a taxa mínima usa 0.0001 (e não 0) porque o schema exige valor >0 " +
         "(pos.max(1)); na main sem o sorteio do LifecycleSystem ninguém entra na fila nova " +
         "e as cidades ficam iguais",
