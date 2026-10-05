@@ -41,6 +41,7 @@ import { BSTATE, type Game } from "@city/sim";
 import { describe, expect, it } from "vitest";
 import { registerHospital, unregisterHospital } from "../../packages/sim/src/people/actions";
 import { HospitalAdmissionSystem } from "../../packages/sim/src/systems/hospitalAdmission";
+import { HospitalAdmissionSystem } from "../../packages/sim/src/systems/hospitalAdmission";
 import { createTestGame } from "../helpers";
 
 /** Fila nova da issue #239 (ainda não existe na main): mesmo formato da IndexedSet. */
@@ -476,7 +477,9 @@ describe("issue #239: fila de internação e alta hospitalar", () => {
     if (p < 0) return;
     game.city.seekClinic.delete(p);
     fila.add(p);
-    game.sim.step(1);
+    // Testa só a admissão. Um sim.step(1) também roda o LifecycleSystem, que pode dar alta
+    // primeiro e criar legitimamente uma vaga no mesmo tick.
+    new HospitalAdmissionSystem(game.city).tick();
     expect(
       fila.has(p),
       `a pessoa ${p} saiu da fila \`seekHospital\` sem haver leito livre: ` +
