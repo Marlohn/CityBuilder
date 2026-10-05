@@ -81,6 +81,8 @@ Quando houver várias PRs em `em-revisão`, preserve a fila serial do sincroniza
 
 O CI mantém os mesmos checks obrigatórios para mudanças operacionais/documentais reconhecidas, mas pode usar o caminho leve e dispensar Vitest completo, simulações lentas e Playwright. Código/config/dados/testes comuns e mudanças no próprio workflow de CI continuam exigindo a suíte completa.
 
+Na suíte completa, diagnostique o navegador por componente: bootstrap da fábrica, E2E da ponte da fábrica e shards E2E normais rodam separadamente e o check `teste de tela (Playwright)` agrega os três. Não trate falha de um componente como evidência de defeito nos outros.
+
 Ao revisar uma PR:
 
 1. Leia a issue/tarefa relacionada e as regras do repositório.
