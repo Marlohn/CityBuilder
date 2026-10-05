@@ -21,6 +21,7 @@ import { divorce, giveBirth, maybeLeaveParents, tryMarry } from "./family";
 
 export class LifecycleSystem implements System {
   readonly name = "lifecycle";
+  private hospitalDischargeCursor = 0;
 
   constructor(
     private city: City,
@@ -165,10 +166,7 @@ export class LifecycleSystem implements System {
 
     // 5. Internação: episódio novo para quem ainda não tem leito. UBS e hospital são
     // independentes: ter atendimento primário não impede precisar de internação.
-    if (
-      pop.hospital[p]! < 0 &&
-      city.rng.hospital.chance(config.health.hospitalAdmissionRatePerYear)
-    )
+    if (pop.hospital[p]! < 0 && city.rng.hospital.chance(config.health.hospitalAdmissionRatePerYear))
       city.seekHospital.add(p);
 
     // 6. Dinheiro da família (uma vez por ano, pela primeira pessoa da lista da família).
@@ -177,25 +175,43 @@ export class LifecycleSystem implements System {
   }
 
   /**
-   * Alta hospitalar: cada internado tem por tick a fração diária da chance de alta.
-   * Só percorre os internados; morte e saída da cidade já soltam o leito em detach().
+   * Alta hospitalar em orçamento fixo. Em cidades grandes não dá para varrer todos os
+   * internados a cada tick; o cursor visita uma fatia e compensa a chance pelo intervalo
+   * estimado entre visitas, preservando a cadência média sem trabalho O(n) por tick.
    */
   private discharge() {
     const city = this.city;
-    const chance = Math.min(
+    const size = city.hospitalized.size;
+    if (size === 0) {
+      this.hospitalDischargeCursor = 0;
+      return;
+    }
+
+    const personBudget = city.config.performance.budgets.personsUpdatedPerTick;
+    const count = Math.min(size, Math.max(4, Math.floor(personBudget / 8)));
+    const ticksBetweenVisits = Math.max(1, Math.ceil(size / count));
+    const chancePerTick = Math.min(
       1,
       1 / city.config.health.hospitalAvgLengthOfStayDays / city.sim.clock.ticksPerDay,
     );
-    let i = 0;
-    while (i < city.hospitalized.size) {
-      const p = city.hospitalized.at(i);
+    const chancePerVisit = 1 - (1 - chancePerTick) ** ticksBetweenVisits;
+
+    for (let k = 0; k < count; k++) {
+      if (city.hospitalized.size === 0) {
+        this.hospitalDischargeCursor = 0;
+        break;
+      }
+      if (this.hospitalDischargeCursor >= city.hospitalized.size) this.hospitalDischargeCursor = 0;
+      const p = city.hospitalized.at(this.hospitalDischargeCursor);
       city.sim.perf.count("personsUpdated");
-      if (city.rng.hospital.chance(chance)) {
+      if (city.rng.hospital.chance(chancePerVisit)) {
         unregisterHospital(city, p);
         // Alta é cura, não um pedido novo de UBS.
         city.seekClinic.delete(p);
-        // O IndexedSet move o último item para esta posição; reprocessa o mesmo índice.
-      } else i++;
+        // IndexedSet move o último item para esta posição; o cursor não avança.
+      } else {
+        this.hospitalDischargeCursor++;
+      }
     }
   }
 
