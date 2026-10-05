@@ -1,11 +1,11 @@
 name: 💡 Ideia
-description: Qualquer ideia, escrita do jeito que quiser. O agente Designer organiza e coloca no roadmap.
+description: Qualquer ideia para o jogo, escrita do jeito que quiser.
 labels: ["ideia"]
 body:
   - type: textarea
     id: ideia
     attributes:
       label: Ideia
-      description: Escreva livremente. Ex.: "queria que tivesse metrô" ou "as pessoas deveriam ir ao mercado".
+      description: "Escreva livremente. Ex.: queria que tivesse metrô ou as pessoas deveriam ir ao mercado."
     validations:
       required: true

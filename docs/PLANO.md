@@ -10,7 +10,7 @@ Um city builder isométrico que roda no navegador, inspirado no Cities: Skylines
 1. **Camadas separadas:** o motor da cidade funciona sem tela. A tela pode ser trocada por outra engine sem mexer no motor.
 2. **Vida real simulada:** cada pessoa tem uma vida própria, do nascimento à morte, com escolhas aleatórias que fazem sentido.
 3. **Performance desde o dia 1:** a cidade não pode travar quando cresce, que é o maior problema dos Cities: Skylines.
-4. **Evolução contínua por agentes de IA:** agentes com LLMs grátis (via Hermes Agent) melhoram o jogo em loop, 24h, sem quebrar o que já funciona.
+4. **Desenvolvimento assistido por IA:** o projeto deve ser fácil de entender, testar e evoluir por qualquer pessoa ou IA, sem depender de um orquestrador específico.
 
 ## 2. Regras de ouro
 
@@ -18,8 +18,8 @@ Um city builder isométrico que roda no navegador, inspirado no Cities: Skylines
    - Nada surge ou some do nada. Um carro tem dono (pessoa ou empresa), origem, destino e lugar pra estacionar.
    - Uma pessoa só entra na cidade nascendo ou se mudando pra ela, e só sai morrendo ou se mudando.
 2. **Nada fixo.** Todo número de regra de jogo fica em arquivo de config, com valor padrão, explicação e validação.
-3. **Tudo passa por pesquisa online.** Toda regra, construção, feature ou número do jogo só entra depois de uma pesquisa que mostre que faz sentido na realidade. Os valores padrão vêm de dados reais (de preferência IBGE), e a fonte fica anotada ao lado. Sem fonte, não entra.
-4. **Teste primeiro (TDD).** O teste é escrito antes e falha. Depois o código faz ele passar.
+3. **Realidade quando importa.** Regras e números que representam o mundo real precisam de pesquisa e fonte. UI, tooling, refactors e decisões puramente técnicas não precisam de pesquisa artificial.
+4. **Teste proporcional ao risco.** Bugs e mudanças de comportamento devem ter regressão quando útil; documentação e refactors mecânicos não precisam de um teste criado só por ritual.
 5. **Performance é regra, não detalhe.** Nenhuma mudança entra deixando o jogo mais lento sem que isso apareça e seja aprovado.
 6. **Sem exagero.** Se uma ideia não tem uso claro agora, vai pro roadmap, não pro código.
 7. **Pensar em quem vai corrigir.** Todo erro tem que vir com a informação necessária pra reproduzir e entender o problema, sem gastar tempo nem tokens adivinhando.
@@ -198,15 +198,15 @@ Tudo testável sem abrir o navegador, sempre que possível.
 | Performance | Contadores de trabalho (fixos) e ticks por segundo (informativo). |
 | Tela | O Playwright abre o jogo, carrega um cenário e compara com o print aprovado. |
 
-- Um comando só: `npm run check` roda tudo e responde em texto curto o que passou e o que quebrou.
+- `npm run check` roda tipos, estilo, camadas e a suíte Vitest normal. Testes lentos e de navegador são separados e usados quando o risco da mudança justificar.
 - Toda falha mostra a semente e o comando exato pra reproduzir.
 
 ## 9. Placar de realismo (ideia nova)
 
 - Um relatório automático compara os números da cidade com a vida real: expectativa de vida, mortalidade infantil, filhos por mulher, desemprego, tempo de deslocamento.
 - As faixas aceitáveis vêm de fontes reais (IBGE) e ficam na config.
-- Número fora da faixa vira um alerta. Exemplo: "expectativa de vida na cidade = 45 anos, a faixa real é 70 a 82". O alerta vira uma Issue pro Designer.
-- É assim que "o jogo gera o roadmap" de um jeito que faz sentido: o jogo aponta o problema com dados, e o agente decide a prioridade.
+- Número fora da faixa vira um alerta e pode virar uma issue de correção/priorização.
+- É assim que o jogo alimenta o roadmap com dados; a prioridade combina fórmula e julgamento de produto.
 
 ## 10. Logs
 
@@ -223,93 +223,44 @@ Tudo testável sem abrir o navegador, sempre que possível.
 - Conteúdo (tipos de prédio, profissões etc.) é dado, não código.
 - Branch `main` protegida: só entra com CI verde.
 
-## 12. Agentes
+## 12. Desenvolvimento
 
-| Agente | Papel |
+O projeto pode ser desenvolvido por humanos ou IAs, sem papéis fixos e sem dependência de um orquestrador. O GitHub é o registro de issues, branches, PRs, commits e CI.
+
+### 12.1 Fluxo de desenvolvimento
+
+1. Entender o problema e o comportamento esperado.
+2. Criar uma branch descritiva a partir da `main`.
+3. Implementar código e testes na mesma branch. Não existe branch separada de QA nem limite artificial de três arquivos.
+4. Rodar os testes afetados durante a implementação e `npm run check` no estado final.
+5. Abrir um PR curto, com `Closes #N` quando houver issue a concluir.
+6. O CI escolhe validações adicionais pelo risco: núcleo da simulação/dados roda testes lentos; render/UI/web roda E2E.
+7. Revisar o diff e mergear com os checks relevantes verdes.
+
+Pesquisa externa é obrigatória somente quando a mudança afirma algo sobre o mundo real ou introduz regra/número factual na simulação. O objetivo é reduzir retrabalho sem criar cerimônia que não detecta defeitos.
+
+POCs e experimentos são parte válida do processo de descoberta. Não são apagados por higiene automática e só devem ser descartados por decisão explícita.
+
+### 12.2 Motor de roadmap
+
+O motor de roadmap é uma ferramenta de priorização, não um sistema de orquestração de agentes. Ele junta sinais medidos pelo jogo e issues e gera uma visão ordenada do trabalho.
+
+Fontes de sinais:
+
+| Fonte | Exemplo |
 |---|---|
-| **Designer do jogo** | Decide **o que** melhorar. Lê relatórios, alertas do placar de realismo e ideias do dono, e mantém o roadmap priorizado. |
-| **Arquiteto** | Decide **como**. Quebra os itens em tarefas pequenas e revisa o código no final. |
-| **QA** | Escreve o teste de aceitação que falha **antes** do dev. Depois tenta quebrar o que foi feito. |
-| **Dev** | Faz os testes passarem. Não pode alterar os testes de aceitação do QA (um check automático bloqueia). |
+| Desejos não atendidos | pessoas querendo um serviço que não existe ou está lotado |
+| Comparação com referências reais | serviço esperado para uma cidade daquele porte |
+| Placar de realismo | indicador do jogo fora de uma faixa de referência |
+| Partidas do prefeito automático | falência, cidade travada, demanda não atendida |
+| Saúde técnica | bugs, invariantes, performance e dívida de calibração |
+| Ideias | propostas abertas diretamente no GitHub |
 
-Juízes que não são LLM:
-- **O CI:** se falhar, não entra.
-- **O dono do projeto:** aprova mudanças grandes (contrato, formato de save, schema da config). O arquivo CODEOWNERS do GitHub obriga isso.
+`npm run roadmap:signals` mede os sinais e `npm run roadmap:build` aplica a fórmula de prioridade. Um item do roadmap descreve problema, proposta, métrica, impacto, confiança, esforço e dependências reais. Pesquisa/fonte é preenchida quando o item depende de um fato externo; não é um gate universal para UI ou trabalho técnico.
 
-Regras pra funcionar com qualquer LLM grátis:
-- Tarefa pequena: no máximo uns 3 arquivos.
-- Todo pedido segue um modelo fixo com "tá pronto quando...".
-- Se uma tarefa falhar 3 vezes, volta pro arquiteto quebrar em pedaços menores.
-- Bug sempre vem com o arquivo de replay (semente + comandos).
-- Cada agente tem suas instruções em `agents/<papel>.md`, que vira o perfil dele no Hermes.
+A fórmula continua sendo RICE: **(Alcance × Impacto × Confiança) ÷ Esforço**. Bugs e regressões podem receber urgência, dependências sobem quando bloqueiam itens importantes e o motor mantém diversidade de categorias. A fórmula ajuda a ordenar; ela não substitui julgamento de produto.
 
-### 12.1 Loop de desenvolvimento
-
-- O quadro oficial é o GitHub: Issues pra tarefas e Pull Requests pro código.
-- Etiquetas organizam o fluxo: `ideia` → `roadmap` → `pronto-pra-teste` → `pronto-pra-dev` → `em-revisão`.
-- A ordem do roadmap vem do motor de roadmap (seção 12.2).
-
-### 12.2 Motor de roadmap (feature crítica)
-
-O roadmap é o que mantém o loop 24h andando na direção certa. Se ele for fraco, os agentes ficam girando em coisa inútil. Por isso ele é uma feature do projeto, com código e testes, e não só um arquivo que alguém edita.
-
-A ideia central: **o jogo mede, o agente pesquisa e decide, e uma fórmula ordena.** O LLM não "acha" o que é importante. Ele trabalha em cima de dados.
-
-#### De onde vêm as ideias (6 fontes)
-
-| Fonte | Exemplo | Tipo |
-|---|---|---|
-| **1. Desejos não atendidos das pessoas** | O cérebro registra quando alguém quis fazer algo e não conseguiu: "4.200 pessoas quiseram fazer faculdade e não havia faculdade", "900 famílias quiseram mudar e não havia casa". | Construções e features novas |
-| **2. Comparação com cidades reais** | Uma tabela pesquisada de "o que uma cidade real desse tamanho costuma ter" (fontes como a pesquisa MUNIC do IBGE, que levanta a estrutura de todos os municípios do Brasil). "Cidade de 30 mil habitantes sem nenhum posto de saúde" ou "sem transporte público". | Construções e serviços novos |
-| **3. Placar de realismo** | "Expectativa de vida na cidade = 45 anos, a faixa real é 70 a 82". | Correções de regra |
-| **4. Partidas do prefeito automático** | O bot joga várias partidas e registra onde trava: "em 80% das partidas a prefeitura falia no ano 20". | Balanceamento |
-| **5. Saúde técnica** | Regras que quebraram, bugs com replay, piora de performance, teste instável. | Correções urgentes |
-| **6. Ideias do dono** | Você abre uma Issue com a etiqueta `ideia`, escrita do jeito que quiser. | Qualquer coisa |
-
-As fontes 1 a 5 são geradas automaticamente pelo comando `npm run roadmap:signals`, que roda cidades de teste e junta tudo num arquivo. Sinais repetidos são agrupados, pra não virar 50 Issues iguais.
-
-#### Como uma ideia vira item do roadmap
-
-O Designer transforma cada sinal ou ideia num item com campos obrigatórios:
-
-1. **Problema:** o que acontece hoje, com os números do jogo.
-2. **Pesquisa:** como isso funciona na vida real, com link da fonte. Sem fonte, o item não avança.
-3. **Proposta:** o que construir ou mudar.
-4. **Métrica de sucesso:** qual número do relatório tem que mudar, e pra quanto. Ex: "pessoas sem faculdade que queriam estudar: de 4.200 pra menos de 500".
-5. **Dependências:** o que precisa existir antes (ex: faculdade precisa do sistema de escolaridade).
-6. **Estimativa:** feita pelo Arquiteto, em número de tarefas pequenas.
-
-Com ideias do dono, o Designer reescreve o texto nesse formato, pesquisa, liga a ideia aos dados do jogo e, se ela for grande, quebra em partes. Se a ideia não fizer sentido com a realidade, ele responde na Issue explicando o porquê, com fonte, em vez de simplesmente descartar.
-
-#### Como ordenar (fórmula, não opinião)
-
-Usamos a fórmula RICE, criada pela Intercom e muito usada em produto: **(Alcance × Impacto × Confiança) ÷ Esforço**. A diferença é que aqui boa parte vem medida pelo jogo:
-
-- **Alcance:** quantas pessoas da cidade são afetadas. **Medido pela simulação**, não chutado.
-- **Impacto:** tabela fixa por tipo (ex: vida ou morte = 3, qualidade de vida = 1, estética = 0,25).
-- **Confiança:** depende da prova. Dado do jogo + fonte real = 100%. Só fonte = 80%. Só opinião = 50%.
-- **Esforço:** número de tarefas estimado pelo Arquiteto.
-
-Regras por cima da fórmula:
-- Bug, regra quebrada e piora de performance passam na frente de tudo.
-- Ideias do dono ganham um peso extra configurável.
-- Mistura garantida em cada ciclo, com proporções configuráveis (ex: 50% features e construções, 30% correções e realismo, 20% performance e saúde técnica). Assim o jogo cresce sem acumular problema.
-- Item bloqueado por dependência espera, e a dependência sobe na fila.
-
-A conta é feita por um script, não pelo LLM. O LLM só preenche os campos, então até um modelo fraco gera uma ordem consistente.
-
-#### Fechando o ciclo
-
-- Quando um item é entregue, o motor roda de novo e confere a métrica de sucesso.
-- Se o número mudou como esperado, o item fecha. Se não mudou, volta pro roadmap com a etiqueta `não-resolveu` e os dados.
-- O `ROADMAP.md` é gerado automaticamente, agrupado em "Agora", "Próximo" e "Depois", e cada item mostra a pontuação e o motivo.
-
-#### Proteções contra "viagem na maionese"
-
-- Sem fonte de pesquisa, o item não entra.
-- Sem métrica de sucesso, o item não entra.
-- Uma "visão do jogo" (`docs/VISAO.md`) diz o que o jogo é e o que não é. Item fora da visão é recusado.
-- Mudanças grandes (contrato, formato de save) continuam precisando da sua aprovação.
+Quando um item marcado como entregue possui métrica verificável, `npm run roadmap:check` confere o resultado. `ROADMAP.md` e `roadmap/signals.json` são saídas locais/artefatos gerados; a visão publicada fica na issue de roadmap do GitHub.
 
 ## 13. Fases
 
@@ -321,9 +272,9 @@ A conta é feita por um script, não pelo LLM. O LLM só preenche os campos, ent
 | 3 | Ciclo de vida completo com dados do IBGE, escola e saúde, placar de realismo |
 | 4 | Trânsito: carros com dono, rotas em paralelo, cache e estacionamento |
 | 5 | Prefeito automático, cidades de estresse (50 mil e 100 mil), save e replay |
-| 6 | Motor de roadmap completo: sinais automáticos, fórmula, `ROADMAP.md` gerado, checagem de métrica |
+| 6 | Motor de roadmap completo: sinais automáticos, fórmula, roadmap publicado no GitHub, checagem de métrica |
 | 7 | IA opcional (diretora com LLM) |
-| 8 | Página do projeto no GitHub: descrição, como rodar, manual do jogo, como os agentes trabalham. Fica por último porque aí já existe tudo pra documentar. |
+| 8 | Página do projeto no GitHub: descrição, como rodar, manual do jogo e como contribuir. Fica por último porque aí já existe tudo pra documentar. |
 
 Observação: os sinais do roadmap começam a ser coletados antes da fase 6. Os "desejos não atendidos" nascem na fase 3 junto com o cérebro, e o placar de realismo também. A fase 6 junta tudo e automatiza.
 
@@ -359,12 +310,12 @@ Observação: os sinais do roadmap começam a ser coletados antes da fase 6. Os 
 
 ### 14.2 Motor de roadmap: como ficou
 
-- `npm run roadmap:signals` roda 3 cidades do prefeito automático e 1 cenário (roadmap/config.yaml) e grava `roadmap/signals.json` com as métricas médias e os sinais.
+- `npm run roadmap:signals` roda as cidades de avaliação e grava localmente `roadmap/signals.json` com as métricas médias e os sinais; esse arquivo é gerado e não é versionado.
 - A comparação com cidades reais usa `data/reference/cidade-real.yaml` (cada linha com fonte e link).
 - O alcance é sempre **medido** na cidade de teste, nunca projetado. Um serviço que só faz falta em cidades maiores entra com "só fonte" (confiança 80%).
-- `npm run roadmap:build` lê as issues (API do GitHub ou arquivo), aplica a fórmula e as regras e gera `ROADMAP.md`, incluindo "Sinais sem item": a lista de candidatos para o Designer, já com fonte, métrica sugerida e nota provisória.
+- `npm run roadmap:build` lê as issues (API do GitHub ou arquivo), aplica a fórmula e as regras e gera localmente `ROADMAP.md`; no workflow, a mesma visão é publicada na issue de roadmap e guardada como artifact.
 - `npm run roadmap:check` confere a métrica dos itens com a etiqueta `entregue`.
-- O workflow `.github/workflows/roadmap.yml` roda tudo toda segunda, a cada mudança nas issues e a cada push em `main`, e publica o resultado na issue "Roadmap (gerado automaticamente)".
+- O workflow `.github/workflows/roadmap.yml` roda semanalmente, manualmente e quando código/dados que alteram os sinais entram na `main`; ele publica o resultado na issue "Roadmap (gerado automaticamente)".
 
 ### 14.3 O que do plano ainda não foi feito (revisão final)
 
@@ -380,10 +331,9 @@ Conferido item por item contra este plano. Ficou para o roadmap:
 | Comparar a tela com um print aprovado (8) | O teste de tela confere que desenhou e que não houve erro, mas não compara pixels (o desenho por software varia). |
 | Economia de cidades pequenas | Receita é a média nacional por habitante. Cidade pequena real recebe mais por habitante: municípios com até 5 mil habitantes têm receita externa média de ~R$ 10.886 por habitante, a maior parte do FPM (Gazeta do Povo, https://www.gazetadopovo.com.br/vozes/paulo-uebel/numero-de-municipios-no-brasil-deve-beneficiar-os-cidadaos-nao-os-politicos/; Jornal da USP, https://jornal.usp.br/radio-usp/municipios-pequenos-recebem-mais-recursos-per-capita-que-metropoles-com-maiores-desafios-urbanos/). Já a manutenção de vias (10% ao ano) está PENDENTE. Resultado: no modo com orçamento, a cidade do prefeito automático para em ~1.000 pessoas. O motor de roadmap já mostra isso (sinais `bot:cidade-parou` e `bot:falencia`). |
 
-## 15. Pendências do dono
+## 15. Operação do repositório
 
-- ~~Deixar o repositório público~~ (feito).
-- Ativar a proteção da branch `main` e o GitHub Pages (instruções vão estar no README na fase 8).
+O repositório é público, a `main` está protegida e o jogo é publicado pelo GitHub Pages. O desenvolvimento normal não depende de aprovação manual do dono; mudanças seguem branch/PR, validações proporcionais ao risco e revisão do diff.
 
 ## 16. Fontes
 
@@ -402,6 +352,5 @@ Conferido item por item contra este plano. Ficou para o roadmap:
 - `Math.pow` diferente entre navegadores: https://github.com/mdn/browser-compat-data/issues/19429
 - GitHub Pages sem headers COOP/COEP: https://github.com/orgs/community/discussions/13309
 - Servidores de CI do GitHub (4 núcleos, grátis em repo público): https://github.blog/news-insights/product-news/github-hosted-runners-double-the-power-for-open-source/
-- Papéis em times de agentes (MetaGPT): https://arxiv.org/html/2308.00352v6
 - Fórmula RICE (Intercom): https://www.intercom.com/blog/rice-simple-prioritization-for-product-managers/
 - IBGE, pesquisa MUNIC (estrutura dos municípios): https://www.ibge.gov.br/estatisticas/sociais/educacao/10586-pesquisa-de-informacoes-basicas-municipais.html

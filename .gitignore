@@ -7,12 +7,7 @@ playwright-report/
 .DS_Store
 .vite/
 out/
-out/
 
-# Chaves dos perfis do Hermes (nunca no git)
-hermes/**/.env
-hermes/**/auth.json
-
-# Cache Python do harness
-__pycache__/
-*.pyc
+# Saídas geradas pelo motor de roadmap
+ROADMAP.md
+roadmap/signals.json

@@ -1,6 +1,6 @@
 /**
  * Lê as issues do GitHub. Issues criadas pelo formulário "Item do roadmap" viram itens;
- * issues com a etiqueta "ideia" ficam na fila do Designer.
+ * issues com a etiqueta "ideia" ficam na fila de triagem.
  * O GitHub grava o formulário como "### <Rótulo>\n\n<resposta>" e "_No response_" quando vazio.
  */
 import type { Category, IssueInput, Item } from "./types";

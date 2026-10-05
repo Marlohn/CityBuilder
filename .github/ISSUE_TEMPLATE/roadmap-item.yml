@@ -1,5 +1,5 @@
 name: 🗺️ Item do roadmap
-description: Formato padrão usado pelo Designer. O motor de roadmap lê estes campos para calcular a prioridade.
+description: Item priorizável pelo motor de roadmap.
 labels: ["roadmap"]
 body:
   - type: dropdown
@@ -12,31 +12,30 @@ body:
     id: problema
     attributes:
       label: Problema
-      description: O que acontece hoje, com números do jogo (relatório ou sinal).
+      description: O que acontece hoje e por que vale mudar.
     validations: { required: true }
   - type: textarea
     id: pesquisa
     attributes:
       label: Pesquisa
-      description: Como isso funciona na vida real, com LINK da fonte. Sem fonte, o item não avança.
-    validations: { required: true }
+      description: "Opcional em UI/tooling/refactor. Para regra, dado ou número factual da simulação, inclua a fonte."
   - type: textarea
     id: proposta
     attributes:
       label: Proposta
-      description: "Explique o benefício para quem joga e como percebê-lo numa partida. Se for interno, diga qual resultado do jogo sustenta; não prometa uma mudança de tela fora do escopo."
+      description: Explique o benefício e como perceber que a mudança funcionou.
     validations: { required: true }
   - type: input
     id: metrica
     attributes:
       label: Métrica de sucesso
-      description: "Formato: <id da métrica> <operador> <valor> (ex.: unmet.university < 500). Para tela/ferramenta: teste <arquivo> (ex.: teste tests/e2e/camera.spec.ts)."
+      description: "Formato: <id> <operador> <valor> ou teste <arquivo> para comportamento verificável."
     validations: { required: true }
   - type: input
     id: alcance
     attributes:
       label: Alcance
-      description: Quantas pessoas da cidade são afetadas (medido pela simulação).
+      description: Quantas pessoas da cidade são afetadas, quando essa medida fizer sentido.
     validations: { required: true }
   - type: dropdown
     id: impacto
@@ -48,20 +47,20 @@ body:
     id: confianca
     attributes:
       label: Confiança
-      options: ["100 - dado do jogo + fonte real", "80 - só fonte real", "50 - só opinião"]
+      options: ["100 - dado do jogo + fonte real", "80 - evidência forte", "50 - hipótese/opinião"]
     validations: { required: true }
   - type: input
     id: esforco
     attributes:
       label: Esforço
-      description: Número de tarefas pequenas (estimado pelo Arquiteto).
+      description: Estimativa relativa de esforço; não quebre artificialmente a mudança para preencher este campo.
   - type: input
     id: dependencias
     attributes:
       label: Dependências
-      description: "Números das issues que precisam vir antes. Ex.: #12, #15"
+      description: "Issues que realmente precisam vir antes. Ex.: #12, #15"
   - type: input
     id: sinal
     attributes:
       label: Sinal de origem
-      description: Id do sinal gerado por `npm run roadmap:signals` (se houver).
+      description: Id de `npm run roadmap:signals`, se houver.

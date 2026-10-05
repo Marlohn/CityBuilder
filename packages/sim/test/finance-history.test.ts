@@ -57,11 +57,11 @@ describe("histórico financeiro do motor (5 anos)", () => {
     }
     const last = game.city.yearlyHistory[game.city.yearlyHistory.length - 1]!;
     expect(
-      last.revenueByCategory["impostos_e_repasses"] ?? 0,
+      last.revenueByCategory.impostos_e_repasses ?? 0,
       "último ano sem receita de impostos_e_repasses",
     ).toBeGreaterThan(0);
     expect(
-      last.expensesByCategory["manutencao_vias"] ?? 0,
+      last.expensesByCategory.manutencao_vias ?? 0,
       "último ano sem despesa de manutencao_vias",
     ).toBeGreaterThan(0);
   });

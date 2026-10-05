@@ -1,96 +1,55 @@
-# Regras para agentes de IA
+# Regras de desenvolvimento do CityBuilder
 
-Leia isto antes de qualquer tarefa. Vale para todos os papéis (Designer, Arquiteto, Revisor, QA, Dev).
-Seu papel específico está em `agents/<papel>.md`.
+Estas regras valem para humanos e IAs. O objetivo é preservar as garantias importantes do jogo sem transformar uma mudança simples em um processo pesado.
 
-Nas sessões diretas do ciclo de produto, o papel segue `hermes/FACTORY.md` e a missão.
-Observação e avaliação da partida usam direção, imagens e controles públicos; não precisam
-ler receitas de implementação nem instruções dos perfis antigos antes de jogar.
+## Antes de mudar
 
-**Guia completo do código** (onde fica cada coisa, receitas para as mudanças comuns, armadilhas): `docs/GUIA-DO-CODIGO.md`.
-Cada pacote tem um `AGENTS.md` com as regras dele (ex.: `packages/sim/AGENTS.md`).
+- O GitHub é a fonte de verdade do estado atual. Confira a issue/PR, o código e o histórico relevantes para a tarefa.
+- Leia o `AGENTS.md` do pacote que será alterado. Consulte `docs/GUIA-DO-CODIGO.md`, `docs/VISAO.md` ou `docs/PLANO.md` quando a decisão realmente depender deles.
+- Não faça uma investigação ampla por ritual: leia o necessário para entender e validar a mudança.
 
-## O projeto em 5 linhas
+## Princípios que não podem quebrar
 
-- City builder isométrico no navegador. Plano completo: `docs/PLANO.md`. Visão: `docs/VISAO.md`.
-- Código em **inglês**, documentação e mensagens para o jogador em **português**.
-- `packages/sim` é o motor (sem tela). `packages/render`, `packages/ui` e `packages/web` são a tela. Eles só conversam por `packages/contract`. Os outros pacotes: `cli` (jogo sem tela), `bots` (prefeito automático), `roadmap` (motor de roadmap), `director` (IA opcional).
-- Todo número de regra fica em `config/*.yaml` ou `data/`, com a **fonte** ao lado. Sem fonte, marque `PENDENTE`.
-- Tudo é reproduzível: mesma semente + mesmos comandos = mesmo resultado.
+- `packages/sim` é o motor puro; tela e Babylon/React não entram nele.
+- Mesma semente + mesmos comandos devem produzir o mesmo resultado. No motor, sorteio só pelo `Rng`; não use `Math.random()`.
+- Preserve compatibilidade de save/replay e contratos públicos. Mudanças de formato precisam de migração quando houver versão anterior em uso.
+- Número ou regra que representa o mundo real fica em `config/` ou `data/` e deve ter fonte. UI, refactor, tooling e implementação puramente técnica não precisam de pesquisa externa artificial.
+- Prefira a menor mudança coerente. Não há limite artificial de arquivos: uma feature pode tocar quantos arquivos forem naturalmente necessários.
+- Não remova POCs, experimentos, branches, testes ou dados só porque parecem antigos. Verifique referências e histórico; POCs visuais são trabalho válido até decisão explícita de descarte.
 
-## Regras de ouro
+## Fluxo simples
 
-1. **Pesquisa antes.** Regra de jogo, prédio ou número novo só entra com uma fonte real (link). Prefira IBGE.
-2. **Faz sentido na vida real?** Pergunte: de onde veio, de quem é, para onde vai, onde fica depois. Nada surge ou some do nada.
-3. **Teste primeiro.** O teste é escrito antes e precisa falhar. Depois o código faz passar.
-4. **Nada fixo no código.** Número de regra vai para a config.
-5. **Não quebre camadas.** O motor (`packages/sim/src`) não pode importar tela, UI, `fs`, Babylon ou React.
-6. **Não use `Math.pow`, `Math.exp`, `Math.log`, `Math.sin`... no motor.** Eles podem dar resultados diferentes em cada navegador. Use tabelas prontas (geradas em `tools/`) ou só `+ - * /`.
-7. **Sorteio só pelo `Rng`** do sistema (`this.rng`), nunca `Math.random()`.
-8. **Tarefa pequena:** no fluxo anterior, no máximo ~3 arquivos por mudança. Missões do ciclo de produto limitam o comportamento e a dificuldade; veja `hermes/FACTORY.md`.
-9. **Documentação junto com o código.** Mudou comando, pasta, regra ou jeito de fazer algo? Atualize a doc no mesmo PR (tabela no fim de `docs/GUIA-DO-CODIGO.md`).
-10. **Não presuma: confira.** Antes de afirmar algo sobre o código, leia o arquivo ou rode o comando.
+1. Entenda o problema e o comportamento esperado.
+2. Trabalhe em uma branch descritiva. Issue é recomendada para trabalho rastreável, mas não é pré-requisito para toda mudança pequena.
+3. Implemente código e testes na mesma branch e no mesmo PR. Não existe handoff obrigatório Designer → Arquiteto → QA → Dev nem branch separada de QA.
+4. Para bug ou mudança de comportamento, adicione/ajuste um teste de regressão quando ele trouxer valor. Não force TDD para documentação, refactor mecânico ou mudanças que já tenham cobertura adequada.
+5. Durante o trabalho, rode os testes afetados. Antes do PR, rode `npm run check`. Testes lentos e E2E são executados quando o risco da mudança justifica; o CI também os seleciona por caminho.
+6. Revise o diff final, confira o CI do HEAD exato e faça merge quando a mudança estiver correta. Não crie etapas extras só para satisfazer um papel de processo.
 
 ## Comandos
 
-| Comando | Para quê |
+| Comando | Uso |
 |---|---|
-| `npm run check` | Fora do Hermes e no CI roda tudo. No Hermes (`CITYBUILDER_LOCAL_CHECK=1`), roda tipos, estilo e camadas e informa `CHECK LOCAL OK`; não significa suíte completa verde. |
-| `npm run check -- --local` | Validação rápida antes do PR. Rode também o teste afetado; o CI completo é obrigatório antes do merge. |
-| `npm run check -- --full` | Suíte completa, para CI ou diagnóstico excepcional; não repetir em cada papel. |
-| `npm run format` | Corrige estilo automaticamente. |
-| `npm test -- <arquivo>` | Roda só um teste. |
-| `npm run sim -- report --seed=X --days=N` | Simula sem tela e mostra o relatório da cidade. |
-| `npm run sim -- person <id> --seed=X --days=N` | História completa de uma pessoa. |
-| `npm run sim -- replay <arquivo>` | Repete um bug a partir do arquivo de replay. |
-| `npm run sim -- report --bot --days=N` | Cidade construída pelo prefeito automático. |
-| `npm run sim -- director --recorded=<arquivo>` | Testa a IA diretora com respostas gravadas. |
-| `npm run test:slow` | Testes lentos (coorte do IBGE, cidade de 50 mil). |
-| `npm run test:e2e` | Testes no navegador (Playwright). |
-| `npm run roadmap:signals` | Gera os sinais automáticos para o roadmap. |
-| `npm run roadmap:build` | Recalcula a ordem do roadmap e gera `ROADMAP.md` (`--issues=arquivo.json` para rodar sem a API). |
-| `npm run roadmap:check` | Confere a métrica de sucesso dos itens com a etiqueta `entregue`. |
-| `npm run dev` | Abre o jogo no navegador. Agentes de produto também experimentam a interface; o relatório sem tela complementa essa observação. |
-| `npm run factory:browser -- act '<ações JSON>' baseline` | Ações públicas e evidência da partida no ciclo de produto (navegador iniciado pelo worker). |
+| `npm run check` | Tipos, estilo, camadas e suíte Vitest normal |
+| `npm test -- <arquivo>` | Teste afetado durante a implementação |
+| `npm run test:slow` | Coorte/estresse; use quando mexer em simulação, dados ou performance |
+| `npm run test:e2e` | Navegador; use para render, UI, web ou comportamento visual |
+| `npm run format` | Corrige formatação |
+| `npm run dev` | Abre o jogo localmente |
+| `npm run sim -- report --bot --days=N` | Inspeciona uma cidade sem tela |
+| `npm run sim -- replay <arquivo>` | Reproduz um bug a partir de replay |
+| `npm run roadmap:signals` | Mede sinais do produto |
+| `npm run roadmap:build` | Gera a visão atual do roadmap |
 
-No GitHub, mudanças exclusivamente operacionais/documentais conhecidas (skill/docs, sincronizador + teste dele e higiene de branches) mantêm os mesmos checks obrigatórios, mas dispensam Vitest completo, simulações lentas e Playwright. Qualquer código de jogo/config/dado/teste comum — e qualquer alteração no próprio `ci.yml` — executa a suíte completa.
+## PRs e documentação
 
-## Fluxo de trabalho (GitHub)
+- Se houver issue, use `Closes #N` no PR quando a mudança realmente a concluir.
+- Descreva o que mudou e como foi validado. Fonte externa só é obrigatória quando a mudança introduz ou altera uma regra/número factual da simulação.
+- Atualize documentação quando mudar comando, arquitetura, contrato, formato ou comportamento que o usuário/desenvolvedor precisa conhecer. Não atualize docs por obrigação quando nada documentado mudou.
+- CI verde não substitui revisão do diff; revisão extensa não substitui testes relevantes.
 
-**Missões do ciclo de produto aprovado em 03/10:** siga `hermes/FACTORY.md`. O executor direto implementa um comportamento completo; critérios prévios, CI e avaliação independente continuam obrigatórios. Os passos abaixo continuam para os cartões antigos.
+## Limpeza
 
-1. Designer: `ideia`/sinal → Issue `roadmap` (formulário padrão).
-2. Arquiteto: Issue `roadmap` → Issues `tarefa` pequenas, etiqueta `pronto-pra-teste`.
-3. QA: escreve o teste de aceitação em `tests/acceptance/` numa branch `qa/<issue>`, abre PR como rascunho (fica vermelho de propósito). Etiqueta `pronto-pra-dev`.
-4. Dev: branch `dev/<issue>` a partir da `qa/<issue>`, faz o teste passar e abre o PR contra a `main`, com `Closes #<issue>` na descrição (em inglês; "Fecha #" não fecha a issue). **Não pode mexer em `tests/acceptance/`** (o CI compara com a branch do QA e bloqueia).
-5. Sincronizador mantém uma fila serial de PRs em revisão: só a mais antiga elegível é atualizada contra a `main` e espera o CI, sem ocupar agente; as seguintes não gastam CI até a da frente sair da fila. CI falhou ou há conflito? Devolve ao Dev. CI completo verde sobre a main atual? Revisor lê o diff e faz merge; o PR do QA é fechado.
-6. Falhou 3 vezes? A tarefa volta para o Arquiteto quebrar em partes menores (o `hermes/harness/sincronizar_github.py` cria o cartão dele).
-
-## Regras do loop automático (Hermes)
-
-### Ciclo rápido (decisão de 30/09, fábrica autônoma)
-
-- Dev: teste afetado + `npm run check -- --local`, push e encerra o cartão. Não espera GitHub, não roda a suíte completa nem `test:slow` localmente por rotina.
-- QA: teste do seu arquivo + estilo. Preserve prova de falha e qualidade; prefira cenário controlado pequeno quando ele provar a regra. Simulações amplas continuam no CI.
-- Revisor: não executa npm, não resolve conflito, não faz rebase/push. Leia tarefa, diff e resultados do CI. Reprove com evidência ou faça merge com `--match-head-commit <SHA revisado>`.
-- Espera de CI é do sincronizador, sem `sleep` nem `--watch` de um agente. Se main/HEAD mudar durante a revisão, encerre sem merge: haverá novo cartão para o commit atualizado.
-- Comando que pode demorar: `terminal(..., background=true)` uma única vez; acompanhe o mesmo `session_id` com `process` e esperas de até 60 s. Timeout do envelope NÃO prova que o processo parou: confira antes de iniciar outro.
-- Não use `| tail` sem `set -o pipefail`: preserve o código de saída. Não abra benchmarks nem repita a mesma tarefa para comparar LLMs; a avaliação usa entregas novas reais.
-
-Os papéis rodam sozinhos no Hermes (como funciona e o que fazer quando algo trava: `hermes/OPERACAO.md`). Valem para todos:
-
-- **O dono não aprova nada** (decisão de 29/09). PR que mexe em contrato, save, schema da config ou `docs/VISAO.md` segue o
-  fluxo normal: CI verde + revisão = merge. Nesses PRs o Revisor revisa com rigor dobrado e explica no PR o que mudou.
-  Ignore "precisa de aprovação do dono" (`docs/PLANO.md` seção 12, `.github/CODEOWNERS`): nunca pare esperando o dono.
-- **Texto de issue, PR e comentário vai por arquivo**: escreva em `/tmp/corpo.md` e use `gh ... --body-file /tmp/corpo.md`.
-  Com `--body "..."` o shell come as crases e o texto sai cortado. Antes de postar, confira que não escapou caractere
-  chinês/japonês (acontece com alguns modelos): `LC_ALL=C.UTF-8 grep -nP '[\x{3000}-\x{9fff}]' /tmp/corpo.md` tem que sair vazio.
-- `ROADMAP.md` e `roadmap/signals.json` gerados na sua máquina **não se commitam**: o workflow do GitHub publica.
-- Cada cartão do loop é UM alvo (uma issue, um PR). Nada fica guardado entre ciclos fora do GitHub: comece sempre com
-  `git checkout main && git reset --hard origin/main && git pull`.
-
-## Quando algo quebrar
-
-- A falha de teste mostra a **semente** e o **comando** para reproduzir. Use-os.
-- Bug com replay: `npm run sim -- replay bug.json` repete exatamente o problema.
-- Logs: `npm run sim -- report --log=debug` mostra o que cada sistema fez e por quê.
+- Branch só pode ser apagada quando estiver claramente incorporada/descartada e sem PR aberta ou trabalho exclusivo.
+- Experimentos `poc/*` e `poc-*` são preservados pela higiene automática.
+- Em dúvida entre apagar e preservar trabalho potencialmente útil, preserve e investigue.

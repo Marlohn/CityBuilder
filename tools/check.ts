@@ -1,11 +1,4 @@
-/**
- * `npm run check`: roda todas as verificações e responde em texto curto.
- * Pensado para agentes (LLMs): no fim sai "TUDO OK" ou a lista do que quebrou,
- * com as últimas linhas relevantes de cada falha.
- *
- * Opções: --local (tipos/estilo/camadas), --only=<etapa>, --full (suíte completa).
- * No Hermes, CITYBUILDER_LOCAL_CHECK=1 evita repetir a suíte do CI no mini PC.
- */
+/** `npm run check`: tipos, estilo, camadas e suíte Vitest normal. Para na primeira falha. */
 import { spawnSync } from "node:child_process";
 
 interface Step {
@@ -13,7 +6,6 @@ interface Step {
   label: string;
   cmd: string;
   args: string[];
-  env?: Record<string, string>;
 }
 
 const STEPS: Step[] = [
@@ -28,56 +20,40 @@ const STEPS: Step[] = [
   { id: "tests", label: "Testes (Vitest)", cmd: "npx", args: ["vitest", "run", "--reporter=dot"] },
 ];
 
-const only = process.argv.find((a) => a.startsWith("--only="))?.split("=")[1];
-const fast = process.argv.includes("--fast");
-const local =
-  !process.env.CI &&
-  !process.argv.includes("--full") &&
-  (process.argv.includes("--local") || process.env.CITYBUILDER_LOCAL_CHECK === "1");
-const results: { step: Step; ok: boolean; ms: number; tail: string }[] = [];
+const only = process.argv.find((arg) => arg.startsWith("--only="))?.split("=")[1];
 
 for (const step of STEPS) {
   if (only && step.id !== only) continue;
-  if (local && !only && step.id === "tests") continue;
-  const t0 = Date.now();
-  const r = spawnSync(step.cmd, step.args, {
+
+  const started = Date.now();
+  const result = spawnSync(step.cmd, step.args, {
     encoding: "utf8",
-    env: { ...process.env, ...(fast ? { FAST: "1" } : {}), FORCE_COLOR: "0", ...step.env },
+    env: { ...process.env, FORCE_COLOR: "0" },
     maxBuffer: 64 * 1024 * 1024,
   });
-  const out = `${r.stdout ?? ""}\n${r.stderr ?? ""}`;
-  const ok = r.status === 0;
-  const tail = ok ? "" : relevantLines(out);
-  results.push({ step, ok, ms: Date.now() - t0, tail });
-  process.stdout.write(`${ok ? "✔" : "✘"} ${step.label} (${((Date.now() - t0) / 1000).toFixed(1)}s)\n`);
+  const output = `${result.stdout ?? ""}\n${result.stderr ?? ""}`;
+  const ok = result.status === 0;
+  process.stdout.write(`${ok ? "✔" : "✘"} ${step.label} (${((Date.now() - started) / 1000).toFixed(1)}s)\n`);
+
+  if (ok) continue;
+
+  process.stdout.write(`\nQUEBROU: ${step.id}\n`);
+  process.stdout.write(`\n--- ${step.label} ---\n${step.id === "lint" ? output : relevantLines(output)}\n`);
+  process.stdout.write(`Para rodar só esta etapa: npm run check -- --only=${step.id}\n`);
+  if (step.id === "lint") {
+    process.stdout.write("Muitos erros de estilo se corrigem com: npm run format\n");
+  }
+  process.exit(1);
 }
 
-const failed = results.filter((r) => !r.ok);
-if (failed.length === 0) {
-  process.stdout.write(
-    local && !only
-      ? "\nCHECK LOCAL OK (tipos, estilo, camadas). Rode o teste afetado; a suíte completa é obrigatória no CI antes do merge.\n"
-      : "\nTUDO OK\n",
-  );
-  process.exit(0);
-}
-process.stdout.write(`\nQUEBROU: ${failed.map((f) => f.step.id).join(", ")}\n`);
-for (const f of failed) {
-  process.stdout.write(`\n--- ${f.step.label} ---\n${f.tail}\n`);
-  process.stdout.write(`Para rodar só esta etapa: npm run check -- --only=${f.step.id}\n`);
-  if (f.step.id === "lint")
-    process.stdout.write("Muitos erros de estilo se corrigem sozinhos com: npm run format\n");
-}
-process.exit(1);
+process.stdout.write("\nTUDO OK\n");
 
-/** Pega as linhas que importam (erros, falhas, arquivos) e limita o tamanho. */
-function relevantLines(out: string): string {
-  const lines = out.split("\n").filter((l) => l.trim() !== "");
-  const important = lines.filter((l) =>
+function relevantLines(output: string): string {
+  const lines = output.split("\n").filter((line) => line.trim() !== "");
+  const important = lines.filter((line) =>
     /error|erro|fail|✘|×|FAIL|expected|received|AssertionError|at .*\.(ts|tsx):\d+|\.tsx?:\d+|semente|seed|reproduzir/i.test(
-      l,
+      line,
     ),
   );
-  const pick = (important.length > 0 ? important : lines).slice(0, 60);
-  return pick.join("\n");
+  return (important.length > 0 ? important : lines).slice(0, 60).join("\n");
 }

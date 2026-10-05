@@ -8,7 +8,6 @@ import { existsSync, unlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import * as path from "node:path";
 import { fileURLToPath } from "node:url";
-import { parseCommand } from "@city/contract";
 import {
   applyMigrations,
   checkInvariants,

@@ -1,6 +1,6 @@
 /**
  * Ordenação do roadmap: fórmula RICE + regras por cima (seção 12.2 do plano).
- * A conta é feita aqui, não pelo LLM: o agente só preenche os campos.
+ * A conta é determinística e independe de quem preenche os campos.
  */
 import type { RoadmapConfig } from "./config";
 import { isValidMetric } from "./metric";
@@ -35,7 +35,6 @@ function fmt(v: number): string {
 export function missingFields(item: Item, signals: SignalsFile | null): string[] {
   const miss: string[] = [];
   if (!item.category) miss.push("categoria");
-  if (!/https?:\/\//.test(item.research)) miss.push("pesquisa com link da fonte");
   if (!item.metric) miss.push("métrica de sucesso");
   else {
     const err = isValidMetric(item.metric, signals?.metrics);

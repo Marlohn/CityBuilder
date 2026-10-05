@@ -8,7 +8,7 @@
  * Teste só de dados: lê o YAML do disco e a config carregada, sem simulação,
  * sem semente, sem sorteio e sem relógio. Um it por critério do "ta pronto quando".
  */
-import { readdirSync, readFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { loadConfigAndData } from "@city/cli";
 import { describe, expect, it } from "vitest";
 import { parse as parseYaml } from "yaml";

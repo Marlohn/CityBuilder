@@ -1,6 +1,6 @@
 # Guia do código (para IAs e pessoas que vão mexer no projeto)
 
-Este guia explica **onde fica cada coisa** e **como mudar sem quebrar**. As regras curtas estão em `AGENTS.md` (leia primeiro). Cada pacote tem também um `AGENTS.md` próprio com as regras daquele pedaço. O Hermes e outras ferramentas carregam esses arquivos sozinhos quando você entra na pasta.
+Este guia explica **onde fica cada coisa** e **como mudar sem quebrar**. As regras curtas estão em `AGENTS.md` (leia primeiro). Cada pacote tem também um `AGENTS.md` próprio com as regras daquele pedaço.
 
 Se algo aqui estiver diferente do código, **o código vale**. Nesse caso, corrija este guia no mesmo PR.
 
@@ -18,18 +18,17 @@ packages/
   bots/             prefeito automático e leitura de cenários
   cli/              roda o jogo sem tela (npm run sim), carrega config/ e data/ do disco
   director/         IA diretora opcional (LLM), desligada por padrão
-  roadmap/          motor de roadmap (sinais, fórmula, ROADMAP.md)
+  roadmap/          motor de roadmap (sinais, fórmula e publicação)
   render/           desenho 3D (Babylon.js), recebe só visões do contrato
   ui/               painéis em React, recebe só visões do contrato
   web/              junta tudo no navegador: Worker com o motor + render + ui
 tests/
   unit/             testes rápidos que cruzam pacotes
-  acceptance/       testes de aceitação do QA (o Dev não pode mexer)
+  acceptance/       testes de aceitação e regressão entre pacotes
   slow/             coorte do IBGE e cidade de 50 mil (SLOW=1)
   e2e/              navegador de verdade (Playwright)
 tools/              scripts: check, calibração da demografia, geração de nomes
-roadmap/            config do motor de roadmap e sinais medidos (signals.json)
-hermes/             perfis prontos dos agentes (Designer, Arquiteto, QA, Dev) para o Hermes Agent
+roadmap/            config do motor de roadmap; sinais medidos são gerados localmente
 ```
 
 ### Quem pode importar quem
@@ -104,7 +103,7 @@ Toda receita termina igual: `npm run format`, depois `npm run check` até dar `T
 1. Coloque o valor no `config/<assunto>.yaml`, com a **fonte** num comentário logo acima. Sem fonte, escreva `PENDENTE:` e o porquê.
 2. Declare o campo em `packages/sim/src/config/schema.ts` (zod). Use os tipos prontos (`pos`, `nonneg`, `prob`, `intPos`).
 3. Use no código com `sim.config.<assunto>.<campo>`.
-4. Mudanças no schema precisam de aprovação do dono do projeto (é "formato").
+4. Mudanças no schema exigem atenção à compatibilidade e aos testes de config/save; não crie um gate humano extra por padrão.
 
 Atenção: nos overrides (cenários e testes), objetos são mesclados, mas **arrays e tabelas numéricas são trocados inteiros** (`config/load.ts`).
 
@@ -142,7 +141,7 @@ saem de cabeça. O caminho é:
 
 ### 3.3 Um serviço novo (ex.: creche, hospital)
 
-Serviço mexe em várias camadas. O Arquiteto deve quebrar em tarefas:
+Serviço mexe em várias camadas. Mantenha a mudança coerente entre elas:
 
 1. Prédio em `data/buildings.yaml` com `service` (e o valor novo no enum de `schema.ts`).
 2. Mercado de vagas em `markets/markets.ts` e quem procura vaga em `systems/matching.ts`.
@@ -180,7 +179,7 @@ Isso é o que alimenta o roadmap ("4.200 pessoas queriam X e não tinha"):
 
 ### 3.8 Um comando novo (algo que o jogador ou bot pode fazer)
 
-1. Formato em `packages/contract/src/commands.ts` (precisa de aprovação do dono).
+1. Formato em `packages/contract/src/commands.ts`; preserve compatibilidade e versionamento quando necessário.
 2. Regra em `packages/sim/src/commands/apply.ts`: devolva `ok: false` com um motivo em português quando não pode.
 3. Teste em `packages/sim/test/commands.test.ts`.
 4. Ferramenta na tela (`packages/web/src/tools.ts`), se o jogador puder usar.
@@ -287,7 +286,7 @@ Os gatilhos do bot ficam em `MayorOptions` (`packages/bots/src/mayor.ts`):
 | `packages/*/test`, `packages/*/src/**/*.test.ts` | regra isolada de um pacote | `npm test -- <arquivo>` |
 | `tests/unit` | cruzando pacotes (save, cidade inteira) | `npm test -- tests/unit` |
 | `tests/unit/reference.test.ts` | **cidades de referência**: o resultado guardado de algumas cidades. Mudou sem querer = bug; mudou de propósito = atualize com `-u` e explique no PR | `npm test -- tests/unit/reference -u` |
-| `tests/acceptance` | critérios de uma tarefa (escritos pelo QA **antes** do código) | `npm test -- tests/acceptance` |
+| `tests/acceptance` | critérios e regressões que atravessam pacotes | `npm test -- tests/acceptance` |
 | `tests/slow` | coorte de 10 mil bebês contra o IBGE, cidade de 50 mil | `npm run test:slow` |
 | `tests/e2e` | navegador: abre o jogo, confere que Node e Chromium dão a mesma cidade | `npm run test:e2e` |
 
@@ -311,7 +310,7 @@ Os gatilhos do bot ficam em `MayorOptions` (`packages/bots/src/mayor.ts`):
 
 - **Atualizar Playwright sem a imagem do CI:** o job de tela usa `mcr.microsoft.com/playwright:v1.63.0-noble`, com navegador e dependências prontos. Ao atualizar `@playwright/test`/`package-lock.json`, atualize também a imagem e a conferência de versão em `.github/workflows/ci.yml`. O comando e todos os testes de tela continuam iguais; não reinstale dependências via apt em cada execução.
 - **Esconder o erro com `| tail`:** `npm run check | tail` devolve sucesso mesmo quando falha. Use `set -o pipefail` antes.
-- **CI em duas partes:** Vitest e Playwright usam `--shard=1/2` e `--shard=2/2` em máquinas separadas. Nenhum arquivo é excluído. Os checks obrigatórios `npm run check` e `teste de tela (Playwright)` só ficam verdes quando todas as partes passam; falha, cancelamento ou parte pulada impedem o verde. Tipos, estilo, camadas, cenários/mutantes do Hermes e testes lentos continuam obrigatórios. Reversão: restaurar `.github/workflows/ci.yml` anterior, sem mudar a proteção da branch.
+- **CI proporcional ao risco:** `npm run check` cobre tipos, estilo, camadas e Vitest normal. Mudanças no núcleo da simulação/dados acionam `test:slow`; render/UI/web e integrações visuais acionam Playwright. O check `testes de aceitação protegidos` é hoje o gate final de todos eles; o nome é legado apenas para compatibilidade com o ruleset atual da `main`.
 - **Idade no aniversário:** quem faz aniversário hoje viveu `idade - 1` anos completos. Usar a idade nova zerou a mortalidade infantil.
 - **Ordem dos eventos:** registre a chegada antes de mover a família para a casa, senão o verificador acha alguém "surgindo do nada".
 - **Filhos acompanham os pais:** ao mudar um adulto de casa, veja os filhos menores (`people/actions.ts`).
@@ -337,14 +336,8 @@ Mudou isto → atualize aquilo **no mesmo PR**:
 | Pasta ou pacote novo | seção 1 deste guia e o `AGENTS.md` do pacote |
 | Comando de terminal novo | tabela de comandos do `AGENTS.md` e o README |
 | Jeito novo de fazer algo comum | uma receita na seção 3 |
+| Processo de desenvolvimento ou regra para IA | `AGENTS.md` da raiz |
 | Bug que pode acontecer de novo | uma linha na seção 6 |
-| Papel de agente ou fluxo no GitHub | `agents/<papel>.md` e `hermes/<papel>/SOUL.md` |
-| Erro de provedor deixa OpenCode aberto | `hermes/harness/opencode_guard.py`, cenários em `testar_opencode_guard.py` e deploy em `hermes/OPERACAO.md` |
-| Ciclo de descoberta, execução e avaliação de produto | `hermes/FACTORY.md`, `hermes/factory/DIRECTION.md`, `hermes/harness/factory.py`, `tools/factory-browser.ts` e workflow `factory.yml`; cartões antigos conservam o fluxo anterior |
-| Retomada de código parcial ou controles da câmera dos agentes | `hermes/FACTORY.md`; provas em `testar_factory.py`, `testar_factory_startup.py` e `tests/e2e/factory-browser.spec.ts`; checkpoint não é entrega |
-| Check privado do builder em runner GitHub | `factory.py:local_checks` retira CI somente do subprocesso privado; CI externo continua completo. Bootstrap confere CHECK LOCAL OK e ausência da suíte Vitest; builder só executa testes com caminhos |
-| Nome de controle fornecido pela ponte | `factory-browser.ts` usa texto visível com espaços normalizados, compatível com click por role/name; teste `factory-browser.spec.ts` clica usando o próprio nome informado pela ponte |
-| Click da ponte expirando antes de estabilizar no runner | `factory-browser.ts` aguarda até 15 s no click, mantendo verificações de visibilidade/estabilidade e registro de erro; wait/key continuam limitados a 3 s |
 | Algo que o jogador vê | `docs/MANUAL.md` |
 | Destaque da avenida de acesso e aviso de rua desconectada | `MapView.accessRoad` recebe o retângulo derivado de `world.startingRoad`; `mapViews.ts` e `worker.ts` enviam, `accessRoad.ts`/`ground.ts` destacam e `camera.ts:startTarget` enquadra. `apply.ts` consulta `network.exitFor` e devolve aviso em `CommandResult.reason`; regras de crescimento e formato do save permanecem os mesmos |
 | Volta de compras/saúde/lazer (motivo do dia, destino e volta para casa) | `packages/sim/src/traffic/trafficSystem.ts` (monta a volta) e números em `config/traffic.yaml` (routine.errand*) |
