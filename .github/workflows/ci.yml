@@ -10,6 +10,57 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  classify:
+    name: classificar mudança
+    runs-on: ubuntu-latest
+    outputs:
+      full_suite: ${{ steps.paths.outputs.full_suite }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: paths
+        name: Decidir se precisa da suíte completa
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PUSH_BEFORE_SHA: ${{ github.event.before }}
+          PUSH_HEAD_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          if [[ "$EVENT_NAME" == "pull_request" ]]; then
+            BASE="$PR_BASE_SHA"
+            HEAD="$PR_HEAD_SHA"
+          else
+            BASE="$PUSH_BEFORE_SHA"
+            HEAD="$PUSH_HEAD_SHA"
+          fi
+          if [[ -z "$BASE" || "$BASE" =~ ^0+$ ]]; then
+            BASE="$(git rev-parse "$HEAD^")"
+          fi
+
+          mapfile -t FILES < <(git diff --name-only "$BASE" "$HEAD")
+          FULL=false
+          if [[ "${#FILES[@]}" -eq 0 ]]; then FULL=true; fi
+
+          for FILE in "${FILES[@]}"; do
+            case "$FILE" in
+              AGENTS.md|README.md|.agents/*|docs/*|hermes/FACTORY.md|hermes/OPERACAO.md|hermes/harness/sincronizar_github.py|hermes/harness/testar_sinc.py|.github/workflows/branch-hygiene.yml|.github/ISSUE_TEMPLATE/*|.github/PULL_REQUEST_TEMPLATE.md|.github/CODEOWNERS)
+                ;;
+              *)
+                FULL=true
+                break
+                ;;
+            esac
+          done
+
+          echo "Arquivos alterados:"
+          printf '  %s\n' "${FILES[@]}"
+          echo "full_suite=$FULL"
+          echo "full_suite=$FULL" >> "$GITHUB_OUTPUT"
+
   static-check:
     name: tipos, estilo e camadas
     runs-on: ubuntu-latest
@@ -21,6 +72,17 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - name: Sintaxe dos workflows YAML
+        run: |
+          node --input-type=module <<'NODE'
+          import { readdirSync, readFileSync } from "node:fs";
+          import YAML from "yaml";
+          for (const name of readdirSync(".github/workflows")) {
+            if (!/\.ya?ml$/.test(name)) continue;
+            YAML.parse(readFileSync(`.github/workflows/${name}`, "utf8"));
+            console.log(`${name}: YAML OK`);
+          }
+          NODE
       - name: Cenários do guard OpenCode (sem rede ou LLM)
         run: python3 hermes/harness/testar_opencode_guard.py
       - name: Integridade do ciclo de produto (sem rede ou LLM)
@@ -36,6 +98,8 @@ jobs:
 
   tests:
     name: testes Vitest (${{ matrix.shard }}/2)
+    needs: classify
+    if: needs.classify.outputs.full_suite == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     strategy:
@@ -54,37 +118,121 @@ jobs:
   check:
     # O nome exigido pela proteção só passa se TODAS as partes passarem.
     name: npm run check
-    needs: [static-check, tests]
+    needs: [classify, static-check, tests]
     if: always()
     runs-on: ubuntu-latest
     steps:
       - name: Conferir todas as partes
         env:
+          CLASSIFY_RESULT: ${{ needs.classify.result }}
+          FULL_SUITE: ${{ needs.classify.outputs.full_suite }}
           STATIC_RESULT: ${{ needs.static-check.result }}
           TESTS_RESULT: ${{ needs.tests.result }}
-        run: test "$STATIC_RESULT" = success && test "$TESTS_RESULT" = success
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$CLASSIFY_RESULT" = success
+          test "$STATIC_RESULT" = success
+          if [[ "$FULL_SUITE" == "true" ]]; then
+            test "$TESTS_RESULT" = success
+          else
+            test "$TESTS_RESULT" = skipped
+            echo "Suíte Vitest completa dispensada: mudança exclusivamente operacional/documental."
+          fi
 
   slow:
     name: testes lentos (coorte IBGE e cidade de 50 mil)
+    needs: classify
+    if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
+      - name: Conferir classificação
+        if: needs.classify.result != 'success'
+        run: exit 1
+      - name: CI leve
+        if: needs.classify.result == 'success' && needs.classify.outputs.full_suite != 'true'
+        run: echo "Testes lentos dispensados para mudança exclusivamente operacional/documental."
       - uses: actions/checkout@v4
+        if: needs.classify.outputs.full_suite == 'true'
+      - uses: actions/setup-node@v4
+        if: needs.classify.outputs.full_suite == 'true'
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+        if: needs.classify.outputs.full_suite == 'true'
+      - run: npm run test:slow
+        if: needs.classify.outputs.full_suite == 'true'
+
+  factory-startup:
+    name: bootstrap da fábrica
+    needs: classify
+    if: needs.classify.outputs.full_suite == 'true'
+    runs-on: ubuntu-latest
+    container:
+      image: mcr.microsoft.com/playwright:v1.63.0-noble
+      options: --init --ipc=host
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npm run test:slow
+      - name: Conferir versão da imagem e do pacote
+        run: |
+          node -e 'const actual = require("@playwright/test/package.json").version; if (actual !== "1.63.0") throw new Error("Atualize também a imagem Playwright do CI: pacote " + actual); console.log("Playwright " + actual + ": imagem e pacote compatíveis");'
+      - name: Bootstrap real da fábrica (Git, build e navegador, sem LLM)
+        run: python3 hermes/harness/testar_factory_startup.py
+
+  e2e-factory:
+    name: testes de tela (fábrica)
+    needs: classify
+    if: needs.classify.outputs.full_suite == 'true'
+    runs-on: ubuntu-latest
+    container:
+      image: mcr.microsoft.com/playwright:v1.63.0-noble
+      options: --init --ipc=host
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Conferir versão da imagem e do pacote
+        run: |
+          node -e 'const actual = require("@playwright/test/package.json").version; if (actual !== "1.63.0") throw new Error("Atualize também a imagem Playwright do CI: pacote " + actual); console.log("Playwright " + actual + ": imagem e pacote compatíveis");'
+      - name: Rodar E2E da ponte da fábrica isoladamente
+        env:
+          E2E_FACTORY_ONLY: "1"
+        run: npm run test:e2e
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: prints-da-tela-factory
+          path: |
+            test-results/
+            out/factory/**
+            !out/factory/**/address.json
 
   e2e-shards:
     name: testes de tela (${{ matrix.shard }}/2)
+    needs: classify
+    if: needs.classify.outputs.full_suite == 'true'
     runs-on: ubuntu-latest
     # Mesmo Playwright do package-lock.json; browsers e dependências já instalados.
     container:
       image: mcr.microsoft.com/playwright:v1.63.0-noble
       options: --init --ipc=host
-    timeout-minutes: 25
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
@@ -101,10 +249,10 @@ jobs:
       - name: Conferir versão da imagem e do pacote
         run: |
           node -e 'const actual = require("@playwright/test/package.json").version; if (actual !== "1.63.0") throw new Error("Atualize também a imagem Playwright do CI: pacote " + actual); console.log("Playwright " + actual + ": imagem e pacote compatíveis");'
-      - name: Bootstrap real da fábrica (Git, build e navegador, sem LLM)
-        if: matrix.shard == 1
-        run: python3 hermes/harness/testar_factory_startup.py
-      - run: npm run test:e2e -- --shard=${{ matrix.shard }}/2
+      - name: Rodar E2E normais sem a ponte da fábrica
+        env:
+          E2E_EXCLUDE_FACTORY: "1"
+        run: npm run test:e2e -- --shard=${{ matrix.shard }}/2
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -116,14 +264,31 @@ jobs:
 
   e2e:
     name: teste de tela (Playwright)
-    needs: [e2e-shards]
+    needs: [classify, factory-startup, e2e-factory, e2e-shards]
     if: always()
     runs-on: ubuntu-latest
     steps:
       - name: Conferir todas as partes
         env:
+          CLASSIFY_RESULT: ${{ needs.classify.result }}
+          FULL_SUITE: ${{ needs.classify.outputs.full_suite }}
+          STARTUP_RESULT: ${{ needs.factory-startup.result }}
+          FACTORY_RESULT: ${{ needs.e2e-factory.result }}
           E2E_RESULT: ${{ needs.e2e-shards.result }}
-        run: test "$E2E_RESULT" = success
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$CLASSIFY_RESULT" = success
+          if [[ "$FULL_SUITE" == "true" ]]; then
+            test "$STARTUP_RESULT" = success
+            test "$FACTORY_RESULT" = success
+            test "$E2E_RESULT" = success
+          else
+            test "$STARTUP_RESULT" = skipped
+            test "$FACTORY_RESULT" = skipped
+            test "$E2E_RESULT" = skipped
+            echo "Playwright dispensado: mudança exclusivamente operacional/documental."
+          fi
 
   acceptance-tests-protected:
     # O Dev não pode alterar testes de aceitação do QA (docs/PLANO.md seção 12).

@@ -77,6 +77,12 @@ Ajuste a prioridade quando dependências ou o contexto atual do repositório jus
 
 A `main` usa checks obrigatórios em modo estrito. Antes do merge, a branch da PR precisa conter o HEAD atual da `main`; CI verde de um merge sintético antigo não satisfaz essa regra. Se a API de merge responder `405` dizendo que os checks obrigatórios estão “expected” apesar de um CI verde, confira se a base avançou, sincronize a branch com a `main` atual e valide novamente o novo HEAD.
 
+Quando houver várias PRs em `em-revisão`, preserve a fila serial do sincronizador: só a PR elegível mais antiga deve ser atualizada contra a `main` e consumir CI. Não antecipe `update-branch` nas seguintes, porque o primeiro merge as deixará atrasadas novamente.
+
+O CI mantém os mesmos checks obrigatórios para mudanças operacionais/documentais reconhecidas, mas pode usar o caminho leve e dispensar Vitest completo, simulações lentas e Playwright. Código/config/dados/testes comuns e mudanças no próprio workflow de CI continuam exigindo a suíte completa.
+
+Na suíte completa, diagnostique o navegador por componente: bootstrap da fábrica, E2E da ponte da fábrica e shards E2E normais rodam separadamente e o check `teste de tela (Playwright)` agrega os três. Não trate falha de um componente como evidência de defeito nos outros.
+
 Ao revisar uma PR:
 
 1. Leia a issue/tarefa relacionada e as regras do repositório.
@@ -105,8 +111,6 @@ Uma branch só é candidata a limpeza depois de verificar:
 Nunca apague uma branch apenas por ser antiga.
 
 Prefira deixar uma branch possivelmente removível a apagar trabalho que ainda possa ter valor.
-
-O workflow `.github/workflows/branch-hygiene.yml` pode apagar uma branch ao mesmo tempo em que um sweep a percorre. Ao manter esse fluxo, trate uma ref que desapareceu entre a listagem e a leitura/remoção como já limpa; erros de remoção de uma branch que ainda existe devem continuar falhando o job.
 
 ## Correção de bugs
 
