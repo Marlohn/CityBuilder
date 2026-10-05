@@ -288,7 +288,8 @@ export class TrafficSystem implements System {
 
   /**
    * Motivo da volta do dia (TRIP.shopping | TRIP.health | TRIP.leisure | TRIP.none).
-   * Estável por pessoa (semente + id): divide o "other" da OD 2017 pelas proporções da config.
+   * Determinístico por pessoa e dia (semente + dia + id): divide o "other" da OD 2017
+   * pelas proporções da config sem travar o mesmo motivo pela vida inteira.
    */
   private pickErrandMotive(p: number): number {
     const s = this.city.sim.config.traffic.routine.shareByPurpose;
@@ -297,7 +298,8 @@ export class TrafficSystem implements System {
     const leisure = s.leisure ?? 0;
     const total = shopping + health + leisure;
     if (total <= 0) return TRIP.none;
-    const u = (hashString(`${this.city.sim.seed}:errand:${p}`)[0]! >>> 0) / 4294967296;
+    const day = this.city.sim.clock.day;
+    const u = (hashString(`${this.city.sim.seed}:errand:${day}:${p}`)[0]! >>> 0) / 4294967296;
     if (u < shopping / total) return TRIP.shopping;
     if (u < (shopping + health) / total) return TRIP.health;
     return TRIP.leisure;
