@@ -11,6 +11,9 @@ import { WorkerClient } from "./client";
 import { ToolController, toolDefs } from "./tools";
 
 const params = new URLSearchParams(location.search);
+const artV2 = params.get("poc") === "art-v2" || params.get("visual") === "illustrated";
+if (artV2) document.body.classList.add("poc-art-v2");
+if (params.get("cinema") === "1") document.body.classList.add("poc-cinema");
 const seed = params.get("seed") ?? `cidade-${Math.floor(Math.random() * 1e9)}`;
 // ?modo=livre = dinheiro infinito (modo "sandbox" da config).
 const overrides = params.get("modo") === "livre" ? { economy: { mode: "sandbox" } } : undefined;
@@ -24,6 +27,7 @@ const renderer = new CityRenderer(canvas, {
   modelsBaseUrl: new URL("./models", location.href).href.replace(/\/$/, ""),
   buildingVisuals: data.buildings.map((b) => ({ id: b.id, models: b.models, floors: b.floors })),
   tileMeters: config.world.tileMeters,
+  visualStyle: artV2 ? "illustrated" : "default",
 });
 
 let buildings: BuildingView[] = [];
@@ -62,7 +66,58 @@ client.onLoadRequested = (save) => {
   store.set({ ready: false, error: null });
   client.send({ type: "load", save, configTexts, dataTexts });
 };
-client.onReady = () => store.set({ ready: true });
+let artV2GalleryBuilt = false;
+function buildArtV2Gallery() {
+  if (!artV2 || artV2GalleryBuilt) return;
+  artV2GalleryBuilt = true;
+
+  // Quadras curtas ao redor de uma avenida: a referência visual funciona como um diorama denso,
+  // então evitamos interiores enormes e vazios entre uma rua e outra.
+  const gridX = [68, 72, 76, 80, 84, 88, 92];
+  const gridY = [116, 120, 124, 128, 132, 136, 140];
+  for (const x of gridX)
+    client.command({ type: "buildRoad", kind: "street", x0: x, y0: gridY[0]!, x1: x, y1: gridY.at(-1)! });
+  for (const y of gridY) {
+    const avenue = y === 128;
+    client.command({
+      type: "buildRoad",
+      kind: avenue ? "avenue" : "street",
+      // A avenida alcança a estrada de acesso; as ruas locais ficam só dentro da vitrine.
+      x0: avenue ? 47 : gridX[0]!,
+      y0: y,
+      x1: avenue ? 98 : gridX.at(-1)!,
+      y1: y,
+    });
+  }
+
+  // Infraestrutura fica na borda da vitrine; o miolo é reservado para arquitetura urbana.
+  client.command({ type: "placeService", service: "poco", x: 63, y: 129 });
+  client.command({ type: "placeService", service: "subestacao", x: 65, y: 129 });
+
+  const galleryZones = ["residential_low", "commercial", "residential_high", "residential_low"] as const;
+  for (let row = 0; row < gridY.length - 1; row++) {
+    for (let col = 0; col < gridX.length - 1; col++) {
+      const zone = galleryZones[(row + col) % galleryZones.length]!;
+      client.command({
+        type: "zone",
+        zone,
+        x0: gridX[col]! + 1,
+        y0: gridY[row]! + 1,
+        x1: gridX[col + 1]! - 1,
+        y1: gridY[row + 1]! - 1,
+      });
+    }
+  }
+
+  client.send({ type: "advance", ticks: 9000 });
+  renderer.lookAt(80, 128);
+  renderer.zoomBy(6.7 / renderer.cameraState().zoom);
+}
+
+client.onReady = () => {
+  store.set({ ready: true });
+  buildArtV2Gallery();
+};
 client.onFrame = (f) => {
   if (f.map) {
     lastMap = f.map;

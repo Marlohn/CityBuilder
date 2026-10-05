@@ -397,3 +397,60 @@ button:disabled {
 .topbar .demand .dlabel {
   width: 80px;
 }
+
+
+/* POC #296 v2 — a cidade é o assunto principal. */
+body.poc-art-v2 {
+  --bg: rgba(250, 252, 249, 0.9);
+  --bg2: rgba(255, 255, 255, 0.96);
+  --fg: #263638;
+  --muted: #718184;
+  --accent: #2fa79d;
+  --warn: #d49b32;
+  --bad: #d85f55;
+  background: #eef6f8;
+}
+
+body.poc-art-v2 button,
+body.poc-art-v2 .file-button {
+  border-color: rgba(38, 54, 56, 0.1);
+  box-shadow: 0 2px 8px rgba(38, 54, 56, 0.05);
+}
+
+body.poc-art-v2 button.active {
+  color: #fff;
+  background: #2fa79d;
+  border-color: #25867f;
+}
+
+body.poc-art-v2 .topbar,
+body.poc-art-v2 .toolbar,
+body.poc-art-v2 .side,
+body.poc-art-v2 .side-tab,
+body.poc-art-v2 .toast {
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  box-shadow: 0 10px 30px rgba(44, 63, 65, 0.14);
+  backdrop-filter: blur(14px);
+}
+
+body.poc-cinema #ui {
+  display: none;
+}
+
+body.poc-cinema::after {
+  content: "POC visual v2 · arraste com botão direito · roda = zoom · botão do meio = girar";
+  position: fixed;
+  left: 50%;
+  bottom: 18px;
+  transform: translateX(-50%);
+  z-index: 50;
+  pointer-events: none;
+  padding: 8px 14px;
+  border-radius: 999px;
+  color: rgba(38, 54, 56, 0.78);
+  background: rgba(255, 255, 255, 0.78);
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  box-shadow: 0 6px 22px rgba(38, 54, 56, 0.12);
+  backdrop-filter: blur(12px);
+  font-size: 12px;
+}
