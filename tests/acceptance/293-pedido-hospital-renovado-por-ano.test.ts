@@ -36,13 +36,7 @@ describe("issue #293: pedido anual de internação", () => {
 
     sim.step(1);
 
-    expect(
-      city.pop.isAlive(p),
-      "a pessoa precisa sobreviver para o teste provar renovação da fila",
-    ).toBe(true);
-    expect(
-      city.seekHospital.has(p),
-      "com taxa 0,0001 e esta semente, o novo sorteio anual é negativo; o pedido do ano anterior não pode permanecer",
-    ).toBe(false);
+    expect(city.pop.isAlive(p), "a pessoa precisa sobreviver").toBe(true);
+    expect(city.seekHospital.has(p), "pedido antigo não pode permanecer").toBe(false);
   });
 });
