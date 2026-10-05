@@ -4,7 +4,14 @@ import { join } from "node:path";
 import { configTexts, loadConfigAndData, loadScenario, ROOT, runGame } from "@city/cli";
 import type { Game } from "@city/sim";
 import { parseReference, parseRoadmapConfig, type RoadmapConfig } from "./config";
-import { averageMetrics, mergeRuns, metricsOf, pendingSignals, signalsFromRun } from "./signals";
+import {
+  aggregateInfantMortalitySignal,
+  averageMetrics,
+  mergeRuns,
+  metricsOf,
+  pendingSignals,
+  signalsFromRun,
+} from "./signals";
 import type { SignalsFile } from "./types";
 
 export function loadRoadmapConfig(): RoadmapConfig {
@@ -54,10 +61,28 @@ export function collectSignals(
     days: cfg.evaluation.scenarioDays,
     game: runGame({ config, data, seed: sc, days: cfg.evaluation.scenarioDays, scenario: loadScenario(sc) }),
   });
-  const metrics = averageMetrics(games.map((g) => metricsOf(g.game)));
+  const gameMetrics = games.map((g) => metricsOf(g.game));
+  const metrics = averageMetrics(gameMetrics);
   const signals = mergeRuns(
     games.map((g) => signalsFromRun(g.game, cfg, reference, services, mid.get(g.name))),
-  );
+  ).filter((s) => s.id !== "realismo:infantMortality");
+  const infantRange = config.realism.items.find((item) => item.id === "infantMortality");
+  if (infantRange) {
+    const infant = aggregateInfantMortalitySignal(
+      games.map((g, i) => {
+        const w = g.game.demo.window();
+        return {
+          births: w.births,
+          infantDeaths: w.infantDeaths,
+          population: gameMetrics[i]?.population ?? 0,
+        };
+      }),
+      infantRange,
+      config.realism.minSamples.births,
+    );
+    if (infant) signals.push(infant);
+  }
+  signals.sort((a, b) => a.id.localeCompare(b.id));
   signals.push(...pendingSignals(configTexts(), Math.round(metrics.population ?? 0)));
   return {
     generatedAt: now.toISOString(),
