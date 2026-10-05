@@ -3,6 +3,14 @@ name: Publicar jogo (GitHub Pages)
 on:
   push:
     branches: [main]
+    paths:
+      - "packages/**"
+      - "config/**"
+      - "data/**"
+      - "package.json"
+      - "package-lock.json"
+      - "tsconfig.json"
+      - ".github/workflows/pages.yml"
   workflow_dispatch:
 
 permissions:

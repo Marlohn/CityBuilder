@@ -68,7 +68,7 @@ async function fetchIssues(repo: string): Promise<IssueInput[]> {
 }
 
 async function publish(repo: string, body: string) {
-  const text = body.length > 60000 ? `${body.slice(0, 60000)}\n\n… (cortado; veja ROADMAP.md)` : body;
+  const text = body.length > 60000 ? `${body.slice(0, 60000)}\n\n… (cortado; veja o artifact \`roadmap\` da execução do workflow)` : body;
   const found = (await github(`/repos/${repo}/issues?state=open&labels=${PUBLISH_LABEL}`)) as {
     number: number;
   }[];

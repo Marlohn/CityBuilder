@@ -24,7 +24,7 @@ roadmap:
     dataAndSource: 1.0
     sourceOnly: 0.8
     opinion: 0.5
-  # Esforço usado enquanto o Arquiteto não estima (número de tarefas pequenas).
+  # Esforço relativo usado quando ainda não há estimativa explícita.
   defaultEffort: 3
   # Peso extra para itens que vieram de ideias do dono do projeto (etiqueta "do-dono"). 0.5 = +50%.
   ownerBoost: 0.5

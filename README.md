@@ -50,7 +50,7 @@ npm run test:e2e     # testes no navegador
 | [docs/PLANO.md](docs/PLANO.md) | Decisões, arquitetura e fontes |
 | [docs/GUIA-DO-CODIGO.md](docs/GUIA-DO-CODIGO.md) | Onde fica cada coisa e receitas de código |
 | [AGENTS.md](AGENTS.md) | Regras enxutas para humanos e IAs |
-| [ROADMAP.md](ROADMAP.md) | Priorização gerada a partir dos sinais do jogo e das issues |
+| [Roadmap no GitHub](https://github.com/Marlohn/CityBuilder/issues/2) | Priorização publicada a partir dos sinais do jogo e das issues |
 
 Estrutura: `packages/sim` é o motor (sem tela), `packages/web` junta o jogo no navegador e a comunicação passa por `packages/contract`.
 
@@ -63,7 +63,7 @@ Estrutura: `packages/sim` é o motor (sem tela), `packages/web` junta o jogo no 
 
 - `ci.yml` roda validações proporcionais ao risco: check normal sempre que há código, testes lentos para núcleo da simulação e E2E para caminhos visuais/integração.
 - `pages.yml` publica a `main` no GitHub Pages.
-- `roadmap.yml` atualiza os sinais e a visão do roadmap.
+- `roadmap.yml` recalcula os sinais periodicamente (ou quando o código relevante muda) e publica a visão atual na issue de roadmap.
 - `branch-hygiene.yml` remove somente branches comprovadamente obsoletas e preserva POCs.
 
 ## Licenças

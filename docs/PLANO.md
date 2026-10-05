@@ -260,7 +260,7 @@ Fontes de sinais:
 
 A fórmula continua sendo RICE: **(Alcance × Impacto × Confiança) ÷ Esforço**. Bugs e regressões podem receber urgência, dependências sobem quando bloqueiam itens importantes e o motor mantém diversidade de categorias. A fórmula ajuda a ordenar; ela não substitui julgamento de produto.
 
-Quando um item marcado como entregue possui métrica verificável, `npm run roadmap:check` confere o resultado. `ROADMAP.md` é gerado pelo motor e não deve ser editado manualmente.
+Quando um item marcado como entregue possui métrica verificável, `npm run roadmap:check` confere o resultado. `ROADMAP.md` e `roadmap/signals.json` são saídas locais/artefatos gerados; a visão publicada fica na issue de roadmap do GitHub.
 
 ## 13. Fases
 
@@ -272,7 +272,7 @@ Quando um item marcado como entregue possui métrica verificável, `npm run road
 | 3 | Ciclo de vida completo com dados do IBGE, escola e saúde, placar de realismo |
 | 4 | Trânsito: carros com dono, rotas em paralelo, cache e estacionamento |
 | 5 | Prefeito automático, cidades de estresse (50 mil e 100 mil), save e replay |
-| 6 | Motor de roadmap completo: sinais automáticos, fórmula, `ROADMAP.md` gerado, checagem de métrica |
+| 6 | Motor de roadmap completo: sinais automáticos, fórmula, roadmap publicado no GitHub, checagem de métrica |
 | 7 | IA opcional (diretora com LLM) |
 | 8 | Página do projeto no GitHub: descrição, como rodar, manual do jogo e como contribuir. Fica por último porque aí já existe tudo pra documentar. |
 
@@ -310,12 +310,12 @@ Observação: os sinais do roadmap começam a ser coletados antes da fase 6. Os 
 
 ### 14.2 Motor de roadmap: como ficou
 
-- `npm run roadmap:signals` roda 3 cidades do prefeito automático e 1 cenário (roadmap/config.yaml) e grava `roadmap/signals.json` com as métricas médias e os sinais.
+- `npm run roadmap:signals` roda as cidades de avaliação e grava localmente `roadmap/signals.json` com as métricas médias e os sinais; esse arquivo é gerado e não é versionado.
 - A comparação com cidades reais usa `data/reference/cidade-real.yaml` (cada linha com fonte e link).
 - O alcance é sempre **medido** na cidade de teste, nunca projetado. Um serviço que só faz falta em cidades maiores entra com "só fonte" (confiança 80%).
-- `npm run roadmap:build` lê as issues (API do GitHub ou arquivo), aplica a fórmula e as regras e gera `ROADMAP.md`, incluindo os sinais ainda sem item, com métrica sugerida e nota provisória.
+- `npm run roadmap:build` lê as issues (API do GitHub ou arquivo), aplica a fórmula e as regras e gera localmente `ROADMAP.md`; no workflow, a mesma visão é publicada na issue de roadmap e guardada como artifact.
 - `npm run roadmap:check` confere a métrica dos itens com a etiqueta `entregue`.
-- O workflow `.github/workflows/roadmap.yml` roda tudo toda segunda, a cada mudança nas issues e a cada push em `main`, e publica o resultado na issue "Roadmap (gerado automaticamente)".
+- O workflow `.github/workflows/roadmap.yml` roda semanalmente, manualmente e quando código/dados que alteram os sinais entram na `main`; ele publica o resultado na issue "Roadmap (gerado automaticamente)".
 
 ### 14.3 O que do plano ainda não foi feito (revisão final)
 

@@ -1,16 +1,26 @@
 name: Roadmap
 
-# Motor de roadmap (docs/PLANO.md seção 12.2): mede cidades de teste, lê as issues, ordena pela
-# fórmula e publica o resultado na issue "Roadmap (gerado automaticamente)" e no resumo do job.
+# Mede cidades de teste, lê as issues, ordena pela fórmula e publica a visão atual na issue de roadmap.
+# Não roda em toda edição de issue: recalcular as cidades é caro e não muda os sinais nesses eventos.
 on:
   schedule:
     - cron: "17 6 * * 1" # toda segunda de manhã
   workflow_dispatch:
-  issues:
-    types: [opened, edited, labeled, unlabeled, closed, reopened]
   push:
     branches: [main]
-    paths: ["packages/sim/**", "config/**", "data/**", "roadmap/**", "packages/roadmap/**"]
+    paths:
+      - "packages/sim/**"
+      - "packages/bots/**"
+      - "packages/cli/**"
+      - "packages/contract/**"
+      - "packages/roadmap/**"
+      - "config/**"
+      - "data/**"
+      - "scenarios/**"
+      - "roadmap/**"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/roadmap.yml"
 
 permissions:
   contents: read
@@ -22,8 +32,6 @@ concurrency:
 
 jobs:
   build:
-    # A própria issue do roadmap gerado não dispara outra rodada.
-    if: github.event_name != 'issues' || !contains(github.event.issue.labels.*.name, 'roadmap-gerado')
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -37,7 +45,7 @@ jobs:
       - run: npm run roadmap:build -- --publish
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - run: npm run roadmap:check || echo "::warning::algum item entregue não bateu a métrica (veja o ROADMAP.md)"
+      - run: npm run roadmap:check || echo "::warning::algum item entregue não bateu a métrica (veja a issue/artifact do roadmap)"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - run: cat ROADMAP.md >> "$GITHUB_STEP_SUMMARY"

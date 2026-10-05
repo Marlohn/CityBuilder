@@ -18,7 +18,7 @@ packages/
   bots/             prefeito automático e leitura de cenários
   cli/              roda o jogo sem tela (npm run sim), carrega config/ e data/ do disco
   director/         IA diretora opcional (LLM), desligada por padrão
-  roadmap/          motor de roadmap (sinais, fórmula, ROADMAP.md)
+  roadmap/          motor de roadmap (sinais, fórmula e publicação)
   render/           desenho 3D (Babylon.js), recebe só visões do contrato
   ui/               painéis em React, recebe só visões do contrato
   web/              junta tudo no navegador: Worker com o motor + render + ui
@@ -28,7 +28,7 @@ tests/
   slow/             coorte do IBGE e cidade de 50 mil (SLOW=1)
   e2e/              navegador de verdade (Playwright)
 tools/              scripts: check, calibração da demografia, geração de nomes
-roadmap/            config do motor de roadmap e sinais medidos (signals.json)
+roadmap/            config do motor de roadmap; sinais medidos são gerados localmente
 ```
 
 ### Quem pode importar quem

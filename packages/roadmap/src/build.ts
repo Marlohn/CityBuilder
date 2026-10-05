@@ -90,7 +90,7 @@ export function renderRoadmap(r: Roadmap, signals: SignalsFile | null, cfg: Road
   );
   L.push(">");
   L.push(
-    "> Nota = (alcance × impacto × confiança) ÷ esforço. 🚨 = urgente (passa na frente). Itens sem fonte ou sem métrica não entram.",
+    "> Nota = (alcance × impacto × confiança) ÷ esforço. 🚨 = urgente (passa na frente). Itens sem os campos mínimos ou sem métrica válida não entram.",
   );
   L.push("");
   if (signals) {
