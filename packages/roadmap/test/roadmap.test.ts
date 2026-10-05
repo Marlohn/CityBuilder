@@ -166,11 +166,10 @@ describe("fórmula e regras", () => {
     blocker.state = "closed";
     const released = computeRoadmap([dependent, blocker], signals, cfg);
     expect(released.plan.blocked).toHaveLength(0);
-    expect([
-      ...released.plan.now,
-      ...released.plan.next,
-      ...released.plan.later,
-    ].map((x) => x.item.number)).toContain(901);
+    const releasedNumbers = [...released.plan.now, ...released.plan.next, ...released.plan.later].map(
+      (x) => x.item.number,
+    );
+    expect(releasedNumbers).toContain(901);
   });
 
   it("mistura garantida: correções entram em Agora mesmo com nota menor", () => {
