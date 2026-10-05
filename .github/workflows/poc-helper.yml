@@ -3,6 +3,9 @@ name: POC helper
 on:
   pull_request:
 
+permissions:
+  contents: write
+
 jobs:
   format-build-package:
     if: github.head_ref == 'poc/isometric-visual-refresh'
@@ -10,6 +13,8 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -17,6 +22,15 @@ jobs:
       - run: npm ci
       - name: Formatar a POC no workspace
         run: npx biome format --write packages/web/src/pocVisual.ts packages/web/src/main.tsx packages/web/src/style.css
+      - name: Salvar formatação na branch
+        run: |
+          if ! git diff --quiet; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add packages/web/src/pocVisual.ts packages/web/src/style.css packages/web/src/main.tsx
+            git commit -m "style: format visual POC"
+            git push origin HEAD:${{ github.head_ref }}
+          fi
       - name: Conferir tipos e build
         run: |
           npm run check -- --only=types
