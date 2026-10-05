@@ -1,147 +1,147 @@
 ---
 name: citybuilder-maintenance
-description: Workflow for maintaining Marlohn/CityBuilder: issue triage, bug fixing, PR review and fixes, safe merges, branch cleanup, repository maintenance, and implementation work.
+description: Fluxo de manutenção do Marlohn/CityBuilder para triagem de issues, correção de bugs, revisão e correção de PRs, merges seguros, limpeza de branches, manutenção do repositório e implementação.
 ---
 
-# CityBuilder Maintenance
+# Manutenção do CityBuilder
 
-Use this skill whenever the task involves engineering or maintaining the CityBuilder repository.
+Use esta skill sempre que a tarefa envolver engenharia ou manutenção do repositório CityBuilder.
 
-## Source of truth
+## Fonte de verdade
 
-GitHub is the primary source of current project state.
+O GitHub é a fonte principal e atual do estado do projeto.
 
-Before making decisions or changes:
+Antes de tomar decisões ou fazer mudanças:
 
-1. Inspect the current state of `Marlohn/CityBuilder` on GitHub.
-2. Read the root `AGENTS.md`.
-3. When touching a package, read that package's `AGENTS.md`.
-4. Read the code, tests, issue, PR, comments, commits, and history relevant to the task.
-5. Consult `docs/GUIA-DO-CODIGO.md`, `docs/VISAO.md`, `docs/PLANO.md`, and `hermes/FACTORY.md` when relevant.
+1. Consulte o estado atual de `Marlohn/CityBuilder` no GitHub.
+2. Leia o `AGENTS.md` da raiz.
+3. Ao alterar um pacote, leia o `AGENTS.md` desse pacote.
+4. Leia o código, testes, issue, PR, comentários, commits e histórico relevantes para a tarefa.
+5. Consulte `docs/GUIA-DO-CODIGO.md`, `docs/VISAO.md`, `docs/PLANO.md` e `hermes/FACTORY.md` quando forem relevantes.
 
-If this skill conflicts with a more specific or newer repository rule, the repository rule wins.
+Se esta skill entrar em conflito com uma regra mais específica ou mais recente do repositório, prevalece a regra do repositório.
 
-Do not rely on stale assumptions when the repository can be inspected directly.
+Não se baseie em suposições antigas quando o repositório puder ser consultado diretamente.
 
-## Autonomy
+## Autonomia
 
-Work autonomously on safe engineering tasks.
+Trabalhe com autonomia em tarefas de engenharia que sejam seguras.
 
-You may investigate bugs, edit branches, create focused commits, fix code, update appropriate tests and documentation, review PRs, fix PR problems, triage issues, and merge when the repository's safety conditions are satisfied.
+Você pode investigar bugs, editar branches, criar commits focados, corrigir código, atualizar testes e documentação apropriados, revisar PRs, corrigir problemas encontrados em PRs, triar issues e fazer merge quando as condições de segurança do repositório estiverem satisfeitas.
 
-Do not stop to ask questions that can be answered from the repository, history, tests, issues, PRs, or documentation.
+Não interrompa o trabalho para fazer perguntas que possam ser respondidas consultando o repositório, histórico, testes, issues, PRs ou documentação.
 
-Ask the user only when a real product decision is ambiguous or when a potentially destructive action cannot be proven safe from repository evidence.
+Pergunte ao usuário somente quando houver uma decisão real de produto ambígua ou quando uma ação potencialmente destrutiva não puder ser comprovada como segura pelas evidências do repositório.
 
-## Change discipline
+## Disciplina de mudanças
 
-- Preserve existing behavior unless the task requires changing it.
-- Prefer the smallest correct change.
-- Avoid broad architectural rewrites without a concrete need.
-- Avoid unrelated opportunistic refactors.
-- Preserve compatibility, especially contracts, configuration schemas, saves, and replay behavior.
-- Respect package boundaries and deterministic simulation rules.
-- Never invent simulation rules or real-world numbers when the project requires sourced data.
-- Do not delete potentially important code, data, branches, tests, or documentation without checking history and references first.
-- Keep commits small, focused, and descriptive.
+- Preserve o comportamento existente, salvo quando a tarefa exigir uma mudança.
+- Prefira a menor mudança correta.
+- Evite grandes reescritas arquiteturais sem necessidade concreta.
+- Evite refactors oportunistas sem relação com a tarefa.
+- Preserve compatibilidade, especialmente de contratos, schemas de configuração, saves e replays.
+- Respeite os limites entre pacotes e as regras de determinismo da simulação.
+- Nunca invente regras da simulação ou números do mundo real quando o projeto exigir dados com fonte.
+- Não apague código, dados, branches, testes ou documentação potencialmente importantes sem antes verificar histórico e referências.
+- Mantenha commits pequenos, focados e descritivos.
 
-## Issue triage
+## Triagem de issues
 
-Classify open issues using repository evidence:
+Classifique issues abertas usando evidências do repositório:
 
-- **valid**: the problem or requested work still exists;
-- **duplicate**: another issue already represents the same work;
-- **resolved**: current code already satisfies it;
-- **obsolete**: later changes made the request no longer relevant.
+- **válida**: o problema ou trabalho solicitado ainda existe;
+- **duplicada**: outra issue já representa o mesmo trabalho;
+- **resolvida**: o código atual já atende ao pedido;
+- **obsoleta**: mudanças posteriores tornaram o pedido irrelevante.
 
-For each issue, inspect the description, comments, related code, relevant commits/PRs, and current behavior before changing its state.
+Para cada issue, consulte descrição, comentários, código relacionado, commits/PRs relevantes e o comportamento atual antes de mudar seu estado.
 
-Do not close an issue merely because it is old.
+Não feche uma issue apenas por ser antiga.
 
-When implementing issues, keep traceability between issue, branch, commits, PR, and tests.
+Ao implementar issues, mantenha rastreabilidade entre issue, branch, commits, PR e testes.
 
-## Priority
+## Prioridade
 
-In general, prioritize:
+Em geral, priorize:
 
-1. data loss/corruption, save/replay compatibility, determinism, and severe regressions;
-2. broken CI/build/developer workflow;
-3. important functional bugs;
-4. architectural problems causing concrete defects;
-5. product and UX improvements;
-6. cleanup and maintenance.
+1. perda/corrupção de dados, compatibilidade de save/replay, determinismo e regressões graves;
+2. CI, build ou fluxo de desenvolvimento quebrados;
+3. bugs funcionais importantes;
+4. problemas arquiteturais que estejam causando defeitos concretos;
+5. melhorias de produto e UX;
+6. limpeza e manutenção.
 
-Adjust priority when dependencies or repository context justify it.
+Ajuste a prioridade quando dependências ou o contexto atual do repositório justificarem.
 
-## Pull request workflow
+## Fluxo de pull requests
 
-When reviewing a PR:
+Ao revisar uma PR:
 
-1. Read the linked issue/task and repository rules.
-2. Inspect the complete diff and affected code paths.
-3. Check open review threads and previous feedback.
-4. Verify compatibility and unintended behavioral changes.
-5. Check tests and CI for the exact PR head.
-6. Fix defects directly when safe and within scope.
-7. Re-run or re-check the appropriate validation.
-8. Merge only when the reviewed head is still current and required checks are green.
+1. Leia a issue/tarefa relacionada e as regras do repositório.
+2. Examine o diff completo e os caminhos de código afetados.
+3. Verifique threads de revisão abertas e feedback anterior.
+4. Verifique compatibilidade e mudanças de comportamento não intencionais.
+5. Confira testes e CI para o HEAD exato da PR.
+6. Corrija diretamente os defeitos quando isso for seguro e estiver dentro do escopo.
+7. Rode ou confira novamente as validações apropriadas.
+8. Faça merge somente quando o HEAD revisado continuar atual e os checks obrigatórios estiverem verdes.
 
-Do not treat green CI as sufficient proof by itself; review the behavior and diff.
+Não considere CI verde, sozinho, prova suficiente; revise também o comportamento e o diff.
 
-If the PR head or base materially changes after review, re-evaluate before merging.
+Se o HEAD ou a base da PR mudar de forma relevante depois da revisão, reavalie antes do merge.
 
-## Branch cleanup
+## Limpeza de branches
 
-A branch is a cleanup candidate only after checking:
+Uma branch só é candidata a limpeza depois de verificar:
 
-- whether it has already been merged;
-- whether it contains commits not reachable from the target branch;
-- whether it has an open PR;
-- whether an issue, active workflow, or recovery process still depends on it;
-- whether another branch was based on it.
+- se já foi mergeada;
+- se contém commits que não são alcançáveis pela branch de destino;
+- se possui PR aberta;
+- se alguma issue, workflow ativo ou processo de recuperação ainda depende dela;
+- se outra branch foi criada a partir dela.
 
-Never delete a branch merely because it is old.
+Nunca apague uma branch apenas por ser antiga.
 
-Prefer false negatives over deleting potentially valuable work.
+Prefira deixar uma branch possivelmente removível a apagar trabalho que ainda possa ter valor.
 
-## Bug fixing
+## Correção de bugs
 
-For bugs:
+Para bugs:
 
-1. Reproduce or establish evidence of the failure when practical.
-2. Identify the actual cause, not just the visible symptom.
-3. Add or identify a regression test when appropriate.
-4. Make the smallest correct fix.
-5. Check adjacent behavior for regressions.
-6. Validate with the repository's documented commands.
-7. Record useful reproduction details in the PR or issue.
+1. Reproduza ou estabeleça evidência da falha quando for viável.
+2. Identifique a causa real, não apenas o sintoma visível.
+3. Adicione ou identifique um teste de regressão quando apropriado.
+4. Faça a menor correção correta.
+5. Verifique comportamentos adjacentes para evitar regressões.
+6. Valide usando os comandos documentados pelo repositório.
+7. Registre detalhes úteis de reprodução na PR ou issue.
 
-Use replay/seed information when available for simulation bugs.
+Use informações de replay e seed quando existirem para bugs da simulação.
 
-## Validation
+## Validação
 
-Follow the validation rules in `AGENTS.md`.
+Siga as regras de validação do `AGENTS.md`.
 
-At minimum, for code changes, run the affected tests and the appropriate repository check. Before considering a merge safe, require the repository's required CI checks for the exact candidate revision.
+No mínimo, para mudanças de código, rode os testes afetados e o check apropriado do repositório. Antes de considerar um merge seguro, exija os checks obrigatórios do CI para a revisão candidata exata.
 
-For changes whose risk warrants it, also use slow tests, E2E tests, build, or simulation commands.
+Para mudanças cujo risco justifique, use também testes lentos, E2E, build ou comandos de simulação.
 
-Never report a task as complete if validation that should have run is known to be failing.
+Nunca declare uma tarefa concluída se uma validação que deveria ter sido executada estiver falhando.
 
-## Documentation
+## Documentação
 
-Update documentation in the same change when commands, architecture, rules, package responsibilities, configuration, or developer workflow change.
+Atualize a documentação na mesma mudança quando houver alteração de comandos, arquitetura, regras, responsabilidades de pacotes, configuração ou fluxo de desenvolvimento.
 
-Do not edit generated roadmap artifacts unless the repository explicitly says to.
+Não edite artefatos gerados do roadmap quando o repositório disser explicitamente para não fazê-lo.
 
-## Reporting back
+## Retorno ao usuário
 
-Keep status concise and evidence-based.
+Mantenha o status conciso e baseado em evidências.
 
-When finishing a task, report:
-- what changed;
-- what was validated;
-- any remaining risk or unresolved dependency;
-- relevant issue/PR/commit references.
+Ao concluir uma tarefa, informe:
+- o que mudou;
+- o que foi validado;
+- qualquer risco restante ou dependência não resolvida;
+- referências relevantes de issue, PR e commit.
 
-Do not claim success based on intention; claim it only from repository state and validation evidence.
+Não declare sucesso com base em intenção; declare apenas quando houver evidência no estado e nas validações do repositório.
