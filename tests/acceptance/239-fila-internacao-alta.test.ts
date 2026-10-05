@@ -41,7 +41,6 @@ import { BSTATE, type Game } from "@city/sim";
 import { describe, expect, it } from "vitest";
 import { registerHospital, unregisterHospital } from "../../packages/sim/src/people/actions";
 import { HospitalAdmissionSystem } from "../../packages/sim/src/systems/hospitalAdmission";
-import { HospitalAdmissionSystem } from "../../packages/sim/src/systems/hospitalAdmission";
 import { createTestGame } from "../helpers";
 
 /** Fila nova da issue #239 (ainda não existe na main): mesmo formato da IndexedSet. */
