@@ -1,10 +1,19 @@
 /**
  * Atualização anual de cada pessoa, no tick do aniversário dela (espalha o trabalho ao longo do dia).
- * Ordem: morte -> estudo -> trabalho/aposentadoria -> família -> dinheiro da família.
+ * Ordem: morte -> estudo -> trabalho/aposentadoria -> família -> internação -> dinheiro da família.
+ * A alta hospitalar roda a cada tick sobre os internados (`city.hospitalized`).
  */
 import type { City } from "../city";
 import type { Demography } from "../metrics/demography";
-import { die, eduLevelFromYears, fire, householdLeavesCity, refreshRole, unenroll } from "../people/actions";
+import {
+  die,
+  eduLevelFromYears,
+  fire,
+  householdLeavesCity,
+  refreshRole,
+  unenroll,
+  unregisterHospital,
+} from "../people/actions";
 import { EV, UNMET } from "../people/events";
 import { OUTSIDE_JOB, PSTATUS, ROLE, SEX } from "../people/population";
 import type { System } from "../sim";
@@ -20,6 +29,7 @@ export class LifecycleSystem implements System {
 
   tick() {
     const city = this.city;
+    this.discharge();
     const list = city.slots[city.sim.clock.tickOfDay]!;
     if (list.length === 0) return;
     let write = 0;
@@ -153,9 +163,38 @@ export class LifecycleSystem implements System {
     maybeLeaveParents(city, p);
     this.homelessCouple(p);
 
-    // 5. Dinheiro da família (uma vez por ano, pela primeira pessoa da lista da família).
+    // 5. Internação: episódio novo para quem ainda não tem leito. UBS e hospital são
+    // independentes: ter atendimento primário não impede precisar de internação.
+    if (
+      pop.hospital[p]! < 0 &&
+      city.rng.hospital.chance(config.health.hospitalAdmissionRatePerYear / 365)
+    )
+      city.seekHospital.add(p);
+
+    // 6. Dinheiro da família (uma vez por ano, pela primeira pessoa da lista da família).
     const h = pop.household[p]!;
     if (h >= 0 && city.hh.head[h] === p) this.householdYear(h);
+  }
+
+  /**
+   * Alta hospitalar: cada internado tem por tick a fração diária da chance de alta.
+   * Só percorre os internados; morte e saída da cidade já soltam o leito em detach().
+   */
+  private discharge() {
+    const city = this.city;
+    const chance = Math.min(
+      1,
+      1 / city.config.health.hospitalAvgLengthOfStayDays / city.sim.clock.ticksPerDay,
+    );
+    for (let i = 0; i < city.hospitalized.size; i++) {
+      const p = city.hospitalized.at(i);
+      city.sim.perf.count("personsUpdated");
+      if (city.rng.hospital.chance(chance)) {
+        unregisterHospital(city, p);
+        // Alta é cura, não um pedido novo de UBS.
+        city.seekClinic.delete(p);
+      }
+    }
   }
 
   /** Família esperando casa há mais de um ano pode desistir e ir para outra cidade. */
