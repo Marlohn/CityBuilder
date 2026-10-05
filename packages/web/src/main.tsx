@@ -73,8 +73,8 @@ function buildArtV2Gallery() {
 
   // Quadras curtas ao redor de uma avenida: a referência visual funciona como um diorama denso,
   // então evitamos interiores enormes e vazios entre uma rua e outra.
-  const gridX = [68, 74, 80, 86, 92];
-  const gridY = [116, 122, 128, 134, 140];
+  const gridX = [68, 72, 76, 80, 84, 88, 92];
+  const gridY = [116, 120, 124, 128, 132, 136, 140];
   for (const x of gridX)
     client.command({ type: "buildRoad", kind: "street", x0: x, y0: gridY[0]!, x1: x, y1: gridY.at(-1)! });
   for (const y of gridY) {
@@ -109,7 +109,7 @@ function buildArtV2Gallery() {
     }
   }
 
-  client.send({ type: "advance", ticks: 10000 });
+  client.send({ type: "advance", ticks: 9000 });
   renderer.lookAt(80, 128);
   renderer.zoomBy(6.7 / renderer.cameraState().zoom);
 }
