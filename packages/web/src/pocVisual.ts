@@ -8,7 +8,7 @@ import {
   MeshBuilder,
   Quaternion,
   type Scene,
-  ShadowGenerator,
+  type ShadowGenerator,
   StandardMaterial,
   Vector3,
 } from "@babylonjs/core";
