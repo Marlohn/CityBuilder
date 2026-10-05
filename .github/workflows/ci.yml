@@ -72,6 +72,17 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - name: Sintaxe dos workflows YAML
+        run: |
+          node --input-type=module <<'NODE'
+          import { readdirSync, readFileSync } from "node:fs";
+          import YAML from "yaml";
+          for (const name of readdirSync(".github/workflows")) {
+            if (!/\.ya?ml$/.test(name)) continue;
+            YAML.parse(readFileSync(`.github/workflows/${name}`, "utf8"));
+            console.log(`${name}: YAML OK`);
+          }
+          NODE
       - name: Cenários do guard OpenCode (sem rede ou LLM)
         run: python3 hermes/harness/testar_opencode_guard.py
       - name: Integridade do ciclo de produto (sem rede ou LLM)
