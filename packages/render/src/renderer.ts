@@ -132,7 +132,8 @@ export class CityRenderer {
       this.sun.direction.set(-0.58, -1, 0.42);
       this.sun.intensity = 1;
       this.pocEnvironment = new PocV3Environment(this.scene, this.camera, this.shadows);
-      if (this.pocScene === "live" || this.pocScene === "play") this.pocLiveSurface = new PocV3LiveSurface(this.scene);
+      if (this.pocScene === "live" || this.pocScene === "play")
+        this.pocLiveSurface = new PocV3LiveSurface(this.scene);
       if (this.pocScene === "play" || this.pocScene === "hero" || this.pocScene === "kenney")
         this.pocShowcase = new PocV3Showcase(this.scene, this.shadows, opts.modelsBaseUrl);
     }
