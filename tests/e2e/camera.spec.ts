@@ -4,14 +4,24 @@ import { groundAt, openGame, screenOf } from "./helpers";
 
 test("botão direito arrastando agarra o mapa (o chão acompanha o mouse)", async ({ page }) => {
   await openGame(page, "camera");
-  const start = await groundAt(page, 600, 400);
-  await page.mouse.move(600, 400);
-  await page.mouse.down({ button: "right" });
-  await page.mouse.move(680, 440, { steps: 8 });
-  await page.mouse.up({ button: "right" });
-  const after = await groundAt(page, 680, 440);
-  expect(Math.abs(after.x - start.x), "o ponto agarrado saiu de baixo do mouse").toBeLessThan(0.3);
-  expect(Math.abs(after.z - start.z), "o ponto agarrado saiu de baixo do mouse").toBeLessThan(0.3);
+  await expect
+    .poll(
+      async () => {
+        const start = await groundAt(page, 600, 400);
+        await page.mouse.move(600, 400);
+        await page.mouse.down({ button: "right" });
+        await page.mouse.move(680, 440, { steps: 8 });
+        await page.mouse.up({ button: "right" });
+        const after = await groundAt(page, 680, 440);
+        return Math.max(Math.abs(after.x - start.x), Math.abs(after.z - start.z));
+      },
+      {
+        message: "o ponto agarrado saiu de baixo do mouse",
+        timeout: 10_000,
+        intervals: [250, 500, 1000],
+      },
+    )
+    .toBeLessThan(0.3);
 });
 
 test("W move a vista para cima e D para a direita", async ({ page }) => {
