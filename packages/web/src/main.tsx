@@ -12,6 +12,7 @@ import { ToolController, toolDefs } from "./tools";
 
 const params = new URLSearchParams(location.search);
 const artV2 = params.get("poc") === "art-v2" || params.get("visual") === "illustrated";
+if (artV2) document.body.classList.add("poc-art-v2");
 if (params.get("cinema") === "1") document.body.classList.add("poc-cinema");
 const seed = params.get("seed") ?? `cidade-${Math.floor(Math.random() * 1e9)}`;
 // ?modo=livre = dinheiro infinito (modo "sandbox" da config).
