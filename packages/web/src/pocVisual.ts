@@ -176,7 +176,11 @@ export class IsometricPocVisual {
     this.active = true;
     for (const mesh of this.scene.meshes) {
       if (mesh.name.startsWith("poc/")) continue;
-      if (/^(roads|suburban|commercial|cars|proc)\//.test(mesh.name) || mesh.name === "ground" || mesh.name === "ground-empty")
+      if (
+        /^(roads|suburban|commercial|cars|proc)\//.test(mesh.name) ||
+        mesh.name === "ground" ||
+        mesh.name === "ground-empty"
+      )
         mesh.visibility = 0;
     }
     this.scene.ambientColor = new Color3(0.42, 0.44, 0.42);
@@ -374,8 +378,7 @@ export class IsometricPocVisual {
       bd = Math.max(0.42, b.h * footprint);
     const h = 0.22 + floors * (meta.zone === "residential_low" ? 0.28 : 0.31),
       body = (b.variant + (meta.service ? 1 : 0)) % bodyColors.length;
-    if (floors >= 3)
-      this.b(`body${body}`).push(cx, 0.19, cz, 0, bw * 1.14, 0.18, bd * 1.14);
+    if (floors >= 3) this.b(`body${body}`).push(cx, 0.19, cz, 0, bw * 1.14, 0.18, bd * 1.14);
     this.b(`body${body}`).push(cx, 0.12 + h / 2, cz, 0, bw, h, bd);
     if (meta.zone === "residential_low")
       this.b("roofHip").push(cx, 0.16 + h, cz, Math.PI / 4, bw * 1.08, 0.22, bd * 1.08);
@@ -423,7 +426,15 @@ export class IsometricPocVisual {
     if (meta.service === "school") {
       const courtX = cx + lotW * 0.32,
         courtZ = cz + lotD * 0.32;
-      this.b("accent2").push(courtX, 0.12, courtZ, 0, Math.min(1.35, lotW * 0.3), 0.025, Math.min(1.8, lotD * 0.32));
+      this.b("accent2").push(
+        courtX,
+        0.12,
+        courtZ,
+        0,
+        Math.min(1.35, lotW * 0.3),
+        0.025,
+        Math.min(1.8, lotD * 0.32),
+      );
       this.b("line").push(courtX, 0.135, courtZ, 0, Math.min(1.05, lotW * 0.24), 0.01, 0.025);
     }
     if (meta.service === "health") {

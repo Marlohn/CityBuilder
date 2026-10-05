@@ -31,13 +31,12 @@ const renderer = new CityRenderer(canvas, {
 const pocEnabled =
   params.get("visual") === "poc" ||
   (params.get("visual") !== "legacy" && import.meta.env.VITE_POC_VISUAL === "1");
-const pocVisual =
-  pocEnabled
-    ? new IsometricPocVisual(
-        renderer.scene,
-        data.buildings.map((b) => ({ id: b.id, floors: b.floors, zone: b.zone, service: b.service })),
-      )
-    : null;
+const pocVisual = pocEnabled
+  ? new IsometricPocVisual(
+      renderer.scene,
+      data.buildings.map((b) => ({ id: b.id, floors: b.floors, zone: b.zone, service: b.service })),
+    )
+  : null;
 
 let buildings: BuildingView[] = [];
 let lastMap: MapView | null = null;
