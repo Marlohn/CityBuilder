@@ -34,8 +34,47 @@ jobs:
             git commit -m "style: format refined visual POC"
             git push origin HEAD:${{ github.head_ref }}
           fi
+      - name: Montar cenário visual temporário
+        shell: bash
+        run: |
+          cat > tests/e2e/poc-preview.tmp.spec.ts <<'TEST'
+          import { expect, test } from "@playwright/test";
+
+          declare global {
+            interface Window {
+              // biome-ignore lint/suspicious/noExplicitAny: ponte de depuração do jogo
+              __city: any;
+            }
+          }
+
+          test("galeria visual da POC", async ({ page }) => {
+            const errors: string[] = [];
+            page.on("pageerror", (e) => errors.push(e.message));
+            await page.goto("/?seed=poc-gallery&modo=livre");
+            await page.waitForFunction(() => window.__city?.store.get().ready, null, { timeout: 120_000 });
+            await page.evaluate(() => {
+              const c = window.__city.client;
+              c.command({ type: "buildRoad", kind: "avenue", x0: 47, y0: 128, x1: 98, y1: 128 });
+              for (const x of [58, 70, 82, 94])
+                c.command({ type: "buildRoad", kind: "street", x0: x, y0: 114, x1: x, y1: 142 });
+              c.command({ type: "zone", zone: "residential_low", x0: 59, y0: 115, x1: 68, y1: 127 });
+              c.command({ type: "zone", zone: "residential_high", x0: 71, y0: 115, x1: 80, y1: 127 });
+              c.command({ type: "zone", zone: "commercial", x0: 83, y0: 115, x1: 92, y1: 127 });
+              c.command({ type: "zone", zone: "industrial", x0: 59, y0: 129, x1: 68, y1: 141 });
+              c.command({ type: "zone", zone: "commercial", x0: 71, y0: 129, x1: 80, y1: 141 });
+              c.command({ type: "zone", zone: "residential_low", x0: 83, y0: 129, x1: 92, y1: 141 });
+              c.send({ type: "advance", ticks: 5200 });
+              window.__city.renderer.lookAt(76, 128);
+            });
+            await page.waitForFunction(() => window.__city.buildings().length >= 8, null, { timeout: 120_000 });
+            await page.waitForTimeout(1500);
+            const shot = await page.screenshot({ path: "test-results/poc-gallery.png" });
+            expect(shot.length).toBeGreaterThan(80_000);
+            expect(errors).toEqual([]);
+          });
+          TEST
       - name: Capturar cenário da POC
-        run: npx playwright test tests/e2e/smoke.spec.ts --reporter=line
+        run: npx playwright test tests/e2e/poc-preview.tmp.spec.ts --reporter=line
       - uses: actions/upload-artifact@v4
         if: always()
         with:
