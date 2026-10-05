@@ -26,7 +26,7 @@ items:
     label: Coleta e tratamento de esgoto
     category: construcao
     minPopulation: 1
-    inGame: ""
+    inGame: sewage
     reach: population
     impact: 3
     source: "Censo 2022 (IBGE): rede de esgoto alcança 62,5% da população; marco do saneamento (Lei 14.026/2020) pede 90% até 2033"
