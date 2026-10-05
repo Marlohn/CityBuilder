@@ -11,6 +11,8 @@ import { WorkerClient } from "./client";
 import { ToolController, toolDefs } from "./tools";
 
 const params = new URLSearchParams(location.search);
+const artV2 = params.get("poc") === "art-v2" || params.get("visual") === "illustrated";
+if (params.get("cinema") === "1") document.body.classList.add("poc-cinema");
 const seed = params.get("seed") ?? `cidade-${Math.floor(Math.random() * 1e9)}`;
 // ?modo=livre = dinheiro infinito (modo "sandbox" da config).
 const overrides = params.get("modo") === "livre" ? { economy: { mode: "sandbox" } } : undefined;
@@ -24,6 +26,7 @@ const renderer = new CityRenderer(canvas, {
   modelsBaseUrl: new URL("./models", location.href).href.replace(/\/$/, ""),
   buildingVisuals: data.buildings.map((b) => ({ id: b.id, models: b.models, floors: b.floors })),
   tileMeters: config.world.tileMeters,
+  visualStyle: artV2 ? "illustrated" : "default",
 });
 
 let buildings: BuildingView[] = [];
@@ -62,7 +65,39 @@ client.onLoadRequested = (save) => {
   store.set({ ready: false, error: null });
   client.send({ type: "load", save, configTexts, dataTexts });
 };
-client.onReady = () => store.set({ ready: true });
+let artV2GalleryBuilt = false;
+function buildArtV2Gallery() {
+  if (!artV2 || artV2GalleryBuilt) return;
+  artV2GalleryBuilt = true;
+
+  // Quatro quadras compactas: a POC avalia composição e leitura urbana, não cobertura do mapa inteiro.
+  client.command({ type: "buildRoad", kind: "avenue", x0: 47, y0: 128, x1: 103, y1: 128 });
+  for (const x of [58, 73, 88, 103])
+    client.command({ type: "buildRoad", kind: "street", x0: x, y0: 113, x1: x, y1: 143 });
+  client.command({ type: "buildRoad", kind: "street", x0: 58, y0: 113, x1: 103, y1: 113 });
+  client.command({ type: "buildRoad", kind: "street", x0: 58, y0: 143, x1: 103, y1: 143 });
+
+  client.command({ type: "placeService", service: "poco", x: 50, y: 129 });
+  client.command({ type: "placeService", service: "subestacao", x: 53, y: 129 });
+  client.command({ type: "placeService", service: "escola", x: 59, y: 129 });
+  client.command({ type: "placeService", service: "ubs", x: 74, y: 129 });
+  client.command({ type: "placeService", service: "hospital", x: 89, y: 129 });
+
+  client.command({ type: "zone", zone: "residential_low", x0: 59, y0: 114, x1: 71, y1: 127 });
+  client.command({ type: "zone", zone: "residential_high", x0: 74, y0: 114, x1: 86, y1: 127 });
+  client.command({ type: "zone", zone: "commercial", x0: 89, y0: 114, x1: 101, y1: 127 });
+  client.command({ type: "zone", zone: "commercial", x0: 74, y0: 134, x1: 86, y1: 142 });
+  client.command({ type: "zone", zone: "residential_low", x0: 89, y0: 134, x1: 101, y1: 142 });
+
+  client.send({ type: "advance", ticks: 7600 });
+  renderer.lookAt(80.5, 128.5);
+  renderer.zoomBy(10 / renderer.cameraState().zoom);
+}
+
+client.onReady = () => {
+  store.set({ ready: true });
+  buildArtV2Gallery();
+};
 client.onFrame = (f) => {
   if (f.map) {
     lastMap = f.map;
