@@ -1,0 +1,35 @@
+name: POC helper
+
+on:
+  pull_request:
+
+jobs:
+  format-build-package:
+    if: github.head_ref == 'poc/isometric-visual-refresh'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Formatar a POC no workspace
+        run: npm run format
+      - name: Conferir tipos e build
+        run: |
+          npm run check -- --only=types
+          npm run build
+      - name: Guardar patch de formatação
+        run: git diff --binary > poc-format.patch
+      - name: Montar pacote-fonte
+        run: |
+          zip -qr CityBuilder-POC-visual.zip .             -x '.git/*' 'node_modules/*' 'dist/*' 'test-results/*' 'playwright-report/*'             'CityBuilder-POC-visual.zip' 'poc-format.patch'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: poc-visual-support
+          path: |
+            poc-format.patch
+            CityBuilder-POC-visual.zip
+          retention-days: 7
