@@ -1,0 +1,57 @@
+name: Publicar POC visual
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    if: github.head_ref == 'poc/isometric-visual-refresh'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}poc-visual/
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          path: main-src
+      - name: Checkout POC
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          path: poc-src
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Build main
+        working-directory: main-src
+        run: |
+          npm ci
+          npm run build
+      - name: Build POC
+        working-directory: poc-src
+        env:
+          VITE_POC_VISUAL: "1"
+        run: |
+          npm ci
+          npm run build
+      - name: Compose Pages artifact
+        run: |
+          mkdir -p site/poc-visual
+          cp -a main-src/dist/. site/
+          cp -a poc-src/dist/. site/poc-visual/
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+      - id: deployment
+        uses: actions/deploy-pages@v4
