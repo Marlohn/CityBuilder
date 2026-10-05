@@ -122,11 +122,7 @@ describe("fórmula e regras", () => {
 
   it("pesquisa é opcional, mas a métrica continua obrigatória e validada", () => {
     const r = computeRoadmap(
-      [
-        item({ Pesquisa: "" }),
-        item({ "Métrica de sucesso": "" }),
-        item({ "Métrica de sucesso": "xyz < 1" }),
-      ],
+      [item({ Pesquisa: "" }), item({ "Métrica de sucesso": "" }), item({ "Métrica de sucesso": "xyz < 1" })],
       signals,
       cfg,
     );
