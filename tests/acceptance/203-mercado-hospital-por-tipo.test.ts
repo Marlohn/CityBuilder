@@ -159,14 +159,13 @@ describe("issue #203: mercado de hospital por tipo (UBS não vira leito)", () =>
       `sem nenhuma UBS na cidade era esperado withoutClinic igual à população ` +
         `(${census.population}), mas veio ${census.withoutClinic}`,
     ).toBe(census.population);
-    // A conta do censo de leito: ninguém some e ninguém inventa gente internada.
+    // Depois da #241, demanda hospitalar é a fila de internação pendente, não toda pessoa sem leito.
     const comLeito = contaRegistrados(game, "hospital");
+    const waiting = game.city.seekHospital.size;
     expect(
       census.withoutHospital,
-      `o censo conta quem está sem leito (pop.hospital < 0): era esperado ` +
-        `${census.population} menos as ${comLeito} pessoas internadas = ` +
-        `${census.population - comLeito}, mas veio ${census.withoutHospital}`,
-    ).toBe(census.population - comLeito);
+      `withoutHospital deveria ser a fila seekHospital (${waiting}), mas veio ${census.withoutHospital}`,
+    ).toBe(waiting);
     const totalLeitos = hospitais.reduce((soma, h) => soma + game.sim.buildings.patientsCapacity(h), 0);
     expect(
       comLeito,
