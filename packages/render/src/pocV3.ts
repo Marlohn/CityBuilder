@@ -41,7 +41,6 @@ const ROLE_COLORS: Record<SemanticRole, readonly [number, number, number]> = {
   road: [0.28, 0.31, 0.32],
 };
 
-const rgb = (c: readonly [number, number, number]) => new Color3(c[0], c[1], c[2]);
 
 function material(scene: Scene, name: string, role: SemanticRole, variant = 0): StandardMaterial {
   const base = ROLE_COLORS[role];
