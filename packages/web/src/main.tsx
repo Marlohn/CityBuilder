@@ -71,27 +71,39 @@ function buildArtV2Gallery() {
   if (!artV2 || artV2GalleryBuilt) return;
   artV2GalleryBuilt = true;
 
-  // Quatro quadras pequenas ao redor de uma avenida: a tela precisa parecer um diorama urbano,
-  // não um mapa inteiro com prédios perdidos no gramado.
-  client.command({ type: "buildRoad", kind: "avenue", x0: 47, y0: 128, x1: 96, y1: 128 });
-  for (const x of [68, 80, 92])
-    client.command({ type: "buildRoad", kind: "street", x0: x, y0: 116, x1: x, y1: 140 });
-  client.command({ type: "buildRoad", kind: "street", x0: 68, y0: 116, x1: 92, y1: 116 });
-  client.command({ type: "buildRoad", kind: "street", x0: 68, y0: 140, x1: 92, y1: 140 });
+  // Quadras curtas ao redor de uma avenida: a referência visual funciona como um diorama denso,
+  // então evitamos interiores enormes e vazios entre uma rua e outra.
+  const gridX = [68, 74, 80, 86, 92];
+  const gridY = [116, 122, 128, 134, 140];
+  for (const x of gridX)
+    client.command({ type: "buildRoad", kind: "street", x0: x, y0: gridY[0]!, x1: x, y1: gridY.at(-1)! });
+  for (const y of gridY) {
+    const kind = y === 128 ? "avenue" : "street";
+    client.command({ type: "buildRoad", kind, x0: 62, y0: y, x1: 98, y1: y });
+  }
 
   // Infraestrutura fica na borda da vitrine; o miolo é reservado para arquitetura urbana.
-  client.command({ type: "placeService", service: "poco", x: 62, y: 129 });
-  client.command({ type: "placeService", service: "subestacao", x: 64, y: 129 });
+  client.command({ type: "placeService", service: "poco", x: 63, y: 129 });
+  client.command({ type: "placeService", service: "subestacao", x: 65, y: 129 });
 
-  client.command({ type: "zone", zone: "residential_low", x0: 69, y0: 117, x1: 79, y1: 127 });
-  client.command({ type: "zone", zone: "residential_high", x0: 81, y0: 117, x1: 91, y1: 127 });
-  client.command({ type: "zone", zone: "commercial", x0: 69, y0: 129, x1: 79, y1: 139 });
-  client.command({ type: "zone", zone: "residential_low", x0: 81, y0: 129, x1: 91, y1: 139 });
-  client.command({ type: "zone", zone: "industrial", x0: 93, y0: 129, x1: 96, y1: 139 });
+  const galleryZones = ["residential_low", "commercial", "residential_high", "residential_low"] as const;
+  for (let row = 0; row < gridY.length - 1; row++) {
+    for (let col = 0; col < gridX.length - 1; col++) {
+      const zone = galleryZones[(row + col) % galleryZones.length]!;
+      client.command({
+        type: "zone",
+        zone,
+        x0: gridX[col]! + 1,
+        y0: gridY[row]! + 1,
+        x1: gridX[col + 1]! - 1,
+        y1: gridY[row + 1]! - 1,
+      });
+    }
+  }
 
-  client.send({ type: "advance", ticks: 9000 });
+  client.send({ type: "advance", ticks: 12000 });
   renderer.lookAt(80, 128);
-  renderer.zoomBy(6.5 / renderer.cameraState().zoom);
+  renderer.zoomBy(6.7 / renderer.cameraState().zoom);
 }
 
 client.onReady = () => {
