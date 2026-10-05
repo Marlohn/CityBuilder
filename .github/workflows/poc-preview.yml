@@ -74,3 +74,100 @@ jobs:
           name: poc-visual-preview
           path: test-results/
           retention-days: 7
+      - name: Build da POC para pacote local
+        env:
+          VITE_POC_VISUAL: "1"
+        run: npm run build
+      - name: Montar ZIP pronto para rodar
+        shell: bash
+        run: |
+          set -euo pipefail
+          ROOT="out/poc-package/CityBuilder-POC"
+          rm -rf out/poc-package
+          mkdir -p "$ROOT/jogo" "$ROOT/fonte"
+          cp -a dist/. "$ROOT/jogo/"
+          printf '%s\n' "${GITHUB_SHA}" > "$ROOT/VERSION.txt"
+          cat > "$ROOT/LEIA-ME.txt" <<'TXT'
+          CityBuilder — POC visual isométrica (#296)
+
+          COMO RODAR
+          Windows:
+            1. Tenha Node.js 22 ou mais novo instalado.
+            2. Dê duplo clique em INICIAR-POC.bat.
+            3. Abra http://127.0.0.1:4173/ no navegador.
+
+          macOS / Linux:
+            1. Tenha Node.js 22 ou mais novo instalado.
+            2. Rode: chmod +x INICIAR-POC.sh && ./INICIAR-POC.sh
+            3. Abra http://127.0.0.1:4173/ no navegador.
+
+          A build em jogo/ já vem com a POC visual ligada por padrão.
+          Para comparar com o visual anterior, acrescente ?visual=legacy à URL.
+
+          A pasta fonte/ contém o projeto correspondente à POC (sem node_modules).
+          TXT
+          cat > "$ROOT/rodar-poc.mjs" <<'NODE'
+          import { createReadStream, existsSync, statSync } from "node:fs";
+          import { createServer } from "node:http";
+          import { extname, resolve } from "node:path";
+          import { fileURLToPath } from "node:url";
+
+          const root = resolve(fileURLToPath(new URL("./jogo/", import.meta.url)));
+          const types = new Map([
+            [".html", "text/html; charset=utf-8"],
+            [".js", "text/javascript; charset=utf-8"],
+            [".mjs", "text/javascript; charset=utf-8"],
+            [".css", "text/css; charset=utf-8"],
+            [".json", "application/json; charset=utf-8"],
+            [".svg", "image/svg+xml"],
+            [".png", "image/png"],
+            [".jpg", "image/jpeg"],
+            [".jpeg", "image/jpeg"],
+            [".webp", "image/webp"],
+            [".glb", "model/gltf-binary"],
+            [".gltf", "model/gltf+json"],
+            [".wasm", "application/wasm"],
+          ]);
+
+          createServer((req, res) => {
+            const raw = decodeURIComponent((req.url ?? "/").split("?")[0] ?? "/");
+            const rel = raw === "/" ? "index.html" : raw.replace(/^\/+/, "");
+            let file = resolve(root, rel);
+            if (!file.startsWith(root)) {
+              res.writeHead(403);
+              res.end("Forbidden");
+              return;
+            }
+            if (existsSync(file) && statSync(file).isDirectory()) file = resolve(file, "index.html");
+            if (!existsSync(file)) {
+              res.writeHead(404);
+              res.end("Not found");
+              return;
+            }
+            res.setHeader("Content-Type", types.get(extname(file).toLowerCase()) ?? "application/octet-stream");
+            res.setHeader("Cache-Control", "no-store");
+            createReadStream(file).pipe(res);
+          }).listen(4173, "127.0.0.1", () => {
+            console.log("POC pronta em http://127.0.0.1:4173/");
+            console.log("Ctrl+C encerra o servidor.");
+          });
+          NODE
+          cat > "$ROOT/INICIAR-POC.bat" <<'BAT'
+          @echo off
+          cd /d "%~dp0"
+          node rodar-poc.mjs
+          pause
+          BAT
+          cat > "$ROOT/INICIAR-POC.sh" <<'SH'
+          #!/usr/bin/env sh
+          cd "$(dirname "$0")"
+          exec node rodar-poc.mjs
+          SH
+          chmod +x "$ROOT/INICIAR-POC.sh"
+          tar             --exclude='./.git'             --exclude='./node_modules'             --exclude='./dist'             --exclude='./out'             --exclude='./test-results'             --exclude='./playwright-report'             --exclude='./.github/workflows/poc-preview.yml'             -cf - . | tar -xf - -C "$ROOT/fonte"
+          (cd out/poc-package && zip -qr ../CityBuilder-POC-visual.zip CityBuilder-POC)
+      - uses: actions/upload-artifact@v4
+        with:
+          name: CityBuilder-POC-visual
+          path: out/CityBuilder-POC-visual.zip
+          retention-days: 7
