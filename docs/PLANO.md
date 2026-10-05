@@ -331,10 +331,9 @@ Conferido item por item contra este plano. Ficou para o roadmap:
 | Comparar a tela com um print aprovado (8) | O teste de tela confere que desenhou e que não houve erro, mas não compara pixels (o desenho por software varia). |
 | Economia de cidades pequenas | Receita é a média nacional por habitante. Cidade pequena real recebe mais por habitante: municípios com até 5 mil habitantes têm receita externa média de ~R$ 10.886 por habitante, a maior parte do FPM (Gazeta do Povo, https://www.gazetadopovo.com.br/vozes/paulo-uebel/numero-de-municipios-no-brasil-deve-beneficiar-os-cidadaos-nao-os-politicos/; Jornal da USP, https://jornal.usp.br/radio-usp/municipios-pequenos-recebem-mais-recursos-per-capita-que-metropoles-com-maiores-desafios-urbanos/). Já a manutenção de vias (10% ao ano) está PENDENTE. Resultado: no modo com orçamento, a cidade do prefeito automático para em ~1.000 pessoas. O motor de roadmap já mostra isso (sinais `bot:cidade-parou` e `bot:falencia`). |
 
-## 15. Pendências do dono
+## 15. Operação do repositório
 
-- ~~Deixar o repositório público~~ (feito).
-- Ativar a proteção da branch `main` e o GitHub Pages (instruções vão estar no README na fase 8).
+O repositório é público, a `main` está protegida e o jogo é publicado pelo GitHub Pages. O desenvolvimento normal não depende de aprovação manual do dono; mudanças seguem branch/PR, validações proporcionais ao risco e revisão do diff.
 
 ## 16. Fontes
 
