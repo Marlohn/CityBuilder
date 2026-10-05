@@ -53,7 +53,7 @@ export function computeRoadmap(
     .map((signal) => ({ signal, score: scoreSignal(signal, cfg) }))
     .sort((a, b) => Number(b.signal.urgent) - Number(a.signal.urgent) || b.score - a.score);
   const ideas = open.filter((i) => i.labels.includes("ideia") && !isRoadmapItem(i));
-  return { plan: plan(ranked, cfg), incomplete, ideas, unlinked, deliveries };
+  return { plan: plan(ranked, cfg, openNumbers), incomplete, ideas, unlinked, deliveries };
 }
 
 function n(v: number): string {
