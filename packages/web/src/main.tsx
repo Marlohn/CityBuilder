@@ -78,8 +78,16 @@ function buildArtV2Gallery() {
   for (const x of gridX)
     client.command({ type: "buildRoad", kind: "street", x0: x, y0: gridY[0]!, x1: x, y1: gridY.at(-1)! });
   for (const y of gridY) {
-    const kind = y === 128 ? "avenue" : "street";
-    client.command({ type: "buildRoad", kind, x0: 62, y0: y, x1: 98, y1: y });
+    const avenue = y === 128;
+    client.command({
+      type: "buildRoad",
+      kind: avenue ? "avenue" : "street",
+      // A avenida alcança a estrada de acesso; as ruas locais ficam só dentro da vitrine.
+      x0: avenue ? 47 : gridX[0]!,
+      y0: y,
+      x1: avenue ? 98 : gridX.at(-1)!,
+      y1: y,
+    });
   }
 
   // Infraestrutura fica na borda da vitrine; o miolo é reservado para arquitetura urbana.
@@ -101,7 +109,7 @@ function buildArtV2Gallery() {
     }
   }
 
-  client.send({ type: "advance", ticks: 12000 });
+  client.send({ type: "advance", ticks: 10000 });
   renderer.lookAt(80, 128);
   renderer.zoomBy(6.7 / renderer.cameraState().zoom);
 }
