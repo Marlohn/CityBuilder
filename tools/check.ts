@@ -73,10 +73,8 @@ process.exit(1);
 /** Pega as linhas que importam (erros, falhas, arquivos) e limita o tamanho. */
 function relevantLines(out: string): string {
   const lines = out.split("\n").filter((l) => l.trim() !== "");
-  const formatAt = lines.findIndex((l) => l.includes(" format "));
-  if (formatAt >= 0) return lines.slice(formatAt, formatAt + 80).join("\n");
   const important = lines.filter((l) =>
-    /error|erro|fail|✘|×|FAIL|expected|received|AssertionError|at .*\.(ts|tsx):\d+|\.tsx?:\d+|format|formatter|biome|semente|seed|reproduzir/i.test(
+    /error|erro|fail|✘|×|FAIL|expected|received|AssertionError|at .*\.(ts|tsx):\d+|\.tsx?:\d+|semente|seed|reproduzir/i.test(
       l,
     ),
   );
