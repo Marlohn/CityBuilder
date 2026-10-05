@@ -259,6 +259,7 @@ jobs:
     steps:
       - name: Conferir todas as partes
         env:
+          CLASSIFY_RESULT: ${{ needs.classify.result }}
           FULL_SUITE: ${{ needs.classify.outputs.full_suite }}
           STARTUP_RESULT: ${{ needs.factory-startup.result }}
           FACTORY_RESULT: ${{ needs.e2e-factory.result }}
@@ -266,6 +267,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          test "$CLASSIFY_RESULT" = success
           if [[ "$FULL_SUITE" == "true" ]]; then
             test "$STARTUP_RESULT" = success
             test "$FACTORY_RESULT" = success
