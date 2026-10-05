@@ -38,7 +38,7 @@ for (const step of STEPS) {
   if (ok) continue;
 
   process.stdout.write(`\nQUEBROU: ${step.id}\n`);
-  process.stdout.write(`\n--- ${step.label} ---\n${relevantLines(output)}\n`);
+  process.stdout.write(`\n--- ${step.label} ---\n${step.id === "lint" ? output : relevantLines(output)}\n`);
   process.stdout.write(`Para rodar só esta etapa: npm run check -- --only=${step.id}\n`);
   if (step.id === "lint") {
     process.stdout.write("Muitos erros de estilo se corrigem com: npm run format\n");
