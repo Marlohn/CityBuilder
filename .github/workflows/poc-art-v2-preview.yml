@@ -6,6 +6,10 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: poc-art-v2-preview-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
 jobs:
   preview:
     if: github.head_ref == 'poc/isometric-art-direction-v2'
