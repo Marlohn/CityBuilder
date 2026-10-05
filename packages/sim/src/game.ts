@@ -72,11 +72,11 @@ export function createGame(opts: SimOptions): Game {
   sim.addSystem(utilities);
   sim.addSystem(growth);
   sim.addSystem(new ImmigrationSystem(city));
-  // A ordem muda a cidade: a fila da UBS resolve primeiro, a fila de internação admite
-  // em seguida e os pedidos novos do aniversário entram para processamento no próximo tick.
+  // Mantém a ordem histórica lifecycle -> matching. Assim aniversários/altas acontecem primeiro,
+  // a UBS resolve sua fila e, por fim, internações usam qualquer leito liberado no mesmo tick.
+  sim.addSystem(new LifecycleSystem(city, demo));
   sim.addSystem(new MatchingSystem(city));
   sim.addSystem(new HospitalAdmissionSystem(city));
-  sim.addSystem(new LifecycleSystem(city, demo));
   sim.addSystem(traffic);
   return game;
 }
