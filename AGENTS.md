@@ -61,7 +61,7 @@ Cada pacote tem um `AGENTS.md` com as regras dele (ex.: `packages/sim/AGENTS.md`
 2. Arquiteto: Issue `roadmap` → Issues `tarefa` pequenas, etiqueta `pronto-pra-teste`.
 3. QA: escreve o teste de aceitação em `tests/acceptance/` numa branch `qa/<issue>`, abre PR como rascunho (fica vermelho de propósito). Etiqueta `pronto-pra-dev`.
 4. Dev: branch `dev/<issue>` a partir da `qa/<issue>`, faz o teste passar e abre o PR contra a `main`, com `Closes #<issue>` na descrição (em inglês; "Fecha #" não fecha a issue). **Não pode mexer em `tests/acceptance/`** (o CI compara com a branch do QA e bloqueia).
-5. Sincronizador atualiza branch atrasada e espera o CI sem ocupar agente. CI falhou ou há conflito? Devolve ao Dev. CI completo verde sobre a main atual? Revisor lê o diff e faz merge; o PR do QA é fechado.
+5. Sincronizador mantém uma fila serial de PRs em revisão: só a mais antiga elegível é atualizada contra a `main` e espera o CI, sem ocupar agente; as seguintes não gastam CI até a da frente sair da fila. CI falhou ou há conflito? Devolve ao Dev. CI completo verde sobre a main atual? Revisor lê o diff e faz merge; o PR do QA é fechado.
 6. Falhou 3 vezes? A tarefa volta para o Arquiteto quebrar em partes menores (o `hermes/harness/sincronizar_github.py` cria o cartão dele).
 
 ## Regras do loop automático (Hermes)

@@ -59,6 +59,17 @@ print("chaves/rodadas: ok")
 
 # ---- revisões e ajustes -----------------------------------------------------------------------------------------
 real_preparar = s.preparar_revisao
+
+# Só a PR mais antiga em revisão entra no gate de CI/sincronização. As seguintes esperam a da frente sair da fila,
+# evitando atualizar várias branches contra a mesma main e repetir toda a suíte depois do primeiro merge.
+_preparadas = []
+s.preparar_revisao = lambda pr: _preparadas.append(pr["number"]) or True
+s.revisoes([
+    pr(11, "bbbbbbb", "dev/2", ["em-revisão"]),
+    pr(10, "aaaaaaa", "dev/1", ["em-revisão"]),
+], {})
+assert _preparadas == [10], _preparadas
+cria("revisar-pr-10-aaaaaaa")
 s.preparar_revisao = lambda pr: True  # roteamento puro; o gate real é verificado abaixo
 s.revisoes([pr(10, "aaaaaaa", "dev/1", ["em-revisão"])], {}); cria("revisar-pr-10-aaaaaaa")
 s.revisoes([pr(10, "aaaaaaa", "dev/1", ["em-revisão"])], {"revisar-pr-10-aaaaaaa": "done"}); cria("revisar-pr-10-aaaaaaa-retomar-r1")
