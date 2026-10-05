@@ -8,6 +8,7 @@ import { parseReference, parseRoadmapConfig, type RoadmapConfig } from "../src/c
 import { formSections, fromGithubApi, leadingNumber, parseItem } from "../src/items";
 import { checkMetric, isValidMetric } from "../src/metric";
 import { plan, rice, scoreItem } from "../src/rice";
+import * as signalFns from "../src/signals";
 import { mergeRuns, metricsOf, pendingSignals, signalsFromRun } from "../src/signals";
 import type { IssueInput, Signal, SignalsFile } from "../src/types";
 
@@ -201,6 +202,45 @@ describe("sinais", () => {
     expect(merged.map((s) => s.id)).toEqual(["desejo:university"]);
     expect(merged[0]!.reach).toBe(200);
     expect(merged[0]!.seen).toBe(2);
+  });
+
+  it("mortalidade infantil usa a amostra agregada, não outlier de uma corrida", () => {
+    type Sample = { births: number; infantDeaths: number; population: number };
+    type AggregateFns = {
+      aggregateInfantMortalityValue?: (samples: Sample[], minBirths: number) => number | null;
+      aggregateInfantMortalitySignal?: (
+        samples: Sample[],
+        range: { min: number; max: number; source: string },
+        minBirths: number,
+      ) => Signal | null;
+    };
+    const aggregate = signalFns as typeof signalFns & AggregateFns;
+    expect(
+      aggregate.aggregateInfantMortalityValue,
+      "o roadmap precisa agregar nascimentos e óbitos antes de classificar a taxa",
+    ).toBeTypeOf("function");
+    expect(aggregate.aggregateInfantMortalitySignal).toBeTypeOf("function");
+    if (!aggregate.aggregateInfantMortalityValue || !aggregate.aggregateInfantMortalitySignal) return;
+
+    const range = { min: 6, max: 20, source: "IBGE 2023: 12,5 por mil" };
+    const samples = [
+      { births: 300, infantDeaths: 0, population: 1000 },
+      { births: 300, infantDeaths: 1, population: 1000 },
+      { births: 300, infantDeaths: 6, population: 1000 },
+      { births: 300, infantDeaths: 5, population: 1000 },
+      { births: 300, infantDeaths: 7, population: 1000 },
+    ];
+
+    expect(aggregate.aggregateInfantMortalityValue(samples, 300)).toBe(12.67);
+    expect(aggregate.aggregateInfantMortalitySignal(samples, range, 300)).toBeNull();
+
+    const low = aggregate.aggregateInfantMortalitySignal(
+      samples.map((s) => ({ ...s, infantDeaths: 0 })),
+      range,
+      300,
+    );
+    expect(low?.id).toBe("realismo:infantMortality");
+    expect(low?.detail).toMatch(/1\.500 nascimentos/);
   });
 
   it("acha valores PENDENTE na config", () => {
