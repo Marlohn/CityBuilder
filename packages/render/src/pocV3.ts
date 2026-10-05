@@ -238,16 +238,7 @@ export class PocV3Showcase {
   }
 
   private tree(x: number, z: number, variant: number, scale = 1) {
-    this.cylinder(
-      `tree-trunk-${variant}-${x}-${z}`,
-      "trim",
-      x,
-      0.1,
-      z,
-      0.13 * scale,
-      0.62 * scale,
-      variant,
-    );
+    this.cylinder(`tree-trunk-${variant}-${x}-${z}`, "trim", x, 0.1, z, 0.13 * scale, 0.62 * scale, variant);
     for (const [dx, dy, dz, crownScale] of [
       [0, 0, 0, 1],
       [-0.22, -0.08, 0.04, 0.72],
@@ -258,16 +249,8 @@ export class PocV3Showcase {
         { diameter: 1, segments: 6 },
         this.scene,
       );
-      crown.position.set(
-        x + dx * scale,
-        0.96 * scale + dy * scale,
-        z + dz * scale,
-      );
-      crown.scaling.set(
-        0.52 * scale * crownScale,
-        0.62 * scale * crownScale,
-        0.52 * scale * crownScale,
-      );
+      crown.position.set(x + dx * scale, 0.96 * scale + dy * scale, z + dz * scale);
+      crown.scaling.set(0.52 * scale * crownScale, 0.62 * scale * crownScale, 0.52 * scale * crownScale);
       const mat = material(this.scene, `tree-${variant}-${dx}`, "vegetation", variant);
       crown.material = mat;
       crown.receiveShadows = true;
@@ -278,11 +261,7 @@ export class PocV3Showcase {
   }
 
   private shrub(name: string, x: number, z: number, variant: number) {
-    const crown = MeshBuilder.CreateSphere(
-      `poc-v3/hero/${name}`,
-      { diameter: 1, segments: 6 },
-      this.scene,
-    );
+    const crown = MeshBuilder.CreateSphere(`poc-v3/hero/${name}`, { diameter: 1, segments: 6 }, this.scene);
     crown.position.set(x, 0.28, z);
     crown.scaling.set(0.34, 0.26, 0.34);
     const mat = material(this.scene, name, "vegetation", variant);
@@ -295,28 +274,8 @@ export class PocV3Showcase {
 
   private streetLight(name: string, x: number, z: number, flip = false) {
     this.cylinder(`${name}-pole`, "trim", x, 0.1, z, 0.07, 0.95, 1);
-    this.box(
-      `${name}-arm`,
-      "trim",
-      x + (flip ? -0.14 : 0.14),
-      0.96,
-      z,
-      0.32,
-      0.055,
-      0.055,
-      1,
-    );
-    this.box(
-      `${name}-lamp`,
-      "accent",
-      x + (flip ? -0.29 : 0.29),
-      0.9,
-      z,
-      0.12,
-      0.08,
-      0.12,
-      0,
-    );
+    this.box(`${name}-arm`, "trim", x + (flip ? -0.14 : 0.14), 0.96, z, 0.32, 0.055, 0.055, 1);
+    this.box(`${name}-lamp`, "accent", x + (flip ? -0.29 : 0.29), 0.9, z, 0.12, 0.08, 0.12, 0);
   }
 
   private person(name: string, x: number, z: number, variant: number) {
@@ -367,15 +326,7 @@ export class PocV3Showcase {
     }
   }
 
-  private window(
-    id: string,
-    x: number,
-    y: number,
-    z: number,
-    width: number,
-    variant: number,
-    side = false,
-  ) {
+  private window(id: string, x: number, y: number, z: number, width: number, variant: number, side = false) {
     if (side) {
       this.box(`${id}-frame`, "trim", x, y, z, 0.055, 0.37, width + 0.1, variant);
       this.box(`${id}-glass`, "glass", x + 0.03, y + 0.04, z, 0.035, 0.29, width, variant);
@@ -399,17 +350,7 @@ export class PocV3Showcase {
     this.box(`${id}-foundation`, "trim", x, baseY, z, w + 0.08, 0.12, d + 0.08, variant);
     this.box(`${id}-wall`, "wall", x, baseY + 0.12, z, w, h, d, variant);
     this.box(`${id}-roof`, "roof", x, baseY + 0.12 + h, z, w + 0.16, 0.16, d + 0.16, variant);
-    this.box(
-      `${id}-roof-cap`,
-      "trim",
-      x,
-      baseY + 0.28 + h,
-      z,
-      w + 0.02,
-      0.06,
-      d + 0.02,
-      variant,
-    );
+    this.box(`${id}-roof-cap`, "trim", x, baseY + 0.28 + h, z, w + 0.02, 0.06, d + 0.02, variant);
 
     const floors = Math.max(1, Math.round(h / 0.72));
     const columns = w > 2.55 ? 3 : 2;
@@ -461,28 +402,8 @@ export class PocV3Showcase {
         0.035,
         variant,
       );
-      this.box(
-        `${id}-awning`,
-        "accent",
-        x,
-        baseY + 0.82,
-        z - d / 2 - 0.18,
-        w * 0.72,
-        0.12,
-        0.34,
-        variant,
-      );
-      this.box(
-        `${id}-sign`,
-        "accent",
-        x,
-        baseY + 1.03,
-        z - d / 2 - 0.075,
-        w * 0.42,
-        0.2,
-        0.05,
-        variant + 1,
-      );
+      this.box(`${id}-awning`, "accent", x, baseY + 0.82, z - d / 2 - 0.18, w * 0.72, 0.12, 0.34, variant);
+      this.box(`${id}-sign`, "accent", x, baseY + 1.03, z - d / 2 - 0.075, w * 0.42, 0.2, 0.05, variant + 1);
     } else {
       this.box(
         `${id}-door-frame`,
@@ -506,17 +427,7 @@ export class PocV3Showcase {
         0.035,
         variant,
       );
-      this.box(
-        `${id}-canopy`,
-        "roof",
-        x + w * 0.22,
-        baseY + 0.86,
-        z - d / 2 - 0.18,
-        0.7,
-        0.1,
-        0.34,
-        variant,
-      );
+      this.box(`${id}-canopy`, "roof", x + w * 0.22, baseY + 0.86, z - d / 2 - 0.18, 0.7, 0.1, 0.34, variant);
     }
 
     if (h > 2) {
