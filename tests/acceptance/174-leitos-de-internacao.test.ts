@@ -382,8 +382,8 @@ describe("issue #174: leitos de internação no stats e no relatório (sem vaga 
   it("5. a cidade de referência não muda (só ganha a chave nova)", { timeout: 300000 }, () => {
     // Roda os cenários de referência e compara as chaves já existentes. O snapshot unitário
     // tem cobertura própria; este teste não lê o arquivo .snap para evitar acoplamento entre testes.
-Roda o MESMO cenário do tests/unit/reference.test.ts e compara SÓ as chaves já
-    // existentes (ignora o bloco `hospitalBeds` de propósito: ele é a única mudança esperada).
+    // Roda o mesmo cenário do tests/unit/reference.test.ts e compara só as chaves já existentes
+    // (ignora o bloco `hospitalBeds` de propósito: ele é a única mudança esperada).
     const scenario = loadScenario("bairro-basico");
     const { config, data } = loadConfigAndData({
       ...scenario.overrides,
