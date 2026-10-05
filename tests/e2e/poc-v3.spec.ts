@@ -50,6 +50,7 @@ test("hero block produz comparação ortográfica e perspectiva estreita", async
   }));
   expect(perspective.poc.camera).toBe("perspective");
   expect(perspective.camera.fovDegrees).toBeCloseTo(20, 3);
+  expect(perspective.poc.meshes).toBeGreaterThan(100);
   await page.locator("#city").screenshot({ path: "test-results/hero-perspective.png" });
 
   expect(errors).toEqual([]);
