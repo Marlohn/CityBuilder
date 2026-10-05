@@ -134,6 +134,24 @@ Atualize a documentação na mesma mudança quando houver alteração de comando
 
 Não edite artefatos gerados do roadmap quando o repositório disser explicitamente para não fazê-lo.
 
+## Evolução desta skill
+
+Atualize esta própria skill quando o trabalho de manutenção revelar conhecimento útil, reutilizável e específico do CityBuilder que possa melhorar tarefas futuras.
+
+Exemplos do que merece entrar aqui:
+
+- um procedimento recorrente que evita erros ou retrabalho;
+- uma nova verificação importante antes de merge, limpeza ou manutenção;
+- uma armadilha do repositório que não estava documentada;
+- uma forma mais segura ou eficiente de investigar, validar ou corrigir problemas;
+- uma convenção operacional estável descoberta no código, histórico, CI ou documentação.
+
+Só adicione orientações sustentadas por evidência do repositório e que tenham valor além da tarefa atual.
+
+Não use a skill como diário de trabalho. Evite registrar detalhes temporários de uma issue, PR, branch ou incidente específico, valores que mudam com frequência ou regras que já pertencem melhor ao `AGENTS.md`, ao `AGENTS.md` de um pacote ou à documentação oficial do projeto.
+
+Ao atualizar a skill, preserve instruções úteis existentes, mantenha o texto conciso e remova ou corrija orientações que tenham ficado obsoletas quando houver evidência suficiente.
+
 ## Retorno ao usuário
 
 Mantenha o status conciso e baseado em evidências.
