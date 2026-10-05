@@ -83,6 +83,8 @@ O CI mantém os mesmos checks obrigatórios para mudanças operacionais/document
 
 Na suíte completa, diagnostique o navegador por componente: bootstrap da fábrica, E2E da ponte da fábrica e shards E2E normais rodam separadamente e o check `teste de tela (Playwright)` agrega os três. Não trate falha de um componente como evidência de defeito nos outros.
 
+Em E2E, uma captura feita depois de uma assert funcional é evidência auxiliar. Se apenas a screenshot expirar, confirme nos logs que o comportamento já foi provado antes de atribuir a falha ao produto; estabilize a captura/teste sem remover a assert funcional.
+
 Ao revisar uma PR:
 
 1. Leia a issue/tarefa relacionada e as regras do repositório.
