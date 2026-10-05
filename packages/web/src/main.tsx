@@ -76,7 +76,7 @@ client.onLoadRequested = (save) => {
 };
 let pocGalleryBuilt = false;
 function buildPocGallery() {
-  if (!pocVisual || params.get("poc") !== "galeria" || pocGalleryBuilt) return;
+  if (params.get("poc") !== "galeria" || pocGalleryBuilt) return;
   pocGalleryBuilt = true;
   client.command({ type: "buildRoad", kind: "avenue", x0: 47, y0: 128, x1: 106, y1: 128 });
   for (const x of [60, 75, 90, 105])
