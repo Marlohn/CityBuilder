@@ -166,7 +166,7 @@ export class CityRenderer {
     this.recomputeOccupied();
     this.ground.update(map, this.occupied);
     this.roads.update(map);
-    this.trees.update(map, this.occupied);
+    if (!this.illustrated) this.trees.update(map, this.occupied);
     if (first && !this.targetChosen) {
       // A partida começa olhando a estrada de acesso: é por ela que a cidade se liga ao país.
       const target = startTarget(map.accessRoad, map.width, map.height);
@@ -182,7 +182,7 @@ export class CityRenderer {
     if (this.map) {
       this.recomputeOccupied();
       this.ground.update(this.map, this.occupied);
-      this.trees.update(this.map, this.occupied);
+      if (!this.illustrated) this.trees.update(this.map, this.occupied);
     }
   }
 
