@@ -398,7 +398,6 @@ button:disabled {
   width: 80px;
 }
 
-
 /* POC visual #296 — tema claro para acompanhar a maquete isométrica.
  * Somente aparência; #24 continua responsável pela revisão funcional de UI/UX. */
 :root {
@@ -443,7 +442,11 @@ button,
   border-color: var(--poc-line);
   border-radius: 10px;
   box-shadow: 0 1px 2px rgba(40, 60, 62, 0.05);
-  transition: transform 120ms ease, border-color 120ms ease, background 120ms ease, box-shadow 120ms ease;
+  transition:
+    transform 120ms ease,
+    border-color 120ms ease,
+    background 120ms ease,
+    box-shadow 120ms ease;
 }
 
 button:hover {
