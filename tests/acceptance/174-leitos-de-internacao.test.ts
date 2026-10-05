@@ -379,7 +379,7 @@ describe("issue #174: leitos de internação no stats e no relatório (sem vaga 
     ).toBe(beds.occupied);
   });
 
-  it("5. a cidade de referência só muda na demanda hospitalar redefinida pela #241", { timeout: 300000 }, () => {
+  it("5. referência preserva tudo salvo a demanda hospitalar da #241", { timeout: 300000 }, () => {
     // Roda os cenários de referência e compara as chaves já existentes. O snapshot unitário
     // tem cobertura própria; este teste não lê o arquivo .snap para evitar acoplamento entre testes.
     // Roda o mesmo cenário do tests/unit/reference.test.ts e compara só as chaves já existentes
