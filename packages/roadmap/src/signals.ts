@@ -107,8 +107,7 @@ export function aggregateInfantMortalitySignal(
     source: "realismo",
     category: "realismo",
     title: `Realismo: Mortalidade infantil ${value < range.min ? "abaixo" : "acima"} da vida real`,
-    detail:
-      `Na amostra agregada: ${rounded} por mil em ${fmt(births)} nascimentos. Na vida real: ${range.min} a ${range.max}.`,
+    detail: `Na amostra agregada: ${rounded} por mil em ${fmt(births)} nascimentos. Na vida real: ${range.min} a ${range.max}.`,
     reach: Math.round(population / samples.length),
     impact: 2,
     evidence: "dataAndSource",
