@@ -1,17 +1,40 @@
 /**
  * Atualização anual de cada pessoa, no tick do aniversário dela (espalha o trabalho ao longo do dia).
- * Ordem: morte -> estudo -> trabalho/aposentadoria -> família -> dinheiro da família.
+ * Ordem: morte -> estudo -> trabalho/aposentadoria -> família -> internação -> dinheiro da família.
+ * A alta hospitalar roda a cada tick sobre os internados (`city.hospitalized`).
  */
 import type { City } from "../city";
 import type { Demography } from "../metrics/demography";
-import { die, eduLevelFromYears, fire, householdLeavesCity, refreshRole, unenroll } from "../people/actions";
+import {
+  die,
+  eduLevelFromYears,
+  fire,
+  householdLeavesCity,
+  refreshRole,
+  unenroll,
+  unregisterHospital,
+} from "../people/actions";
 import { EV, UNMET } from "../people/events";
 import { OUTSIDE_JOB, PSTATUS, ROLE, SEX } from "../people/population";
 import type { System } from "../sim";
 import { divorce, giveBirth, maybeLeaveParents, tryMarry } from "./family";
 
+/** Potência com expoente inteiro usando só multiplicações determinísticas no motor. */
+function powInt(base: number, exponent: number): number {
+  let result = 1;
+  let factor = base;
+  let n = exponent;
+  while (n > 0) {
+    if (n % 2 === 1) result *= factor;
+    n = Math.floor(n / 2);
+    if (n > 0) factor *= factor;
+  }
+  return result;
+}
+
 export class LifecycleSystem implements System {
   readonly name = "lifecycle";
+  private hospitalDischargeCursor = 0;
 
   constructor(
     private city: City,
@@ -20,6 +43,7 @@ export class LifecycleSystem implements System {
 
   tick() {
     const city = this.city;
+    this.discharge();
     const list = city.slots[city.sim.clock.tickOfDay]!;
     if (list.length === 0) return;
     let write = 0;
@@ -153,9 +177,55 @@ export class LifecycleSystem implements System {
     maybeLeaveParents(city, p);
     this.homelessCouple(p);
 
-    // 5. Dinheiro da família (uma vez por ano, pela primeira pessoa da lista da família).
+    // 5. Internação: episódio novo para quem ainda não tem leito. UBS e hospital são
+    // independentes: ter atendimento primário não impede precisar de internação.
+    if (pop.hospital[p]! < 0 && city.rng.hospital.chance(config.health.hospitalAdmissionRatePerYear))
+      city.seekHospital.add(p);
+
+    // 6. Dinheiro da família (uma vez por ano, pela primeira pessoa da lista da família).
     const h = pop.household[p]!;
     if (h >= 0 && city.hh.head[h] === p) this.householdYear(h);
+  }
+
+  /**
+   * Alta hospitalar em orçamento fixo. Em cidades grandes não dá para varrer todos os
+   * internados a cada tick; o cursor visita uma fatia e compensa a chance pelo intervalo
+   * estimado entre visitas, preservando a cadência média sem trabalho O(n) por tick.
+   */
+  private discharge() {
+    const city = this.city;
+    const size = city.hospitalized.size;
+    if (size === 0) {
+      this.hospitalDischargeCursor = 0;
+      return;
+    }
+
+    const personBudget = city.config.performance.budgets.personsUpdatedPerTick;
+    const count = Math.min(size, Math.max(4, Math.floor(personBudget / 8)));
+    const ticksBetweenVisits = Math.max(1, Math.ceil(size / count));
+    // Um dia do jogo representa um ano: permanência hospitalar está em dias reais,
+    // então 5,3 dias ocupam 5,3 / 365 do dia/ano comprimido da simulação.
+    const meanStayTicks = (city.config.health.hospitalAvgLengthOfStayDays / 365) * city.sim.clock.ticksPerDay;
+    const chancePerTick = Math.min(1, 1 / meanStayTicks);
+    const chancePerVisit = 1 - powInt(1 - chancePerTick, ticksBetweenVisits);
+
+    for (let k = 0; k < count; k++) {
+      if (city.hospitalized.size === 0) {
+        this.hospitalDischargeCursor = 0;
+        break;
+      }
+      if (this.hospitalDischargeCursor >= city.hospitalized.size) this.hospitalDischargeCursor = 0;
+      const p = city.hospitalized.at(this.hospitalDischargeCursor);
+      city.sim.perf.count("personsUpdated");
+      if (city.rng.hospital.chance(chancePerVisit)) {
+        unregisterHospital(city, p);
+        // Alta é cura, não um pedido novo de UBS.
+        city.seekClinic.delete(p);
+        // IndexedSet move o último item para esta posição; o cursor não avança.
+      } else {
+        this.hospitalDischargeCursor++;
+      }
+    }
   }
 
   /** Família esperando casa há mais de um ano pode desistir e ir para outra cidade. */

@@ -11,6 +11,7 @@ import { takeCensus } from "./people/census";
 import { type SimOptions, Simulation, type System } from "./sim";
 import { EconomySystem } from "./systems/economy";
 import { GrowthSystem } from "./systems/growth";
+import { HospitalAdmissionSystem } from "./systems/hospitalAdmission";
 import { ImmigrationSystem } from "./systems/immigration";
 import { LifecycleSystem } from "./systems/lifecycle";
 import { MatchingSystem } from "./systems/matching";
@@ -71,8 +72,11 @@ export function createGame(opts: SimOptions): Game {
   sim.addSystem(utilities);
   sim.addSystem(growth);
   sim.addSystem(new ImmigrationSystem(city));
+  // Mantém a ordem histórica lifecycle -> matching. Assim aniversários/altas acontecem primeiro,
+  // a UBS resolve sua fila e, por fim, internações usam qualquer leito liberado no mesmo tick.
   sim.addSystem(new LifecycleSystem(city, demo));
   sim.addSystem(new MatchingSystem(city));
+  sim.addSystem(new HospitalAdmissionSystem(city));
   sim.addSystem(traffic);
   return game;
 }

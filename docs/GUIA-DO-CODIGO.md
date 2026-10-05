@@ -157,6 +157,7 @@ Serviço mexe em várias camadas. O Arquiteto deve quebrar em tarefas:
 2. Registre em `game.ts`, no lugar certo da ordem, com um comentário dizendo **por que ali**.
 3. Distribua o trabalho: coisa de vida roda uma vez por pessoa por dia do jogo, espalhada pelos ticks (`city.slots`). Não percorra todo mundo em todo tick.
 4. Conte o trabalho com `sim.perf.count("<nome>")` e registre decisões com `sim.log.debug(...)`.
+5. Internação hospitalar é o exemplo atual: `LifecycleSystem` gera episódios e libera leitos, `MatchingSystem` resolve a UBS e `HospitalAdmissionSystem` consome `seekHospital` por último, sem reordenar os sistemas antigos.
 
 ### 3.5 Um evento de vida novo
 
