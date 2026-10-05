@@ -113,7 +113,7 @@ export class CityRenderer {
         ? Camera.PERSPECTIVE_CAMERA
         : Camera.ORTHOGRAPHIC_CAMERA;
     if (this.pocV3 && this.pocCameraMode === "perspective") this.camera.fov = (20 * Math.PI) / 180;
-    if (this.pocV3) this.zoom = this.pocScene === "live" ? 8 : 7;
+    if (this.pocV3) this.zoom = this.pocScene === "live" || this.pocScene === "play" ? 8 : 7;
     this.camera.minZ = 0.1;
     this.camera.maxZ = 2000;
     this.applyZoom();
@@ -132,8 +132,9 @@ export class CityRenderer {
       this.sun.direction.set(-0.58, -1, 0.42);
       this.sun.intensity = 1;
       this.pocEnvironment = new PocV3Environment(this.scene, this.camera, this.shadows);
-      if (this.pocScene === "live") this.pocLiveSurface = new PocV3LiveSurface(this.scene);
-      else this.pocShowcase = new PocV3Showcase(this.scene, this.shadows, opts.modelsBaseUrl);
+      if (this.pocScene === "live" || this.pocScene === "play") this.pocLiveSurface = new PocV3LiveSurface(this.scene);
+      if (this.pocScene === "play" || this.pocScene === "hero" || this.pocScene === "kenney")
+        this.pocShowcase = new PocV3Showcase(this.scene, this.shadows, opts.modelsBaseUrl);
     }
 
     this.lib = new ModelLibrary(this.scene, opts.modelsBaseUrl);
@@ -156,7 +157,7 @@ export class CityRenderer {
   }
 
   async loadAssets() {
-    if (this.pocV3 && this.pocScene !== "live") {
+    if (this.pocV3 && (this.pocScene === "hero" || this.pocScene === "kenney")) {
       await this.pocShowcase?.build(this.pocScene);
       this.pocReady = true;
       return;
@@ -172,6 +173,7 @@ export class CityRenderer {
       this.shadows.addShadowCaster(m);
       m.receiveShadows = true;
     }
+    if (this.pocV3 && this.pocScene === "play") await this.pocShowcase?.build("hero");
     this.pocReady = this.pocV3;
   }
 
