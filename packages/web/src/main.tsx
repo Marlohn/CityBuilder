@@ -202,8 +202,9 @@ function buildPocV3Playground() {
   // uma moldura de vias conectada à estrada de acesso para o jogador construir ao redor.
   client.command({ type: "buildRoad", kind: "avenue", x0: 47, y0: 128, x1: 47, y1: 74 });
   client.command({ type: "buildRoad", kind: "avenue", x0: 47, y0: 74, x1: 74, y1: 74 });
+  // Cada novo trecho nasce ligado ao anterior para não gerar avisos transitórios de via desconectada.
+  client.command({ type: "buildRoad", kind: "street", x0: 54, y0: 74, x1: 54, y1: 54 });
   client.command({ type: "buildRoad", kind: "street", x0: 54, y0: 54, x1: 74, y1: 54 });
-  client.command({ type: "buildRoad", kind: "street", x0: 54, y0: 54, x1: 54, y1: 74 });
   client.command({ type: "buildRoad", kind: "street", x0: 74, y0: 54, x1: 74, y1: 74 });
   client.command({ type: "buildRoad", kind: "street", x0: 54, y0: 74, x1: 74, y1: 74 });
 
