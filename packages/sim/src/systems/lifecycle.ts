@@ -190,10 +190,11 @@ export class LifecycleSystem implements System {
     const personBudget = city.config.performance.budgets.personsUpdatedPerTick;
     const count = Math.min(size, Math.max(4, Math.floor(personBudget / 8)));
     const ticksBetweenVisits = Math.max(1, Math.ceil(size / count));
-    const chancePerTick = Math.min(
-      1,
-      1 / city.config.health.hospitalAvgLengthOfStayDays / city.sim.clock.ticksPerDay,
-    );
+    // Um dia do jogo representa um ano: permanência hospitalar está em dias reais,
+    // então 5,3 dias ocupam 5,3 / 365 do dia/ano comprimido da simulação.
+    const meanStayTicks =
+      (city.config.health.hospitalAvgLengthOfStayDays / 365) * city.sim.clock.ticksPerDay;
+    const chancePerTick = Math.min(1, 1 / meanStayTicks);
     const chancePerVisit = 1 - (1 - chancePerTick) ** ticksBetweenVisits;
 
     for (let k = 0; k < count; k++) {
