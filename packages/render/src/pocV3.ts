@@ -41,7 +41,6 @@ const ROLE_COLORS: Record<SemanticRole, readonly [number, number, number]> = {
   road: [0.28, 0.31, 0.32],
 };
 
-
 function material(scene: Scene, name: string, role: SemanticRole, variant = 0): StandardMaterial {
   const base = ROLE_COLORS[role];
   const shift = variant === 0 ? 0 : ((variant % 3) - 1) * 0.045;
@@ -81,12 +80,7 @@ export class PocV3Environment {
 
     let ssao: SSAO2RenderingPipeline | null = null;
     if (SSAO2RenderingPipeline.IsSupported) {
-      ssao = new SSAO2RenderingPipeline(
-        "poc-v3-ssao",
-        scene,
-        { ssaoRatio: 0.55, blurRatio: 0.75 },
-        [camera],
-      );
+      ssao = new SSAO2RenderingPipeline("poc-v3-ssao", scene, { ssaoRatio: 0.55, blurRatio: 0.75 }, [camera]);
       ssao.radius = 1.25;
       ssao.totalStrength = 0.72;
       ssao.base = 0.08;
@@ -135,10 +129,7 @@ export class PocV3Showcase {
     z: number,
     rotY = 0,
   ) {
-    const container = await LoadAssetContainerAsync(
-      `${this.baseUrl}/poc-v3/kenney/${name}.glb`,
-      this.scene,
-    );
+    const container = await LoadAssetContainerAsync(`${this.baseUrl}/poc-v3/kenney/${name}.glb`, this.scene);
     container.addAllToScene();
     const root = new TransformNode(`poc-v3/kenney/${name}/${this.roots.length}`, this.scene);
     root.position.set(x, 0, z);
