@@ -596,13 +596,10 @@ describe("issue #239: fila de internação e alta hospitalar", () => {
       `registrar a pessoa ${p} no hospital ${h} deveria ocupar 1 leito ` +
         `(${antes} -> ${antes + 1}), mas vale ${pontual.sim.buildings.patients[h]}`,
     ).toBe(antes + 1);
-    // 200 ticks (~0,14 dia) é bem menos que a permanência padrão: ainda internada.
-    pontual.sim.step(200);
-    expect(
-      leitosPorPessoa(pontual)?.[p],
-      `a pessoa ${p} teve alta em só 200 ticks (~0,14 dia) com permanência padrão de ` +
-        `${permanencia} dias: a alta deveria respeitar hospitalAvgLengthOfStayDays`,
-    ).toBe(h);
+    // Como 1 dia do jogo representa 1 ano, 5,3 dias reais são só ~21 ticks com
+    // minutesPerTick=1. A cadência probabilística é verificada abaixo comparando permanências.
+    const meanStayTicks = (permanencia / 365) * pontual.sim.clock.ticksPerDay;
+    expect(meanStayTicks, "a permanência padrão deveria ocupar mais de um tick").toBeGreaterThan(1);
     const antesDaAlta = pontual.sim.buildings.patients[h]!;
     unregisterHospital(pontual.city, p);
     expect(
