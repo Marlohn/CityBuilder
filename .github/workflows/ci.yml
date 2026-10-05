@@ -10,6 +10,57 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  classify:
+    name: classificar mudança
+    runs-on: ubuntu-latest
+    outputs:
+      full_suite: ${{ steps.paths.outputs.full_suite }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: paths
+        name: Decidir se precisa da suíte completa
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PUSH_BEFORE_SHA: ${{ github.event.before }}
+          PUSH_HEAD_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          if [[ "$EVENT_NAME" == "pull_request" ]]; then
+            BASE="$PR_BASE_SHA"
+            HEAD="$PR_HEAD_SHA"
+          else
+            BASE="$PUSH_BEFORE_SHA"
+            HEAD="$PUSH_HEAD_SHA"
+          fi
+          if [[ -z "$BASE" || "$BASE" =~ ^0+$ ]]; then
+            BASE="$(git rev-parse "$HEAD^")"
+          fi
+
+          mapfile -t FILES < <(git diff --name-only "$BASE" "$HEAD")
+          FULL=false
+          if [[ "${#FILES[@]}" -eq 0 ]]; then FULL=true; fi
+
+          for FILE in "${FILES[@]}"; do
+            case "$FILE" in
+              AGENTS.md|README.md|.agents/*|docs/*|hermes/FACTORY.md|hermes/OPERACAO.md|hermes/harness/sincronizar_github.py|hermes/harness/testar_sinc.py|.github/workflows/branch-hygiene.yml|.github/ISSUE_TEMPLATE/*|.github/PULL_REQUEST_TEMPLATE.md|.github/CODEOWNERS)
+                ;;
+              *)
+                FULL=true
+                break
+                ;;
+            esac
+          done
+
+          echo "Arquivos alterados:"
+          printf '  %s\n' "${FILES[@]}"
+          echo "full_suite=$FULL"
+          echo "full_suite=$FULL" >> "$GITHUB_OUTPUT"
+
   static-check:
     name: tipos, estilo e camadas
     runs-on: ubuntu-latest
@@ -36,6 +87,8 @@ jobs:
 
   tests:
     name: testes Vitest (${{ matrix.shard }}/2)
+    needs: classify
+    if: needs.classify.outputs.full_suite == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     strategy:
@@ -54,31 +107,51 @@ jobs:
   check:
     # O nome exigido pela proteção só passa se TODAS as partes passarem.
     name: npm run check
-    needs: [static-check, tests]
+    needs: [classify, static-check, tests]
     if: always()
     runs-on: ubuntu-latest
     steps:
       - name: Conferir todas as partes
         env:
+          FULL_SUITE: ${{ needs.classify.outputs.full_suite }}
           STATIC_RESULT: ${{ needs.static-check.result }}
           TESTS_RESULT: ${{ needs.tests.result }}
-        run: test "$STATIC_RESULT" = success && test "$TESTS_RESULT" = success
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$STATIC_RESULT" = success
+          if [[ "$FULL_SUITE" == "true" ]]; then
+            test "$TESTS_RESULT" = success
+          else
+            test "$TESTS_RESULT" = skipped
+            echo "Suíte Vitest completa dispensada: mudança exclusivamente operacional/documental."
+          fi
 
   slow:
     name: testes lentos (coorte IBGE e cidade de 50 mil)
+    needs: classify
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
+      - name: CI leve
+        if: needs.classify.outputs.full_suite != 'true'
+        run: echo "Testes lentos dispensados para mudança exclusivamente operacional/documental."
       - uses: actions/checkout@v4
+        if: needs.classify.outputs.full_suite == 'true'
       - uses: actions/setup-node@v4
+        if: needs.classify.outputs.full_suite == 'true'
         with:
           node-version: 22
           cache: npm
       - run: npm ci
+        if: needs.classify.outputs.full_suite == 'true'
       - run: npm run test:slow
+        if: needs.classify.outputs.full_suite == 'true'
 
   e2e-shards:
     name: testes de tela (${{ matrix.shard }}/2)
+    needs: classify
+    if: needs.classify.outputs.full_suite == 'true'
     runs-on: ubuntu-latest
     # Mesmo Playwright do package-lock.json; browsers e dependências já instalados.
     container:
@@ -116,14 +189,23 @@ jobs:
 
   e2e:
     name: teste de tela (Playwright)
-    needs: [e2e-shards]
+    needs: [classify, e2e-shards]
     if: always()
     runs-on: ubuntu-latest
     steps:
       - name: Conferir todas as partes
         env:
+          FULL_SUITE: ${{ needs.classify.outputs.full_suite }}
           E2E_RESULT: ${{ needs.e2e-shards.result }}
-        run: test "$E2E_RESULT" = success
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "$FULL_SUITE" == "true" ]]; then
+            test "$E2E_RESULT" = success
+          else
+            test "$E2E_RESULT" = skipped
+            echo "Playwright dispensado: mudança exclusivamente operacional/documental."
+          fi
 
   acceptance-tests-protected:
     # O Dev não pode alterar testes de aceitação do QA (docs/PLANO.md seção 12).
