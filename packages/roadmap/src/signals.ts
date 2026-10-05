@@ -84,43 +84,6 @@ export function aggregateInfantMortalityValue(
   return Math.round((infantDeaths / births) * 1000 * 100) / 100;
 }
 
-/**
- * Mortalidade infantil é evento raro: classifica pela soma dos numeradores/denominadores
- * de todas as cidades de avaliação, em vez de transformar um outlier isolado em prioridade.
- */
-export function aggregateInfantMortalitySignal(
-  samples: InfantMortalitySample[],
-  range: { min: number; max: number; source: string },
-  minBirths: number,
-): Signal | null {
-  const rounded = aggregateInfantMortalityValue(samples, minBirths);
-  if (rounded === null || (rounded >= range.min && rounded <= range.max)) return null;
-  let births = 0;
-  let population = 0;
-  for (const s of samples) {
-    births += s.births;
-    population += s.population;
-  }
-  const value = rounded;
-  return {
-    id: "realismo:infantMortality",
-    source: "realismo",
-    category: "realismo",
-    title: `Realismo: Mortalidade infantil ${value < range.min ? "abaixo" : "acima"} da vida real`,
-    detail:
-      `Na amostra agregada: ${rounded} por mil em ${fmt(births)} nascimentos. Na vida real: ${range.min} a ${range.max}.`,
-    reach: Math.round(population / samples.length),
-    impact: 2,
-    evidence: "dataAndSource",
-    urgent: false,
-    seen: samples.length,
-    runs: samples.length,
-    research: { source: range.source },
-    metric: `realism.infantMortality entre ${range.min} e ${range.max}`,
-    proposal: "Achar a regra que gera esse número (relatório + log) e corrigir com base na fonte.",
-  };
-}
-
 /** Receita real de municípios pequenos: base para conferir a economia do jogo. */
 const SMALL_TOWN_REVENUE = {
   source:
