@@ -1,5 +1,5 @@
 /**
- * Bug da issue #39 — o motivo da volta (compras, saúde ou lazer) não muda com o dia.
+ * Bug da issue #73 — o motivo da volta (compras, saúde ou lazer) não muda com o dia.
  *
  * A issue pede "cada pessoa sem trabalho e sem aula sorteia um motivo de volta POR DIA".
  * O sorteio usa `${seed}:errand:${p}` (sem o dia), então cada pessoa ganha um motivo só na
