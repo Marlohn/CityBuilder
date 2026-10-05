@@ -7,7 +7,7 @@
  * - não existe o `HospitalAdmissionSystem` (packages/sim/src/systems/), que a cada tick
  *   puxaria da fila `seekHospital`, acharia hospital com leito livre dentro de
  *   `config.health.hospitalMaxDistanceMeters` e chamaria `registerHospital`;
- *   ele entraria em packages/sim/src/game.ts entre `matching` e `lifecycle`;
+ *   ele entra em packages/sim/src/game.ts depois de `matching`, preservando a ordem histórica `lifecycle -> matching`;
  * - o `LifecycleSystem` (packages/sim/src/systems/lifecycle.ts) não sorteia no aniversário
  *   quem precisa de internação (chance `config.health.hospitalAdmissionRatePerYear` por ano,
  *   sorteio por `city.rng.life`): ninguém entra na fila `seekHospital`;
@@ -240,7 +240,7 @@ describe("issue #239: fila de internação e alta hospitalar", () => {
     ).toBe(false);
   });
 
-  it("2. existe o sistema `hospitalAdmission` registrado entre `matching` e `lifecycle`", () => {
+  it("2. existe `hospitalAdmission` depois de `lifecycle` e `matching`, sem reordenar os sistemas antigos", () => {
     const game = cidade("base", OVERRIDES_BASE);
     const nomes = game.sim.systems.map((s) => s.name);
     const iMatch = nomes.indexOf("matching");
@@ -261,14 +261,14 @@ describe("issue #239: fila de internação e alta hospitalar", () => {
       "o sistema `lifecycle` sumiu da lista de sistemas: sem ele a ordem não prova nada",
     ).toBeGreaterThanOrEqual(0);
     expect(
-      iAdm > iMatch,
-      `o \`hospitalAdmission\` (posição ${iAdm}) deveria rodar DEPOIS do \`matching\` ` +
-        `(posição ${iMatch}) em packages/sim/src/game.ts: a fila da UBS resolve primeiro`,
+      iLife < iMatch,
+      `a ordem histórica lifecycle -> matching precisa ser preservada (lifecycle=${iLife}, matching=${iMatch}): ` +
+        "reordená-los muda escola, UBS e comportamento do prefeito em cidades sem hospital",
     ).toBe(true);
     expect(
-      iAdm < iLife,
-      `o \`hospitalAdmission\` (posição ${iAdm}) deveria rodar ANTES do \`lifecycle\` ` +
-        `(posição ${iLife}) em packages/sim/src/game.ts: a ordem é matching -> hospitalAdmission`,
+      iAdm > iMatch,
+      `o \`hospitalAdmission\` (posição ${iAdm}) deveria rodar DEPOIS do \`matching\` ` +
+        `(posição ${iMatch}): a UBS resolve primeiro e a internação usa leitos liberados no lifecycle do mesmo tick`,
     ).toBe(true);
   });
 
