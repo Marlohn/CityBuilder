@@ -90,7 +90,7 @@ export class City {
     migration: Rng;
     growth: Rng;
     traits: Rng;
-    /** Fluxo só da alta hospitalar (a internação usa o fluxo dedicado para não mexer nos demais sorteios). */
+    /** Fluxo dedicado a episódios e altas hospitalares, sem perturbar os demais sorteios de vida. */
     hospital: Rng;
   };
   year: YearCounters = emptyYear();
