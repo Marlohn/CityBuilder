@@ -220,7 +220,7 @@ describe("sinais", () => {
     const s2 = signalsFromRun(run(), cfg, reference, services);
     expect(s1).toEqual(s2);
     expect(s1.filter((s) => s.urgent)).toEqual([]);
-    // Água, luz e esgoto já existem no catálogo: não podem aparecer como falta.
+    // Água, luz e esgoto já existem no catálogo: nenhum pode aparecer como falta.
     expect(s1.map((s) => s.id)).not.toContain("comparacao:agua");
     expect(s1.map((s) => s.id)).not.toContain("comparacao:esgoto");
     const m = metricsOf(a);
