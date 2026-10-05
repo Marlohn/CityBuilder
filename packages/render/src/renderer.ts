@@ -25,11 +25,22 @@ import { type PickBox, pickTile, rayGround, screenAxesOnGround, startTarget } fr
 import { GroundLayer } from "./ground";
 import { BuildingLayer, type BuildingVisual, RoadLayer, TreeLayer, VehicleLayer } from "./layers";
 import { ModelLibrary } from "./models";
+import {
+  type PocV3CameraMode,
+  PocV3Environment,
+  PocV3LiveSurface,
+  type PocV3Scene,
+  PocV3Showcase,
+} from "./pocV3";
 
 export interface RendererOptions {
   modelsBaseUrl: string;
   buildingVisuals: BuildingVisual[];
   tileMeters: number;
+  /** Pipeline experimental da POC #317. O modo padrão permanece intocado. */
+  visualStyle?: "default" | "poc-v3";
+  pocScene?: PocV3Scene;
+  cameraMode?: PocV3CameraMode;
 }
 
 export interface TileEvent {
@@ -69,6 +80,13 @@ export class CityRenderer {
   private targetChosen = false;
   private occupied = new Uint8Array(0);
   private zoom = 30;
+  private readonly pocV3: boolean;
+  private readonly pocScene: PocV3Scene;
+  private readonly pocCameraMode: PocV3CameraMode;
+  private pocEnvironment: PocV3Environment | null = null;
+  private pocShowcase: PocV3Showcase | null = null;
+  private pocLiveSurface: PocV3LiveSurface | null = null;
+  private pocReady = false;
   /** Tecla apertada → momento (ms) até onde o movimento dela já foi aplicado. */
   private keys = new Map<string, number>();
   private lastBuildings: BuildingView[] = [];
@@ -85,9 +103,17 @@ export class CityRenderer {
     this.scene = new Scene(this.engine);
     this.scene.clearColor = new Color4(0.62, 0.78, 0.92, 1);
     this.scene.ambientColor = new Color3(0.3, 0.3, 0.3);
+    this.pocV3 = opts.visualStyle === "poc-v3";
+    this.pocScene = opts.pocScene ?? "live";
+    this.pocCameraMode = opts.cameraMode ?? "orthographic";
 
     this.camera = new ArcRotateCamera("cam", -Math.PI / 4, ISO_BETA, 200, new Vector3(64, 0, 64), this.scene);
-    this.camera.mode = Camera.ORTHOGRAPHIC_CAMERA;
+    this.camera.mode =
+      this.pocV3 && this.pocCameraMode === "perspective"
+        ? Camera.PERSPECTIVE_CAMERA
+        : Camera.ORTHOGRAPHIC_CAMERA;
+    if (this.pocV3 && this.pocCameraMode === "perspective") this.camera.fov = (20 * Math.PI) / 180;
+    if (this.pocV3) this.zoom = this.pocScene === "live" ? 8 : 7;
     this.camera.minZ = 0.1;
     this.camera.maxZ = 2000;
     this.applyZoom();
@@ -100,6 +126,15 @@ export class CityRenderer {
     this.shadows = new ShadowGenerator(2048, this.sun);
     this.shadows.usePercentageCloserFiltering = true;
     this.shadows.bias = 0.002;
+    if (this.pocV3) {
+      this.sky.intensity = 0.75;
+      this.sky.groundColor = new Color3(0.52, 0.54, 0.5);
+      this.sun.direction.set(-0.58, -1, 0.42);
+      this.sun.intensity = 1;
+      this.pocEnvironment = new PocV3Environment(this.scene, this.camera, this.shadows);
+      if (this.pocScene === "live") this.pocLiveSurface = new PocV3LiveSurface(this.scene);
+      else this.pocShowcase = new PocV3Showcase(this.scene, this.shadows, opts.modelsBaseUrl);
+    }
 
     this.lib = new ModelLibrary(this.scene, opts.modelsBaseUrl);
     this.ground = new GroundLayer(this.scene);
@@ -121,6 +156,11 @@ export class CityRenderer {
   }
 
   async loadAssets() {
+    if (this.pocV3 && this.pocScene !== "live") {
+      await this.pocShowcase?.build(this.pocScene);
+      this.pocReady = true;
+      return;
+    }
     await this.lib.load([
       ...RoadLayer.models(),
       ...BuildingLayer.models(this.opts.buildingVisuals),
@@ -132,6 +172,7 @@ export class CityRenderer {
       this.shadows.addShadowCaster(m);
       m.receiveShadows = true;
     }
+    this.pocReady = this.pocV3;
   }
 
   start(onFrame: () => void) {
@@ -151,6 +192,7 @@ export class CityRenderer {
     this.ground.update(map, this.occupied);
     this.roads.update(map);
     this.trees.update(map, this.occupied);
+    this.pocLiveSurface?.update(map, this.occupied);
     if (first && !this.targetChosen) {
       // A partida começa olhando a estrada de acesso: é por ela que a cidade se liga ao país.
       const target = startTarget(map.accessRoad, map.width, map.height);
@@ -166,6 +208,7 @@ export class CityRenderer {
       this.recomputeOccupied();
       this.ground.update(this.map, this.occupied);
       this.trees.update(this.map, this.occupied);
+      this.pocLiveSurface?.update(this.map, this.occupied);
     }
   }
 
@@ -175,6 +218,7 @@ export class CityRenderer {
 
   /** Luz do sol conforme a hora (minuto do dia). */
   setTimeOfDay(minuteOfDay: number) {
+    if (this.pocV3) return;
     const t = minuteOfDay / 1440;
     const sunHeight = -Math.cos(t * 2 * Math.PI); // -1 meia-noite, 1 meio-dia
     const day = Math.max(0, Math.min(1, (sunHeight + 0.15) / 0.5));
@@ -258,7 +302,29 @@ export class CityRenderer {
   /** Estado da câmera (para testes e para salvar a vista). */
   cameraState() {
     const t = this.camera.target;
-    return { alpha: this.camera.alpha, beta: this.camera.beta, zoom: this.zoom, x: t.x, z: t.z };
+    return {
+      alpha: this.camera.alpha,
+      beta: this.camera.beta,
+      zoom: this.zoom,
+      x: t.x,
+      z: t.z,
+      mode: this.camera.mode === Camera.PERSPECTIVE_CAMERA ? "perspective" : "orthographic",
+      fovDegrees: (this.camera.fov * 180) / Math.PI,
+    };
+  }
+
+  /** Evidência observável da POC para Playwright e inspeção manual. */
+  pocV3State() {
+    return {
+      enabled: this.pocV3,
+      ready: this.pocReady,
+      scene: this.pocScene,
+      camera: this.pocCameraMode,
+      environment: this.pocEnvironment?.state() ?? null,
+      fps: Math.round(this.engine.getFps()),
+      meshes: this.scene.meshes.length,
+      activeMeshes: this.scene.getActiveMeshes().length,
+    };
   }
 
   private pickBoxes(): PickBox[] {
@@ -287,6 +353,9 @@ export class CityRenderer {
   }
 
   dispose() {
+    this.pocEnvironment?.dispose();
+    this.pocShowcase?.dispose();
+    this.pocLiveSurface?.dispose();
     this.engine.dispose();
   }
 
@@ -301,10 +370,14 @@ export class CityRenderer {
 
   private applyZoom() {
     const ar = this.canvas.width / Math.max(1, this.canvas.height);
-    this.camera.orthoTop = this.zoom;
-    this.camera.orthoBottom = -this.zoom;
-    this.camera.orthoLeft = -this.zoom * ar;
-    this.camera.orthoRight = this.zoom * ar;
+    if (this.camera.mode === Camera.PERSPECTIVE_CAMERA) {
+      this.camera.radius = this.zoom / Math.tan(this.camera.fov / 2);
+    } else {
+      this.camera.orthoTop = this.zoom;
+      this.camera.orthoBottom = -this.zoom;
+      this.camera.orthoLeft = -this.zoom * ar;
+      this.camera.orthoRight = this.zoom * ar;
+    }
     // A sombra acompanha o que está na tela.
     if (this.sun) {
       this.sun.shadowFrustumSize = this.zoom * 3;
