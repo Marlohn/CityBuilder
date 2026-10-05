@@ -1,11 +1,11 @@
 /**
  * Monta as "fotos" do mapa e dos prédios que a tela lê (formato do contrato).
  */
-import type { BuildingView, MapView } from "@city/contract";
+import type { BuildingView, MapView, TileRect } from "@city/contract";
 import { BSTATE, type Buildings } from "../world/buildings";
 import type { World } from "../world/world";
 
-export function mapView(world: World): MapView {
+export function mapView(world: World, accessRoad: TileRect | null = null): MapView {
   return {
     width: world.width,
     height: world.height,
@@ -15,6 +15,7 @@ export function mapView(world: World): MapView {
     trees: world.trees.slice(),
     water: world.water.slice(),
     version: world.mapVersion,
+    accessRoad: accessRoad ?? undefined,
   };
 }
 

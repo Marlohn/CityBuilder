@@ -5,6 +5,14 @@
 
 export const CONTRACT_VERSION = 1;
 
+/** Retângulo do mapa em quadradinhos, cantos inclusivos. */
+export interface TileRect {
+  x0: number;
+  y0: number;
+  x1: number;
+  y1: number;
+}
+
 export interface MapView {
   width: number;
   height: number;
@@ -18,6 +26,11 @@ export interface MapView {
   /** 1 = água (rio ou lago). */
   water: Uint8Array;
   version: number;
+  /**
+   * Estrada de acesso que já vem pronta (a avenida que entra pelo oeste): a tela destaca para o
+   * jogador ver onde a cidade se liga ao resto do país. Ausente quando o mapa não tem essa via.
+   */
+  accessRoad?: TileRect;
 }
 
 export const BUILDING_STATE = { constructing: 0, active: 1, abandoned: 2 } as const;

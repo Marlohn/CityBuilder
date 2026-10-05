@@ -144,7 +144,7 @@ setInterval(() => {
 function sendFrame() {
   if (!game) return;
   const { sim } = game;
-  const map = sim.world.mapVersion !== sentMapVersion ? mapView(sim.world) : undefined;
+  const map = sim.world.mapVersion !== sentMapVersion ? mapView(sim.world, sim.accessRoad) : undefined;
   if (map) sentMapVersion = sim.world.mapVersion;
   const buildings =
     sim.buildings.structureVersion !== sentStructureVersion ? buildingsView(sim.buildings) : undefined;
