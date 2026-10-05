@@ -23,6 +23,7 @@ import {
 import type { BuildingView, MapView, VehiclesView } from "@city/contract";
 import { type PickBox, pickTile, rayGround, screenAxesOnGround, startTarget } from "./camera";
 import { GroundLayer } from "./ground";
+import { IllustratedLotLayer, stylizeIllustratedMeshes } from "./illustrated";
 import { BuildingLayer, type BuildingVisual, RoadLayer, TreeLayer, VehicleLayer } from "./layers";
 import { ModelLibrary } from "./models";
 
@@ -30,6 +31,8 @@ export interface RendererOptions {
   modelsBaseUrl: string;
   buildingVisuals: BuildingVisual[];
   tileMeters: number;
+  /** Direção experimental da POC #296; não altera simulação nem contrato. */
+  visualStyle?: "default" | "illustrated";
 }
 
 export interface TileEvent {
@@ -65,6 +68,8 @@ export class CityRenderer {
   private shadows: ShadowGenerator;
   private preview: Mesh;
   private previewMat: StandardMaterial;
+  private illustrated = false;
+  private dressing: IllustratedLotLayer | null = null;
   private map: MapView | null = null;
   private targetChosen = false;
   private occupied = new Uint8Array(0);
@@ -83,8 +88,11 @@ export class CityRenderer {
   ) {
     this.engine = new Engine(canvas, true, { preserveDrawingBuffer: true, stencil: true }, true);
     this.scene = new Scene(this.engine);
-    this.scene.clearColor = new Color4(0.62, 0.78, 0.92, 1);
-    this.scene.ambientColor = new Color3(0.3, 0.3, 0.3);
+    this.illustrated = opts.visualStyle === "illustrated";
+    this.scene.clearColor = this.illustrated
+      ? new Color4(0.94, 0.97, 0.98, 1)
+      : new Color4(0.62, 0.78, 0.92, 1);
+    this.scene.ambientColor = this.illustrated ? new Color3(0.42, 0.42, 0.38) : new Color3(0.3, 0.3, 0.3);
 
     this.camera = new ArcRotateCamera("cam", -Math.PI / 4, ISO_BETA, 200, new Vector3(64, 0, 64), this.scene);
     this.camera.mode = Camera.ORTHOGRAPHIC_CAMERA;
@@ -93,20 +101,26 @@ export class CityRenderer {
     this.applyZoom();
 
     this.sky = new HemisphericLight("sky", new Vector3(0, 1, 0), this.scene);
-    this.sky.intensity = 0.6;
-    this.sky.groundColor = new Color3(0.35, 0.35, 0.3);
-    this.sun = new DirectionalLight("sun", new Vector3(-0.5, -1, 0.4), this.scene);
-    this.sun.intensity = 0.9;
+    this.sky.intensity = this.illustrated ? 0.78 : 0.6;
+    this.sky.groundColor = this.illustrated ? new Color3(0.5, 0.51, 0.45) : new Color3(0.35, 0.35, 0.3);
+    this.sun = new DirectionalLight("sun", new Vector3(-0.55, -1, 0.45), this.scene);
+    this.sun.intensity = this.illustrated ? 0.82 : 0.9;
     this.shadows = new ShadowGenerator(2048, this.sun);
     this.shadows.usePercentageCloserFiltering = true;
-    this.shadows.bias = 0.002;
+    this.shadows.bias = this.illustrated ? 0.001 : 0.002;
+    if (this.illustrated) {
+      this.shadows.darkness = 0.18;
+      this.scene.imageProcessingConfiguration.contrast = 1.08;
+      this.scene.imageProcessingConfiguration.exposure = 1.03;
+    }
 
     this.lib = new ModelLibrary(this.scene, opts.modelsBaseUrl);
-    this.ground = new GroundLayer(this.scene);
+    this.ground = new GroundLayer(this.scene, this.illustrated);
     this.roads = new RoadLayer(this.lib);
     this.buildingLayer = new BuildingLayer(this.lib, opts.buildingVisuals, opts.tileMeters);
     this.trees = new TreeLayer(this.lib);
     this.vehicles = new VehicleLayer(this.lib, opts.tileMeters);
+    if (this.illustrated) this.dressing = new IllustratedLotLayer(this.scene);
 
     this.previewMat = new StandardMaterial("preview", this.scene);
     this.previewMat.alpha = 0.45;
@@ -127,11 +141,13 @@ export class CityRenderer {
       ...TreeLayer.models(),
       ...VehicleLayer.models(),
     ]);
+    if (this.illustrated) stylizeIllustratedMeshes(this.lib.all());
     for (const m of this.lib.all()) {
       if (m.name.startsWith("roads/road")) continue;
       this.shadows.addShadowCaster(m);
       m.receiveShadows = true;
     }
+    for (const m of this.dressing?.all() ?? []) this.shadows.addShadowCaster(m);
   }
 
   start(onFrame: () => void) {
@@ -162,6 +178,7 @@ export class CityRenderer {
     this.lastBuildings = list;
     this.pickCache = null;
     this.buildingLayer.update(list);
+    this.dressing?.update(list);
     if (this.map) {
       this.recomputeOccupied();
       this.ground.update(this.map, this.occupied);
@@ -179,6 +196,21 @@ export class CityRenderer {
     const sunHeight = -Math.cos(t * 2 * Math.PI); // -1 meia-noite, 1 meio-dia
     const day = Math.max(0, Math.min(1, (sunHeight + 0.15) / 0.5));
     const az = t * 2 * Math.PI;
+
+    if (this.illustrated) {
+      // A leitura principal é de ilustração: sombras gráficas e fundo limpo, sem o pôr-do-sol
+      // dominar a paleta dos prédios. O ciclo dia/noite continua existindo, só é mais contido.
+      this.sun.direction.set(Math.sin(az) * 0.32 - 0.35, -Math.max(0.45, sunHeight), Math.cos(az) * 0.32 + 0.45);
+      this.sun.intensity = 0.48 + 0.38 * day;
+      this.sky.intensity = 0.64 + 0.16 * day;
+      const night = new Color3(0.18, 0.23, 0.3);
+      const noon = new Color3(0.94, 0.97, 0.98);
+      const bg = Color3.Lerp(night, noon, Math.max(0.28, day));
+      this.scene.clearColor = new Color4(bg.r, bg.g, bg.b, 1);
+      this.sun.diffuse = Color3.Lerp(new Color3(0.88, 0.77, 0.68), new Color3(1, 0.97, 0.91), day);
+      return;
+    }
+
     this.sun.direction.set(Math.sin(az) * 0.6, -Math.max(0.25, sunHeight), Math.cos(az) * 0.6 + 0.3);
     this.sun.intensity = 0.2 + 0.8 * day;
     // Noite com luar: escura, mas ainda dá para ver a cidade.
@@ -188,8 +220,8 @@ export class CityRenderer {
     const dusk = new Color3(0.95, 0.6, 0.4);
     const edge = Math.max(0, 1 - Math.abs(sunHeight) * 3) * 0.6;
     const base = Color3.Lerp(night, noon, day);
-    const c = Color3.Lerp(base, dusk, edge * day);
-    this.scene.clearColor = new Color4(c.r, c.g, c.b, 1);
+    const color = Color3.Lerp(base, dusk, edge * day);
+    this.scene.clearColor = new Color4(color.r, color.g, color.b, 1);
     this.sun.diffuse = Color3.Lerp(new Color3(1, 0.75, 0.55), new Color3(1, 0.97, 0.9), day);
   }
 
