@@ -26,14 +26,18 @@ const renderer = new CityRenderer(canvas, {
   buildingVisuals: data.buildings.map((b) => ({ id: b.id, models: b.models, floors: b.floors })),
   tileMeters: config.world.tileMeters,
 });
-// A branch da POC nasce com a nova direção ligada. ?visual=legacy permite comparação imediata.
+// O CI e a branch continuam com o render legado por padrão. A build empacotada usa
+// VITE_POC_VISUAL=1; ?visual=poc força a POC e ?visual=legacy força o render atual.
+const pocEnabled =
+  params.get("visual") === "poc" ||
+  (params.get("visual") !== "legacy" && import.meta.env.VITE_POC_VISUAL === "1");
 const pocVisual =
-  params.get("visual") === "legacy"
-    ? null
-    : new IsometricPocVisual(
+  pocEnabled
+    ? new IsometricPocVisual(
         renderer.scene,
         data.buildings.map((b) => ({ id: b.id, floors: b.floors, zone: b.zone, service: b.service })),
-      );
+      )
+    : null;
 
 let buildings: BuildingView[] = [];
 let lastMap: MapView | null = null;
