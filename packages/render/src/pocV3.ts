@@ -140,6 +140,7 @@ export class PocV3Showcase {
   private roots: TransformNode[] = [];
   private meshes: Mesh[] = [];
   private materials: StandardMaterial[] = [];
+  private materialCache = new Map<string, StandardMaterial>();
 
   constructor(
     private scene: Scene,
@@ -188,6 +189,18 @@ export class PocV3Showcase {
     await Promise.all(jobs);
   }
 
+  private heroMaterial(role: SemanticRole, variant = 0) {
+    const variants = ROLE_COLORS[role];
+    const normalized = Math.abs(variant) % variants.length;
+    const key = `${role}/${normalized}`;
+    const existing = this.materialCache.get(key);
+    if (existing) return existing;
+    const mat = material(this.scene, `hero-${role}-${normalized}`, role, normalized);
+    this.materialCache.set(key, mat);
+    this.materials.push(mat);
+    return mat;
+  }
+
   private box(
     name: string,
     role: SemanticRole,
@@ -202,12 +215,10 @@ export class PocV3Showcase {
     const mesh = MeshBuilder.CreateBox(`poc-v3/hero/${name}`, { size: 1 }, this.scene);
     mesh.position.set(x, y + sy / 2, z);
     mesh.scaling.set(sx, sy, sz);
-    const mat = material(this.scene, `hero-${name}`, role, variant);
-    mesh.material = mat;
+    mesh.material = this.heroMaterial(role, variant);
     mesh.receiveShadows = true;
     this.shadows.addShadowCaster(mesh);
     this.meshes.push(mesh);
-    this.materials.push(mat);
     return mesh;
   }
 
@@ -292,12 +303,10 @@ export class PocV3Showcase {
       this.scene,
     );
     shade.position.set(x, 1.0, z);
-    const mat = material(this.scene, `${name}-umbrella`, "accent", variant);
-    shade.material = mat;
+    shade.material = this.heroMaterial("accent", variant);
     shade.receiveShadows = true;
     this.shadows.addShadowCaster(shade);
     this.meshes.push(shade);
-    this.materials.push(mat);
     for (const [dx, dz] of [
       [-0.42, 0],
       [0.42, 0],
@@ -340,12 +349,10 @@ export class PocV3Showcase {
       );
       crown.position.set(x + dx * scale, 0.96 * scale + dy * scale, z + dz * scale);
       crown.scaling.set(0.52 * scale * crownScale, 0.62 * scale * crownScale, 0.52 * scale * crownScale);
-      const mat = material(this.scene, `tree-${variant}-${dx}`, "vegetation", variant);
-      crown.material = mat;
+      crown.material = this.heroMaterial("vegetation", variant);
       crown.receiveShadows = true;
       this.shadows.addShadowCaster(crown);
       this.meshes.push(crown);
-      this.materials.push(mat);
     }
   }
 
@@ -353,12 +360,10 @@ export class PocV3Showcase {
     const crown = MeshBuilder.CreateSphere(`poc-v3/hero/${name}`, { diameter: 1, segments: 6 }, this.scene);
     crown.position.set(x, y + 0.28, z);
     crown.scaling.set(0.34, 0.26, 0.34);
-    const mat = material(this.scene, name, "vegetation", variant);
-    crown.material = mat;
+    crown.material = this.heroMaterial("vegetation", variant);
     crown.receiveShadows = true;
     this.shadows.addShadowCaster(crown);
     this.meshes.push(crown);
-    this.materials.push(mat);
   }
 
   private streetLight(name: string, x: number, z: number, flip = false) {
@@ -375,12 +380,10 @@ export class PocV3Showcase {
       this.scene,
     );
     head.position.set(x, 0.54, z);
-    const mat = material(this.scene, `${name}-head`, "trim", variant);
-    head.material = mat;
+    head.material = this.heroMaterial("trim", variant);
     head.receiveShadows = true;
     this.shadows.addShadowCaster(head);
     this.meshes.push(head);
-    this.materials.push(mat);
   }
 
   private car(name: string, x: number, z: number, variant: number, vertical = false) {
@@ -761,6 +764,7 @@ export class PocV3Showcase {
     for (const root of this.roots) root.dispose();
     for (const mesh of this.meshes) mesh.dispose();
     for (const mat of this.materials) mat.dispose();
+    this.materialCache.clear();
   }
 }
 
