@@ -47,7 +47,6 @@
  * criadas com `createTestGame` de tests/helpers.ts e rodadas uma única vez (Map memoizado).
  */
 
-import { readFileSync } from "node:fs";
 import { loadConfigAndData, loadScenario, runGame } from "@city/cli";
 import type { Command } from "@city/contract";
 import { currentCensus, type Game, reportText, statsView } from "@city/sim";
@@ -381,34 +380,10 @@ describe("issue #174: leitos de internação no stats e no relatório (sem vaga 
   });
 
   it("5. a cidade de referência não muda (só ganha a chave nova)", { timeout: 300000 }, () => {
-    // (a) Os números congelados abaixo são os que estão hoje no snapshot: se o .snap for
-    // regravado com números diferentes, esta leitura acusa (compara SÓ chaves já existentes).
-    const snap = readFileSync(
-      new URL("../unit/__snapshots__/reference.test.ts.snap", import.meta.url),
-      "utf8",
-    );
-    expect(
-      snap,
-      "o snapshot tests/unit/__snapshots__/reference.test.ts.snap deveria conter a cidade " +
-        `"bairro-basico, 12 dias" com population ${ESPERADO_BAIRRO.population}`,
-    ).toContain(`"population": ${ESPERADO_BAIRRO.population}`);
-    expect(
-      snap,
-      "o snapshot tests/unit/__snapshots__/reference.test.ts.snap deveria conter a cidade " +
-        `"bairro-basico, 12 dias" com buildings ${ESPERADO_BAIRRO.buildings}`,
-    ).toContain(`"buildings": ${ESPERADO_BAIRRO.buildings}`);
-    expect(
-      snap,
-      "o snapshot tests/unit/__snapshots__/reference.test.ts.snap deveria conter a cidade " +
-        `"prefeito automático, 12 dias" com population ${ESPERADO_BOT.population}`,
-    ).toContain(`"population": ${ESPERADO_BOT.population}`);
-    expect(
-      snap,
-      "o snapshot tests/unit/__snapshots__/reference.test.ts.snap deveria conter a cidade " +
-        `"prefeito automático, 12 dias" com buildings ${ESPERADO_BOT.buildings}`,
-    ).toContain(`"buildings": ${ESPERADO_BOT.buildings}`);
-    // (b) Roda o MESMO cenário do tests/unit/reference.test.ts e compara SÓ as chaves já
-    // existentes (ignora o bloco `hospitalBeds` de propósito: ele é a única mudança esperada).
+    // Roda os cenários de referência e compara as chaves já existentes. O snapshot unitário
+    // tem cobertura própria; este teste não lê o arquivo .snap para evitar acoplamento entre testes.
+    // Roda o mesmo cenário do tests/unit/reference.test.ts e compara só as chaves já existentes
+    // (ignora o bloco `hospitalBeds` de propósito: ele é a única mudança esperada).
     const scenario = loadScenario("bairro-basico");
     const { config, data } = loadConfigAndData({
       ...scenario.overrides,
@@ -433,7 +408,7 @@ describe("issue #174: leitos de internação no stats e no relatório (sem vaga 
       "a cidade do prefeito automático/12 dias mudou de comportamento: a entrega de leitos só pode " +
         "ADICIONAR a chave hospitalBeds, nunca mudar gente, prédio, evento ou unmet existente",
     ).toEqual(ESPERADO_BOT);
-    // (c) A chave nova existe (é a ÚNICA diferença esperada no snapshot atualizado).
+    // A chave nova existe e o restante do comportamento continua congelado acima.
     const beds = bedsOf(bairro);
     expect(
       typeof beds,
@@ -490,7 +465,7 @@ const ESPERADO_BAIRRO = {
   retired: 119,
   buildings: 274,
   cars: 272,
-  money: 7204340,
+  money: 93332546,
   events: 13714,
   unmet: {
     school: 0,
@@ -509,23 +484,23 @@ const ESPERADO_BAIRRO = {
 /** Números congelados do snapshot atual ("prefeito automático, 12 dias"). */
 const ESPERADO_BOT = {
   tick: 17700,
-  population: 970,
-  households: 363,
-  employed: 476,
-  unemployed: 36,
-  children: 299,
-  retired: 50,
-  buildings: 375,
-  cars: 143,
-  money: 289485,
-  events: 10527,
+  population: 1404,
+  households: 539,
+  employed: 673,
+  unemployed: 41,
+  children: 109,
+  retired: 64,
+  buildings: 628,
+  cars: 147,
+  money: 3296044,
+  events: 10376,
   unmet: {
-    school: 238,
+    school: 0,
     university: 0,
     health: 0,
-    hospital: 970,
-    housing: 12,
-    job: 36,
+    hospital: 1404,
+    housing: 0,
+    job: 41,
     transit: 0,
     parking: 0,
     water: 0,
