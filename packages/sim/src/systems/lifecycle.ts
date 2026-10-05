@@ -177,8 +177,8 @@ export class LifecycleSystem implements System {
     maybeLeaveParents(city, p);
     this.homelessCouple(p);
 
-    // 5. Internação: cada aniversário substitui o episódio anual anterior pelo sorteio
-    // deste ano. A taxa é anual; a fila não pode virar um histórico de quem já precisou internar.
+    // 5. Internação: cada aniversário encerra o pedido pendente do ciclo anterior e sorteia
+    // o episódio deste ano. A taxa é anual; a fila não pode virar histórico de internações passadas.
     city.seekHospital.delete(p);
     if (pop.hospital[p]! < 0 && city.rng.hospital.chance(config.health.hospitalAdmissionRatePerYear))
       city.seekHospital.add(p);
