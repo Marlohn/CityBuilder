@@ -379,7 +379,7 @@ describe("issue #174: leitos de internação no stats e no relatório (sem vaga 
     ).toBe(beds.occupied);
   });
 
-  it("5. a cidade de referência não muda (só ganha a chave nova)", { timeout: 300000 }, () => {
+  it("5. referência preserva tudo salvo a demanda hospitalar da #241", { timeout: 300000 }, () => {
     // Roda os cenários de referência e compara as chaves já existentes. O snapshot unitário
     // tem cobertura própria; este teste não lê o arquivo .snap para evitar acoplamento entre testes.
     // Roda o mesmo cenário do tests/unit/reference.test.ts e compara só as chaves já existentes
@@ -471,7 +471,7 @@ const ESPERADO_BAIRRO = {
     school: 0,
     university: 0,
     health: 0,
-    hospital: 2063,
+    hospital: 155,
     housing: 11,
     job: 63,
     transit: 0,
@@ -498,7 +498,7 @@ const ESPERADO_BOT = {
     school: 0,
     university: 0,
     health: 0,
-    hospital: 1404,
+    hospital: 84,
     housing: 0,
     job: 41,
     transit: 0,
