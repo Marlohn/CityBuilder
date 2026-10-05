@@ -10,7 +10,7 @@
  * `pop.hospital[p] < 0`, então o primeiro critério falha pelo motivo certo.
  */
 import type { Command } from "@city/contract";
-import { currentCensus, reportText, statsView, type Game } from "@city/sim";
+import { currentCensus, type Game, reportText, statsView } from "@city/sim";
 import { describe, expect, it } from "vitest";
 import { createTestGame } from "../helpers";
 
