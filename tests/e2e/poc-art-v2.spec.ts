@@ -26,7 +26,7 @@ test("POC v2 abre como vitrine isométrica densa e sem erros de página", async 
   }));
 
   expect(state.cinema).toBe(true);
-  expect(state.camera.zoom).toBeLessThanOrEqual(14);
+  expect(state.camera.zoom).toBeLessThanOrEqual(7);
   expect(Math.abs(state.camera.alpha + Math.PI / 4)).toBeLessThan(0.02);
 
   const shot = await page.screenshot({ path: "test-results/poc-art-v2.png" });
