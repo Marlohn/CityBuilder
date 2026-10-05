@@ -71,6 +71,11 @@ const SMALL_TOWN_REVENUE = {
 };
 
 /** Desejos não atendidos (fonte 1). `ref` liga o desejo a uma linha da tabela de referência. */
+/** Associação explícita entre serviço ausente e indicador de realismo do mesmo tema. */
+const REALISM_BY_REFERENCE: Record<string, string> = {
+  faculdade: "higherEducation",
+};
+
 const DESIRES: {
   key: string;
   what: string;
@@ -316,6 +321,10 @@ export function mergeRuns(perRun: RunSignal[][]): Signal[] {
   // O mesmo assunto medido de dois jeitos (desejo e comparação) vira um sinal só: fica o desejo,
   // que tem o número medido das pessoas.
   for (const d of DESIRES) if (d.ref && byId.has(`desejo:${d.key}`)) byId.delete(`comparacao:${d.ref}`);
+  // Alguns serviços ausentes também têm um indicador de realismo que mede o mesmo buraco.
+  // A ligação é explícita: nunca inferimos associação por título ou texto parecido.
+  for (const [ref, metric] of Object.entries(REALISM_BY_REFERENCE))
+    if (byId.has(`realismo:${metric}`)) byId.delete(`comparacao:${ref}`);
   const out = [...byId.values()];
   for (const s of out) {
     s.reach = Math.round(s.reach);
