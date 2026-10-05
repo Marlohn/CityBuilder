@@ -3,7 +3,6 @@ import { expect, test } from "@playwright/test";
 import { openGame, screenOf } from "./helpers";
 
 test("a avenida orienta a partida e conectar a rua permite o crescimento", async ({ page }, info) => {
-  test.setTimeout(210_000);
   const errors = await openGame(page, "acesso-visivel");
   await expect(page.locator(".tabs .active")).toHaveText("Cidade");
   await expect(page.locator(".side .panel-body")).toContainText("Avenida de acesso");
@@ -40,13 +39,6 @@ test("a avenida orienta a partida e conectar a rua permite o crescimento", async
   await expect
     .poll(async () => Number((await population.textContent())?.replace(/\D/g, "")), { timeout: 120_000 })
     .toBeGreaterThan(0);
-  try {
-    await page.screenshot({
-      path: info.outputPath("via-conectada-crescimento.png"),
-      timeout: 10_000,
-    });
-  } catch (error) {
-    console.warn("Screenshot final dispensada após o comportamento já ter sido comprovado:", error);
-  }
+  await page.screenshot({ path: info.outputPath("via-conectada-crescimento.png") });
   expect(errors).toEqual([]);
 });
