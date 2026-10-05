@@ -40,13 +40,6 @@ jobs:
             return 1
           }
 
-          is_explicitly_superseded() {
-            case "$1" in
-              qa/bug-motivo-volta-fixo|qa/196|dev/196|qa/239) return 0 ;;
-              *) return 1 ;;
-            esac
-          }
-
           delete_branch() {
             local branch="$1"
             echo "DELETE $branch"
@@ -73,18 +66,12 @@ jobs:
               continue
             fi
 
-            merged_tip="$(
-              gh api --method GET "repos/$REPO/pulls"                 -f state=closed -f head="$OWNER:$branch" -f per_page=100                 --jq ".[] | select(.merged_at != null and .head.sha == \"$sha\") | .number"                 | head -n 1
+            closed_tip="$(
+              gh api --method GET "repos/$REPO/pulls"                 -f state=closed -f head="$OWNER:$branch" -f per_page=100                 --jq ".[] | select(.head.sha == \"$sha\") | .number"                 | head -n 1
             )"
 
-            if [[ -n "$merged_tip" ]]; then
-              echo "merged via PR #$merged_tip"
-              delete_branch "$branch"
-              continue
-            fi
-
-            if is_explicitly_superseded "$branch"; then
-              echo "superseded branch"
+            if [[ -n "$closed_tip" ]]; then
+              echo "closed PR #$closed_tip owns current tip"
               delete_branch "$branch"
               continue
             fi
