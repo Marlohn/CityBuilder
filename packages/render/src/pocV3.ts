@@ -263,11 +263,19 @@ export class PocV3Showcase {
     this.box(`${name}-rail-right`, "trim", x + width / 2 - 0.03, y + 0.16, z, 0.035, 0.27, 0.34, variant);
   }
 
-  private planter(name: string, x: number, z: number, width: number, depth: number, variant: number) {
-    this.box(`${name}-bed`, "accent", x, 0.08, z, width, 0.2, depth, variant);
+  private planter(
+    name: string,
+    x: number,
+    z: number,
+    width: number,
+    depth: number,
+    variant: number,
+    y = 0.08,
+  ) {
+    this.box(`${name}-bed`, "accent", x, y, z, width, 0.2, depth, variant);
     for (let i = 0; i < Math.max(2, Math.round(width / 0.34)); i++) {
       const px = x - width * 0.38 + (i / Math.max(1, Math.round(width / 0.34) - 1)) * width * 0.76;
-      this.shrub(`${name}-shrub-${i}`, px, z, variant + i);
+      this.shrub(`${name}-shrub-${i}`, px, z, variant + i, y);
     }
   }
 
@@ -311,8 +319,8 @@ export class PocV3Showcase {
 
   private roofGarden(name: string, x: number, y: number, z: number, w: number, d: number, variant: number) {
     this.box(`${name}-deck`, "paving", x, y, z, w * 0.72, 0.07, d * 0.64, 1);
-    this.planter(`${name}-planter-a`, x - w * 0.23, z, w * 0.16, d * 0.5, variant);
-    this.planter(`${name}-planter-b`, x + w * 0.23, z, w * 0.16, d * 0.5, variant + 1);
+    this.planter(`${name}-planter-a`, x - w * 0.23, z, w * 0.16, d * 0.5, variant, y + 0.08);
+    this.planter(`${name}-planter-b`, x + w * 0.23, z, w * 0.16, d * 0.5, variant + 1, y + 0.08);
     this.box(`${name}-pergola-a`, "trim", x - w * 0.2, y + 0.05, z - d * 0.22, 0.06, 0.58, 0.06, 1);
     this.box(`${name}-pergola-b`, "trim", x + w * 0.2, y + 0.05, z - d * 0.22, 0.06, 0.58, 0.06, 1);
     this.box(`${name}-pergola-top`, "trim", x, y + 0.58, z - d * 0.22, w * 0.48, 0.06, 0.12, 1);
@@ -341,9 +349,9 @@ export class PocV3Showcase {
     }
   }
 
-  private shrub(name: string, x: number, z: number, variant: number) {
+  private shrub(name: string, x: number, z: number, variant: number, y = 0) {
     const crown = MeshBuilder.CreateSphere(`poc-v3/hero/${name}`, { diameter: 1, segments: 6 }, this.scene);
-    crown.position.set(x, 0.28, z);
+    crown.position.set(x, y + 0.28, z);
     crown.scaling.set(0.34, 0.26, 0.34);
     const mat = material(this.scene, name, "vegetation", variant);
     crown.material = mat;
@@ -617,7 +625,7 @@ export class PocV3Showcase {
       }
     }
     this.balcony(`${id}-upper-balcony`, x + 0.24, 3.13, z - 0.98, 1.5, variant);
-    this.planter(`${id}-roof-planter`, x + 0.15, z + 0.16, 0.9, 0.42, variant);
+    this.planter(`${id}-roof-planter`, x + 0.15, z + 0.16, 0.9, 0.42, variant, 3.94);
   }
 
   private rowHouse(id: string, x: number, z: number, variant: number) {
