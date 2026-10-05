@@ -102,8 +102,8 @@ export function aggregateInfantMortalitySignal(
     id: "realismo:infantMortality",
     source: "realismo",
     category: "realismo",
-    title: "mortalidade infantil",
-    detail: "amostra agregada",
+    title: `Realismo: Mortalidade infantil ${rounded < range.min ? "abaixo" : "acima"} da vida real`,
+    detail: `Na amostra agregada: ${rounded} por mil em ${fmt(births)} nascimentos. Na vida real: ${range.min} a ${range.max}.`,
     reach: Math.round(population / samples.length),
     impact: 2,
     evidence: "dataAndSource",
@@ -112,7 +112,7 @@ export function aggregateInfantMortalitySignal(
     runs: samples.length,
     research: { source: range.source },
     metric: `realism.infantMortality entre ${range.min} e ${range.max}`,
-    proposal: "Achar a regra que gera esse número e corrigir com base na fonte.",
+    proposal: "Achar a regra que gera esse número (relatório + log) e corrigir com base na fonte.",
   };
 }
 
