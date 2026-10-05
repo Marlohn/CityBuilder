@@ -38,12 +38,12 @@ function stableHash(value: number): number {
 }
 
 const facadePalette: readonly RGB[] = [
-  [0.94, 0.9, 0.78],
-  [0.93, 0.76, 0.72],
-  [0.73, 0.86, 0.82],
-  [0.74, 0.82, 0.9],
-  [0.92, 0.83, 0.64],
-  [0.85, 0.8, 0.9],
+  [0.97, 0.67, 0.61],
+  [0.56, 0.82, 0.72],
+  [0.53, 0.73, 0.9],
+  [0.95, 0.8, 0.48],
+  [0.77, 0.7, 0.9],
+  [0.96, 0.73, 0.57],
 ];
 
 function stringHash(value: string) {
@@ -62,18 +62,18 @@ function illustratedColor(original: Color3, accent: Color3): Color3 {
   if (original.b > original.r * 1.04 && original.b >= original.g * 0.95 && luma < 0.72)
     return new Color3(0.29, 0.61, 0.73);
 
-  // Telhados, esquadrias e bases continuam escuros para segurar o contraste.
-  if (luma < 0.26) return new Color3(0.24, 0.28, 0.3);
+  // Telhados e bases ficam mais escuros, mas pertencem à mesma família cromática da fachada.
+  if (luma < 0.26) return Color3.Lerp(accent.scale(0.52), new Color3(0.18, 0.22, 0.25), 0.28);
 
-  // Concreto/reboco claro vira um branco quente, não cinza puro.
+  // O alvo usa fachadas realmente pastel; branco/cinza puro só aparece como detalhe.
   if (luma > 0.72 && saturation < 0.22)
-    return Color3.Lerp(accent, new Color3(0.98, 0.97, 0.93), 0.55);
+    return Color3.Lerp(accent, new Color3(0.99, 0.98, 0.94), 0.18);
 
-  // Cinzas médios viram a cor pastel da família do prédio.
-  if (saturation < 0.16) return Color3.Lerp(accent, new Color3(1, 1, 1), 0.2);
+  // Cinzas médios recebem quase toda a identidade cromática do prédio.
+  if (saturation < 0.16) return Color3.Lerp(accent, new Color3(1, 1, 1), 0.06);
 
-  // Cores próprias do asset são mantidas, apenas suavizadas.
-  return Color3.Lerp(original, new Color3(1, 1, 1), 0.12);
+  // Cores próprias do asset são preservadas, mas elevadas para a mesma faixa de luminosidade.
+  return Color3.Lerp(original, new Color3(1, 1, 1), 0.18);
 }
 
 function styleMaterial(material: unknown, seen: Set<unknown>, accent: Color3, recolor: boolean) {
@@ -181,10 +181,14 @@ export class IllustratedLotLayer {
         }
       }
 
-      if (b.w >= 2 || b.h >= 2) {
-        const cornerX = b.x + (stableHash(seed) > 0.5 ? 0.22 : b.w - 0.22);
-        const cornerZ = b.y + (stableHash(seed + 1) > 0.5 ? 0.22 : b.h - 0.22);
+      const hasTree = !["galpao", "subestacao", "eta", "ete"].includes(b.type);
+      if (hasTree && (large || stableHash(seed + 5) > 0.38)) {
+        const inset = large ? 0.25 : 0.16;
+        const cornerX = b.x + (stableHash(seed) > 0.5 ? inset : b.w - inset);
+        const cornerZ = b.y + (stableHash(seed + 1) > 0.5 ? inset : b.h - inset);
         this.tree(cornerX, cornerZ, seed);
+        if (large && stableHash(seed + 11) > 0.42)
+          this.tree(b.x + b.w - (cornerX - b.x), b.y + b.h - (cornerZ - b.y), seed + 101);
       }
 
       if (large && !civic) {
@@ -208,12 +212,12 @@ export class IllustratedLotLayer {
   }
 
   private tree(x: number, z: number, seed: number) {
-    const scale = 0.16 + stableHash(seed + 7) * 0.05;
-    this.batches.get("planter").push(x, 0.045, z, 0, 0.21, 0.08, 0.21);
-    this.batches.get("trunk").push(x, 0.14, z, 0, 0.035, 0.24, 0.035);
+    const scale = 0.23 + stableHash(seed + 7) * 0.08;
+    this.batches.get("planter").push(x, 0.045, z, 0, 0.22, 0.08, 0.22);
+    this.batches.get("trunk").push(x, 0.16, z, 0, 0.04, 0.28, 0.04);
     this.batches
       .get(stableHash(seed + 9) > 0.5 ? "crown" : "crownLight")
-      .push(x, 0.32, z, 0, scale, scale * 1.12, scale);
+      .push(x, 0.39, z, 0, scale, scale * 1.12, scale);
   }
 
   private frontRect(b: BuildingView) {
