@@ -30,6 +30,7 @@ export class HospitalAdmissionSystem implements System {
       if (this.cursor >= set.size) this.cursor = 0;
       const id = set.at(this.cursor);
       const sizeBefore = set.size;
+      this.city.sim.perf.count("personsUpdated");
       fn(id);
       // Se o item saiu da fila, o próximo ocupou a mesma posição: não avança o cursor.
       if (set.size === sizeBefore && set.has(id)) this.cursor++;
@@ -46,7 +47,7 @@ export class HospitalAdmissionSystem implements System {
     const access = city.homeAccess(p);
     if (access < 0) return;
     const maxM = city.config.health.hospitalMaxDistanceMeters;
-    const cand = city.markets.hospitals.findNear(city.rng.market, access, 8, maxM);
+    const cand = city.markets.hospitals.findNear(city.rng.hospital, access, 8, maxM);
     if (cand) registerHospital(city, p, cand.building);
   }
 }
