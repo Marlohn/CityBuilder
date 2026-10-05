@@ -10,6 +10,7 @@ import { checkMetric, isValidMetric } from "../src/metric";
 import { plan, rice, scoreItem } from "../src/rice";
 import {
   aggregateInfantMortalitySignal,
+  aggregateInfantMortalityValue,
   mergeRuns,
   metricsOf,
   pendingSignals,
@@ -218,6 +219,7 @@ describe("sinais", () => {
       { births: 300, infantDeaths: 5, population: 1000 },
       { births: 300, infantDeaths: 7, population: 1000 },
     ];
+    expect(aggregateInfantMortalityValue(samples, 300)).toBe(12.67);
     expect(aggregateInfantMortalitySignal(samples, range, 300)).toBeNull();
 
     const low = aggregateInfantMortalitySignal(
