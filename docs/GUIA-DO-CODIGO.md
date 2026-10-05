@@ -157,6 +157,7 @@ Serviço mexe em várias camadas. O Arquiteto deve quebrar em tarefas:
 2. Registre em `game.ts`, no lugar certo da ordem, com um comentário dizendo **por que ali**.
 3. Distribua o trabalho: coisa de vida roda uma vez por pessoa por dia do jogo, espalhada pelos ticks (`city.slots`). Não percorra todo mundo em todo tick.
 4. Conte o trabalho com `sim.perf.count("<nome>")` e registre decisões com `sim.log.debug(...)`.
+5. Internação hospitalar é o exemplo atual: `LifecycleSystem` gera episódios e libera leitos, `MatchingSystem` resolve a UBS e `HospitalAdmissionSystem` consome `seekHospital` por último, sem reordenar os sistemas antigos.
 
 ### 3.5 Um evento de vida novo
 
@@ -330,6 +331,7 @@ Mudou isto → atualize aquilo **no mesmo PR**:
 
 | Mudou | Atualize |
 |---|---|
+| Receita por porte de cidade (tabela `economy.revenuePerResidentByPopulation` em `config/economy.yaml`) | comentário de cada ponto com a fonte ao lado e `docs/VISAO.md` se muda o pressuposto |
 | Regra de jogo nova ou valor com fonte (ex.: rotina em `config/traffic.yaml`) | comentário no `config/*.yaml` e, se for grande, `docs/PLANO.md` |
 | Renomeou ou removeu um comando (save antigo com o nome velho) | receita 3.15: escreva a migração em `packages/sim/src/save/replay.ts`, nunca afrouxe o `CommandSchema`; a validação mora em `packages/sim/src/save/commandCompat.ts` |
 | Pasta ou pacote novo | seção 1 deste guia e o `AGENTS.md` do pacote |
