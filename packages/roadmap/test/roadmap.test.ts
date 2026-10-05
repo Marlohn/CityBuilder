@@ -8,7 +8,13 @@ import { parseReference, parseRoadmapConfig, type RoadmapConfig } from "../src/c
 import { formSections, fromGithubApi, leadingNumber, parseItem } from "../src/items";
 import { checkMetric, isValidMetric } from "../src/metric";
 import { plan, rice, scoreItem } from "../src/rice";
-import { mergeRuns, metricsOf, pendingSignals, signalsFromRun } from "../src/signals";
+import {
+  aggregateInfantMortalitySignal,
+  mergeRuns,
+  metricsOf,
+  pendingSignals,
+  signalsFromRun,
+} from "../src/signals";
 import type { IssueInput, Signal, SignalsFile } from "../src/types";
 
 const cfg: RoadmapConfig = parseRoadmapConfig(readFileSync(join(ROOT, "roadmap", "config.yaml"), "utf8"));
@@ -201,6 +207,27 @@ describe("sinais", () => {
     expect(merged.map((s) => s.id)).toEqual(["desejo:university"]);
     expect(merged[0]!.reach).toBe(200);
     expect(merged[0]!.seen).toBe(2);
+  });
+
+  it("mortalidade infantil usa a amostra agregada, não outlier de uma corrida", () => {
+    const range = { min: 6, max: 20, source: "IBGE 2023: 12,5 por mil" };
+    const samples = [
+      { births: 300, infantDeaths: 0, population: 1000 },
+      { births: 300, infantDeaths: 1, population: 1000 },
+      { births: 300, infantDeaths: 6, population: 1000 },
+      { births: 300, infantDeaths: 5, population: 1000 },
+      { births: 300, infantDeaths: 7, population: 1000 },
+    ];
+    expect(aggregateInfantMortalitySignal(samples, range, 300)).toBeNull();
+
+    const low = aggregateInfantMortalitySignal(
+      samples.map((s) => ({ ...s, infantDeaths: 0 })),
+      range,
+      300,
+    );
+    expect(low?.id).toBe("realismo:infantMortality");
+    expect(low?.detail).toMatch(/1\.500 nascimentos/);
+    expect(low?.metric).toBe("realism.infantMortality entre 6 e 20");
   });
 
   it("acha valores PENDENTE na config", () => {
