@@ -148,6 +148,30 @@ describe("fórmula e regras", () => {
     expect(depRanked.score).toBeGreaterThanOrEqual(r.plan.blocked[0]!.score);
   });
 
+  it("dependência auxiliar aberta bloqueia item de roadmap", () => {
+    const blocker: IssueInput = {
+      number: 900,
+      title: "decisão auxiliar",
+      body: "aguardando decisão do dono",
+      labels: ["do-dono"],
+      state: "open",
+    };
+    const dependent = item({ Dependências: "#900", Alcance: "5000" }, ["roadmap"], 901);
+
+    const blocked = computeRoadmap([dependent, blocker], signals, cfg);
+    expect(blocked.plan.blocked.map((x) => x.item.number)).toEqual([901]);
+    expect(blocked.plan.blocked[0]!.blockedBy).toEqual([900]);
+    expect(blocked.plan.now.map((x) => x.item.number)).not.toContain(901);
+
+    blocker.state = "closed";
+    const released = computeRoadmap([dependent, blocker], signals, cfg);
+    expect(released.plan.blocked).toHaveLength(0);
+    const releasedNumbers = [...released.plan.now, ...released.plan.next, ...released.plan.later].map(
+      (x) => x.item.number,
+    );
+    expect(releasedNumbers).toContain(901);
+  });
+
   it("mistura garantida: correções entram em Agora mesmo com nota menor", () => {
     const issues = [
       ...Array.from({ length: 12 }, (_, k) => item({ Alcance: String(10000 + k) })),
