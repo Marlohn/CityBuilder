@@ -439,8 +439,28 @@ export class PocV3Showcase {
     this.box(`${id}-foundation`, "trim", x, baseY, z, w + 0.1, 0.12, d + 0.1, variant);
     this.box(`${id}-wall`, "wall", x, baseY + 0.12, z, w, h, d, variant);
 
-    this.box(`${id}-corner-left`, "trim", x - w / 2 + 0.06, baseY + 0.12, z - d / 2 - 0.035, 0.11, h, 0.07, 1);
-    this.box(`${id}-corner-right`, "trim", x + w / 2 - 0.06, baseY + 0.12, z - d / 2 - 0.035, 0.11, h, 0.07, 1);
+    this.box(
+      `${id}-corner-left`,
+      "trim",
+      x - w / 2 + 0.06,
+      baseY + 0.12,
+      z - d / 2 - 0.035,
+      0.11,
+      h,
+      0.07,
+      1,
+    );
+    this.box(
+      `${id}-corner-right`,
+      "trim",
+      x + w / 2 - 0.06,
+      baseY + 0.12,
+      z - d / 2 - 0.035,
+      0.11,
+      h,
+      0.07,
+      1,
+    );
 
     const floors = Math.max(1, Math.round(h / 0.68));
     const columns = w >= 2.7 ? 4 : w >= 2.1 ? 3 : 2;
@@ -502,17 +522,7 @@ export class PocV3Showcase {
     }
 
     if (commerce) {
-      this.box(
-        `${id}-storefront-frame`,
-        "trim",
-        x,
-        baseY + 0.18,
-        z - d / 2 - 0.05,
-        w * 0.84,
-        0.61,
-        0.08,
-        1,
-      );
+      this.box(`${id}-storefront-frame`, "trim", x, baseY + 0.18, z - d / 2 - 0.05, w * 0.84, 0.61, 0.08, 1);
       for (const offset of [-0.26, 0.26]) {
         this.box(
           `${id}-storefront-${offset}`,
@@ -526,51 +536,11 @@ export class PocV3Showcase {
           variant,
         );
       }
-      this.box(
-        `${id}-door`,
-        "accent",
-        x,
-        baseY + 0.18,
-        z - d / 2 - 0.1,
-        0.42,
-        0.55,
-        0.04,
-        variant + 1,
-      );
-      this.box(
-        `${id}-awning`,
-        "accent",
-        x,
-        baseY + 0.82,
-        z - d / 2 - 0.22,
-        w * 0.82,
-        0.12,
-        0.38,
-        variant,
-      );
-      this.box(
-        `${id}-sign`,
-        "accent",
-        x,
-        baseY + 1.08,
-        z - d / 2 - 0.085,
-        w * 0.48,
-        0.22,
-        0.05,
-        variant + 2,
-      );
+      this.box(`${id}-door`, "accent", x, baseY + 0.18, z - d / 2 - 0.1, 0.42, 0.55, 0.04, variant + 1);
+      this.box(`${id}-awning`, "accent", x, baseY + 0.82, z - d / 2 - 0.22, w * 0.82, 0.12, 0.38, variant);
+      this.box(`${id}-sign`, "accent", x, baseY + 1.08, z - d / 2 - 0.085, w * 0.48, 0.22, 0.05, variant + 2);
     } else {
-      this.box(
-        `${id}-door-frame`,
-        "trim",
-        x + w * 0.26,
-        baseY + 0.12,
-        z - d / 2 - 0.05,
-        0.52,
-        0.72,
-        0.08,
-        1,
-      );
+      this.box(`${id}-door-frame`, "trim", x + w * 0.26, baseY + 0.12, z - d / 2 - 0.05, 0.52, 0.72, 0.08, 1);
       this.box(
         `${id}-door`,
         "accent",
@@ -582,17 +552,7 @@ export class PocV3Showcase {
         0.04,
         variant,
       );
-      this.box(
-        `${id}-canopy`,
-        "roof",
-        x + w * 0.26,
-        baseY + 0.88,
-        z - d / 2 - 0.2,
-        0.72,
-        0.1,
-        0.36,
-        variant,
-      );
+      this.box(`${id}-canopy`, "roof", x + w * 0.26, baseY + 0.88, z - d / 2 - 0.2, 0.72, 0.1, 0.36, variant);
     }
 
     const roofY = baseY + h + 0.24;
