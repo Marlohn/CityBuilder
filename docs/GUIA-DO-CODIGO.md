@@ -29,7 +29,6 @@ tests/
   e2e/              navegador de verdade (Playwright)
 tools/              scripts: check, calibração da demografia, geração de nomes
 roadmap/            config do motor de roadmap e sinais medidos (signals.json)
-hermes/             perfis prontos dos agentes (Designer, Arquiteto, QA, Dev) para o Hermes Agent
 ```
 
 ### Quem pode importar quem
@@ -287,7 +286,7 @@ Os gatilhos do bot ficam em `MayorOptions` (`packages/bots/src/mayor.ts`):
 | `packages/*/test`, `packages/*/src/**/*.test.ts` | regra isolada de um pacote | `npm test -- <arquivo>` |
 | `tests/unit` | cruzando pacotes (save, cidade inteira) | `npm test -- tests/unit` |
 | `tests/unit/reference.test.ts` | **cidades de referência**: o resultado guardado de algumas cidades. Mudou sem querer = bug; mudou de propósito = atualize com `-u` e explique no PR | `npm test -- tests/unit/reference -u` |
-| `tests/acceptance` | critérios de uma tarefa (escritos pelo QA **antes** do código) | `npm test -- tests/acceptance` |
+| `tests/acceptance` | critérios e regressões que atravessam pacotes | `npm test -- tests/acceptance` |
 | `tests/slow` | coorte de 10 mil bebês contra o IBGE, cidade de 50 mil | `npm run test:slow` |
 | `tests/e2e` | navegador: abre o jogo, confere que Node e Chromium dão a mesma cidade | `npm run test:e2e` |
 
@@ -337,14 +336,8 @@ Mudou isto → atualize aquilo **no mesmo PR**:
 | Pasta ou pacote novo | seção 1 deste guia e o `AGENTS.md` do pacote |
 | Comando de terminal novo | tabela de comandos do `AGENTS.md` e o README |
 | Jeito novo de fazer algo comum | uma receita na seção 3 |
+| Processo de desenvolvimento ou regra para IA | `AGENTS.md` da raiz |
 | Bug que pode acontecer de novo | uma linha na seção 6 |
-| Papel de agente ou fluxo no GitHub | `agents/<papel>.md` e `hermes/<papel>/SOUL.md` |
-| Erro de provedor deixa OpenCode aberto | `hermes/harness/opencode_guard.py`, cenários em `testar_opencode_guard.py` e deploy em `hermes/OPERACAO.md` |
-| Ciclo de descoberta, execução e avaliação de produto | `hermes/FACTORY.md`, `hermes/factory/DIRECTION.md`, `hermes/harness/factory.py`, `tools/factory-browser.ts` e workflow `factory.yml`; cartões antigos conservam o fluxo anterior |
-| Retomada de código parcial ou controles da câmera dos agentes | `hermes/FACTORY.md`; provas em `testar_factory.py`, `testar_factory_startup.py` e `tests/e2e/factory-browser.spec.ts`; checkpoint não é entrega |
-| Check privado do builder em runner GitHub | `factory.py:local_checks` retira CI somente do subprocesso privado; CI externo continua completo. Bootstrap confere CHECK LOCAL OK e ausência da suíte Vitest; builder só executa testes com caminhos |
-| Nome de controle fornecido pela ponte | `factory-browser.ts` usa texto visível com espaços normalizados, compatível com click por role/name; teste `factory-browser.spec.ts` clica usando o próprio nome informado pela ponte |
-| Click da ponte expirando antes de estabilizar no runner | `factory-browser.ts` aguarda até 15 s no click, mantendo verificações de visibilidade/estabilidade e registro de erro; wait/key continuam limitados a 3 s |
 | Algo que o jogador vê | `docs/MANUAL.md` |
 | Destaque da avenida de acesso e aviso de rua desconectada | `MapView.accessRoad` recebe o retângulo derivado de `world.startingRoad`; `mapViews.ts` e `worker.ts` enviam, `accessRoad.ts`/`ground.ts` destacam e `camera.ts:startTarget` enquadra. `apply.ts` consulta `network.exitFor` e devolve aviso em `CommandResult.reason`; regras de crescimento e formato do save permanecem os mesmos |
 | Volta de compras/saúde/lazer (motivo do dia, destino e volta para casa) | `packages/sim/src/traffic/trafficSystem.ts` (monta a volta) e números em `config/traffic.yaml` (routine.errand*) |

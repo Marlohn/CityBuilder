@@ -6,7 +6,7 @@
 - Uma simulação onde **cada pessoa tem uma vida própria**, do nascimento à morte, com escolhas que fazem sentido.
 - Baseado na **realidade brasileira**: números, leis e costumes vêm de fontes reais (IBGE, legislação, pesquisas).
 - **Leve**: cidades grandes não podem travar.
-- Evoluído continuamente por agentes de IA, guiados por dados do próprio jogo.
+- Projetado para ser desenvolvido com ajuda de IA, guiado por dados do próprio jogo e sem dependência de um orquestrador específico.
 
 ## O que o jogo NÃO é
 

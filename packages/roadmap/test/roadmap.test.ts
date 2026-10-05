@@ -120,20 +120,19 @@ describe("fórmula e regras", () => {
     expect(owner).toBeCloseTo(base * (1 + cfg.ownerBoost));
   });
 
-  it("sem fonte ou sem métrica o item não entra (fica em Incompletos)", () => {
+  it("pesquisa é opcional, mas a métrica continua obrigatória e validada", () => {
     const r = computeRoadmap(
       [
-        item({ Pesquisa: "eu acho" }),
+        item({ Pesquisa: "" }),
         item({ "Métrica de sucesso": "" }),
         item({ "Métrica de sucesso": "xyz < 1" }),
       ],
       signals,
       cfg,
     );
-    expect(r.plan.now).toHaveLength(0);
-    expect(r.incomplete).toHaveLength(3);
-    expect(r.incomplete[0]!.missing.join()).toMatch(/link/);
-    expect(r.incomplete[2]!.missing.join()).toMatch(/não existe/);
+    expect(r.plan.now).toHaveLength(1);
+    expect(r.incomplete).toHaveLength(2);
+    expect(r.incomplete[1]!.missing.join()).toMatch(/não existe/);
   });
 
   it("bug passa na frente de tudo; dependência sobe e o item bloqueado espera", () => {

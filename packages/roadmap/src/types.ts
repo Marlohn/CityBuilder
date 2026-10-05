@@ -48,7 +48,7 @@ export interface Signal {
   research?: { source: string; url?: string };
   /** Métrica de sucesso sugerida (mesmo formato do campo do item). */
   metric?: string;
-  /** Proposta sugerida para o Designer. */
+  /** Proposta sugerida pelo sinal. */
   proposal?: string;
 }
 

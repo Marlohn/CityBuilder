@@ -1,7 +1,0 @@
-# Mudanças grandes precisam de aprovação do dono do projeto (docs/PLANO.md seção 12).
-/packages/contract/        @Marlohn
-/packages/sim/src/config/schema.ts @Marlohn
-/packages/sim/src/save/    @Marlohn
-/docs/VISAO.md             @Marlohn
-/docs/PLANO.md             @Marlohn
-/.github/                  @Marlohn

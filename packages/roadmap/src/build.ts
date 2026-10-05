@@ -15,7 +15,7 @@ export interface Roadmap {
   plan: Plan;
   incomplete: Incomplete[];
   ideas: IssueInput[];
-  /** Sinais que nenhum item aberto cita: é daqui que o Designer tira o próximo item. */
+  /** Sinais que nenhum item aberto cita: serve como fila de candidatos para priorização. */
   unlinked: { signal: Signal; score: number }[];
   deliveries: Delivery[];
 }
@@ -135,7 +135,7 @@ export function renderRoadmap(r: Roadmap, signals: SignalsFile | null, cfg: Road
   for (const x of r.incomplete) L.push(`- ${link(x.item)} ${x.item.title}: falta ${x.missing.join(", ")}`);
   L.push("");
 
-  L.push("## Ideias esperando o Designer");
+  L.push("## Ideias aguardando triagem");
   L.push("");
   if (r.ideas.length === 0) L.push('_Nenhuma. Abra uma issue com o formulário "Ideia"._');
   for (const i of r.ideas) L.push(`- ${i.url ? `[#${i.number}](${i.url})` : `#${i.number}`} ${i.title}`);
@@ -172,7 +172,7 @@ export function renderRoadmap(r: Roadmap, signals: SignalsFile | null, cfg: Road
   const productSignals = r.unlinked.filter(({ signal }) => signal.source !== "pendente");
   const pendingResearch = r.unlinked.filter(({ signal }) => signal.source === "pendente");
 
-  L.push("## Sinais de produto sem item (candidatos para o Designer)");
+  L.push("## Sinais de produto sem item (candidatos ao roadmap)");
   L.push("");
   L.push(
     'Medidos pelo jogo e ainda não viraram issue. A nota é provisória (esforço padrão). Para criar o item, use o formulário "Item do roadmap" e cite o id no campo "Sinal de origem".',

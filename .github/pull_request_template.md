@@ -1,21 +1,15 @@
 ## O que muda
 
-<!-- Uma ou duas frases. -->
+<!-- Explique em poucas linhas o comportamento alterado e por quê. -->
 
 ## Issue
 
-<!-- Use "Closes #N" (em inglês): só assim o GitHub fecha a issue sozinho no merge. Uma linha por issue. -->
-Closes #
+<!-- Se este PR concluir uma issue, use: Closes #N -->
 
-## Pesquisa (obrigatório para regra de jogo, prédio ou número novo)
+## Validação
 
-<!-- Link da fonte e o que ela diz. Sem fonte, não entra. -->
+<!-- Liste os testes/comandos relevantes executados. `npm run check` é a base. -->
 
-## Como testei
+## Fonte (quando aplicável)
 
-- [ ] `npm run check` deu TUDO OK
-- [ ] Teste novo escrito antes do código (falhou primeiro)
-
-## Métrica de sucesso
-
-<!-- Qual número do relatório (`npm run sim -- report`) deve mudar, e para quanto. -->
+<!-- Necessária somente se o PR introduzir/alterar regra, dado ou número factual da simulação. -->
