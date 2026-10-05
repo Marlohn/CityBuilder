@@ -8,6 +8,7 @@ import {
   MeshBuilder,
   Quaternion,
   type Scene,
+  ShadowGenerator,
   StandardMaterial,
   Vector3,
 } from "@babylonjs/core";
@@ -107,7 +108,7 @@ export class IsometricPocVisual {
     this.scene.ambientColor = new Color3(0.42, 0.44, 0.42);
     this.scene.imageProcessingConfiguration.contrast = 1.04;
     this.scene.imageProcessingConfiguration.exposure = 1.08;
-    const shadow = this.scene.getLightByName("sun")?.getShadowGenerator();
+    const shadow = this.scene.getLightByName("sun")?.getShadowGenerator() as ShadowGenerator | null;
     for (const batch of this.batches.values()) { shadow?.addShadowCaster(batch.mesh); batch.mesh.receiveShadows = true; }
     this.rebuild();
   }
