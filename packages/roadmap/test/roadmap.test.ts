@@ -170,14 +170,18 @@ describe("fórmula e regras", () => {
     expect(plan([], cfg).now).toHaveLength(0);
   });
 
-  it("confere a métrica dos itens entregues", () => {
+  it("confere só itens entregues que ainda estão abertos", () => {
     const ok = item({ "Métrica de sucesso": "population > 100" }, ["roadmap", "entregue"]);
     const bad = item({ "Métrica de sucesso": "unmet.university < 500" }, ["roadmap", "entregue"]);
-    const r = computeRoadmap([ok, bad], signals, cfg);
+    const closed = item({ "Métrica de sucesso": "population > 100" }, ["roadmap", "entregue"]);
+    closed.state = "closed";
+    const r = computeRoadmap([ok, bad, closed], signals, cfg);
+    expect(r.deliveries.map((d) => d.item.number)).toEqual([ok.number, bad.number]);
     expect(r.deliveries.map((d) => d.check?.ok)).toEqual([true, false]);
     const md = renderRoadmap(r, signals, cfg);
     expect(md).toMatch(/✅ resolveu/);
     expect(md).toMatch(/não-resolveu/);
+    expect(md).not.toContain(`#${closed.number}`);
   });
 });
 
