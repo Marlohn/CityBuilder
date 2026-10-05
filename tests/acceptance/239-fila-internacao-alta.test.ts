@@ -7,13 +7,12 @@
  * - não existe o `HospitalAdmissionSystem` (packages/sim/src/systems/), que a cada tick
  *   puxaria da fila `seekHospital`, acharia hospital com leito livre dentro de
  *   `config.health.hospitalMaxDistanceMeters` e chamaria `registerHospital`;
- *   ele entra em packages/sim/src/game.ts depois de `matching`, preservando a ordem histórica
- *   `lifecycle -> matching`;
+ *   ele entraria em packages/sim/src/game.ts entre `matching` e `lifecycle`;
  * - o `LifecycleSystem` (packages/sim/src/systems/lifecycle.ts) não sorteia no aniversário
  *   quem precisa de internação (chance `config.health.hospitalAdmissionRatePerYear` por ano,
- *   sorteio por `city.rng.hospital`): ninguém entra na fila `seekHospital`;
+ *   sorteio por `city.rng.life`): ninguém entra na fila `seekHospital`;
  * - ninguém recebe alta: falta a chance diária de alta `1 / hospitalAvgLengthOfStayDays`
- *   (sorteio por `city.rng.hospital`) chamando `unregisterHospital` para devolver o leito.
+ *   (sorteio por `city.rng.life`) chamando `unregisterHospital` para devolver o leito.
  * Os dois campos novos da config (`hospitalAdmissionRatePerYear` e
  * `hospitalAvgLengthOfStayDays`) ainda não existem nem em config/health.yaml nem no schema
  * (issue #238 separada). O schema é zod sem `strict` e descarta chaves desconhecidas em
@@ -22,7 +21,7 @@
  *
  * Um `it` por critério do "tá pronto quando":
  * 1. a fila `seekHospital` existe e é um IndexedSet, separada da `seekClinic`;
- * 2. existe o sistema `hospitalAdmission` depois de `matching`, sem reordenar `lifecycle`;
+ * 2. existe o sistema `hospitalAdmission` registrado entre `matching` e `lifecycle`;
  * 3. a fila é admitida em leito livre dentro de `hospitalMaxDistanceMeters`;
  * 4. respeita o limite de distância: pessoa longe do hospital continua na fila;
  * 5. sem leito livre a pessoa continua na fila (e não ocupa leito);
@@ -241,7 +240,7 @@ describe("issue #239: fila de internação e alta hospitalar", () => {
     ).toBe(false);
   });
 
-  it("2. hospitalAdmission roda depois de matching sem mover lifecycle", () => {
+  it("2. existe o sistema `hospitalAdmission` registrado entre `matching` e `lifecycle`", () => {
     const game = cidade("base", OVERRIDES_BASE);
     const nomes = game.sim.systems.map((s) => s.name);
     const iMatch = nomes.indexOf("matching");
@@ -263,15 +262,13 @@ describe("issue #239: fila de internação e alta hospitalar", () => {
     ).toBeGreaterThanOrEqual(0);
     expect(
       iLife < iMatch,
-      `a ordem histórica lifecycle -> matching precisa ser preservada ` +
-        `(lifecycle=${iLife}, matching=${iMatch}): ` +
+      `a ordem histórica lifecycle -> matching precisa ser preservada (lifecycle=${iLife}, matching=${iMatch}): ` +
         "reordená-los muda escola, UBS e comportamento do prefeito em cidades sem hospital",
     ).toBe(true);
     expect(
       iAdm > iMatch,
       `o \`hospitalAdmission\` (posição ${iAdm}) deveria rodar DEPOIS do \`matching\` ` +
-        `(posição ${iMatch}): a UBS resolve primeiro e a internação usa leitos ` +
-        "liberados no lifecycle do mesmo tick",
+        `(posição ${iMatch}) em packages/sim/src/game.ts: a fila da UBS resolve primeiro`,
     ).toBe(true);
   });
 
@@ -533,7 +530,7 @@ describe("issue #239: fila de internação e alta hospitalar", () => {
       n1 > n0,
       `a cidade com taxa 1 internou ${n1} pessoas e a com taxa mínima (0.0001) internou ${n0}: ` +
         "com hospitalAdmissionRatePerYear = 1 todo aniversário com doença pede internação " +
-        "(sorteio por city.rng.hospital no LifecycleSystem), então a taxa 1 deveria ter MAIS " +
+        "(sorteio por city.rng.life no LifecycleSystem), então a taxa 1 deveria ter MAIS " +
         "gente internada; a taxa mínima usa 0.0001 (e não 0) porque o schema exige valor >0 " +
         "(pos.max(1)); na main sem o sorteio do LifecycleSystem ninguém entra na fila nova " +
         "e as cidades ficam iguais",
@@ -558,14 +555,13 @@ describe("issue #239: fila de internação e alta hospitalar", () => {
         "a admissão respeita o limite de leitos, ninguém pode ocupar leito que não existe; " +
         "nem todo mundo fica doente no aniversário, então a cidade não precisa ficar cheia",
     ).toBe(true);
-    // A cidade da taxa mínima (0.0001, positiva porque o schema exige >0) NÃO tem limiar
-    // de ocupação: sem o sorteio do aniversário, o caminho antigo (sem UBS por perto, o
-    // `matching` tenta o hospital) continua internando gente, e
+    // A cidade da taxa mínima (0.0001, positiva porque o schema exige >0) NÃO tem limiar de ocupação: sem o sorteio do aniversário, o caminho
+    // antigo (sem UBS por perto, o `matching` tenta o hospital) continua internando gente, e
     // com taxa 1 o lifecycle empurra a cidade inteira contra o mesmo limite de leitos. Por isso
     // a prova aqui é a diferença entre as duas cidades (n1 > n0), não um número de ocupação.
   });
 
-  it("7. a alta libera o leito na cadência configurada", () => {
+  it("7. a alta libera o leito e devolve a vaga ao mercado, na cadência de `hospitalAvgLengthOfStayDays`", () => {
     // (a) Controle pontual: internação forçada, espera curta, alta forçada.
     const pontual = cidade("alta-pontual", OVERRIDES_BASE);
     const permanencia = saudeNova(pontual).hospitalAvgLengthOfStayDays;
