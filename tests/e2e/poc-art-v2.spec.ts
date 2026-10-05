@@ -20,12 +20,19 @@ test("POC v2 abre como vitrine isométrica densa e sem erros de página", async 
   await page.waitForFunction(() => window.__city.buildings().length >= 12, null, { timeout: 120_000 });
   await page.waitForTimeout(1200);
 
-  const state = await page.evaluate(() => ({
-    camera: window.__city.renderer.cameraState(),
-    cinema: document.body.classList.contains("poc-cinema"),
-  }));
+  const state = await page.evaluate(() => {
+    const map = window.__city.map();
+    const road = (x: number, y: number) => !!map?.roads[y * map.width + x];
+    return {
+      camera: window.__city.renderer.cameraState(),
+      cinema: document.body.classList.contains("poc-cinema"),
+      // A vitrine usa quadras curtas; estes eixos internos não existiam na POC anterior.
+      denseGrid: [road(74, 120), road(86, 120), road(76, 122), road(76, 134)].every(Boolean),
+    };
+  });
 
   expect(state.cinema).toBe(true);
+  expect(state.denseGrid).toBe(true);
   expect(state.camera.zoom).toBeLessThanOrEqual(7);
   expect(Math.abs(state.camera.alpha + Math.PI / 4)).toBeLessThan(0.02);
 
