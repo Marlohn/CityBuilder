@@ -41,24 +41,8 @@ jobs:
           test("galeria visual da POC", async ({ page }) => {
             const errors: string[] = [];
             page.on("pageerror", (e) => errors.push(e.message));
-            await page.goto("/?seed=poc-gallery&modo=livre&visual=poc");
+            await page.goto("/?seed=poc-gallery&modo=livre&visual=poc&poc=galeria");
             await page.waitForFunction(() => window.__city?.store.get().ready, null, { timeout: 120_000 });
-            await page.evaluate(() => {
-              const c = window.__city.client;
-              c.command({ type: "buildRoad", kind: "avenue", x0: 47, y0: 128, x1: 106, y1: 128 });
-              for (const x of [60, 75, 90, 105])
-                c.command({ type: "buildRoad", kind: "street", x0: x, y0: 110, x1: x, y1: 146 });
-              c.command({ type: "placeService", service: "poco", x: 50, y: 129 });
-              c.command({ type: "placeService", service: "subestacao", x: 53, y: 129 });
-              c.command({ type: "placeService", service: "escola", x: 61, y: 129 });
-              c.command({ type: "placeService", service: "ubs", x: 76, y: 129 });
-              c.command({ type: "placeService", service: "hospital", x: 91, y: 129 });
-              c.command({ type: "zone", zone: "residential_low", x0: 61, y0: 113, x1: 73, y1: 127 });
-              c.command({ type: "zone", zone: "residential_high", x0: 76, y0: 113, x1: 88, y1: 127 });
-              c.command({ type: "zone", zone: "commercial", x0: 91, y0: 113, x1: 103, y1: 127 });
-              c.send({ type: "advance", ticks: 6200 });
-              window.__city.renderer.lookAt(79, 128);
-            });
             await page.waitForFunction(() => window.__city.buildings().length >= 5, null, { timeout: 120_000 });
             await page.waitForTimeout(1500);
             const shot = await page.screenshot({ path: "test-results/poc-gallery.png" });
