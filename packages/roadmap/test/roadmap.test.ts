@@ -149,8 +149,13 @@ describe("fórmula e regras", () => {
   });
 
   it("dependência auxiliar aberta bloqueia item de roadmap", () => {
-    const blocker = item({}, [], 900);
-    blocker.title = "decisão auxiliar";
+    const blocker: IssueInput = {
+      number: 900,
+      title: "decisão auxiliar",
+      body: "aguardando decisão do dono",
+      labels: ["do-dono"],
+      state: "open",
+    };
     const dependent = item({ Dependências: "#900", Alcance: "5000" }, ["roadmap"], 901);
 
     const blocked = computeRoadmap([dependent, blocker], signals, cfg);
