@@ -198,15 +198,15 @@ Tudo testável sem abrir o navegador, sempre que possível.
 | Performance | Contadores de trabalho (fixos) e ticks por segundo (informativo). |
 | Tela | O Playwright abre o jogo, carrega um cenário e compara com o print aprovado. |
 
-- Um comando só: `npm run check` roda tudo e responde em texto curto o que passou e o que quebrou.
+- `npm run check` roda tipos, estilo, camadas e a suíte Vitest normal. Testes lentos e de navegador são separados e usados quando o risco da mudança justificar.
 - Toda falha mostra a semente e o comando exato pra reproduzir.
 
 ## 9. Placar de realismo (ideia nova)
 
 - Um relatório automático compara os números da cidade com a vida real: expectativa de vida, mortalidade infantil, filhos por mulher, desemprego, tempo de deslocamento.
 - As faixas aceitáveis vêm de fontes reais (IBGE) e ficam na config.
-- Número fora da faixa vira um alerta. Exemplo: "expectativa de vida na cidade = 45 anos, a faixa real é 70 a 82". O alerta vira uma Issue pro Designer.
-- É assim que "o jogo gera o roadmap" de um jeito que faz sentido: o jogo aponta o problema com dados, e o agente decide a prioridade.
+- Número fora da faixa vira um alerta e pode virar uma issue de correção/priorização.
+- É assim que o jogo alimenta o roadmap com dados; a prioridade combina fórmula e julgamento de produto.
 
 ## 10. Logs
 
@@ -313,7 +313,7 @@ Observação: os sinais do roadmap começam a ser coletados antes da fase 6. Os 
 - `npm run roadmap:signals` roda 3 cidades do prefeito automático e 1 cenário (roadmap/config.yaml) e grava `roadmap/signals.json` com as métricas médias e os sinais.
 - A comparação com cidades reais usa `data/reference/cidade-real.yaml` (cada linha com fonte e link).
 - O alcance é sempre **medido** na cidade de teste, nunca projetado. Um serviço que só faz falta em cidades maiores entra com "só fonte" (confiança 80%).
-- `npm run roadmap:build` lê as issues (API do GitHub ou arquivo), aplica a fórmula e as regras e gera `ROADMAP.md`, incluindo "Sinais sem item": a lista de candidatos para o Designer, já com fonte, métrica sugerida e nota provisória.
+- `npm run roadmap:build` lê as issues (API do GitHub ou arquivo), aplica a fórmula e as regras e gera `ROADMAP.md`, incluindo os sinais ainda sem item, com métrica sugerida e nota provisória.
 - `npm run roadmap:check` confere a métrica dos itens com a etiqueta `entregue`.
 - O workflow `.github/workflows/roadmap.yml` roda tudo toda segunda, a cada mudança nas issues e a cada push em `main`, e publica o resultado na issue "Roadmap (gerado automaticamente)".
 

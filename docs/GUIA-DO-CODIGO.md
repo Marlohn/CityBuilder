@@ -1,6 +1,6 @@
 # Guia do código (para IAs e pessoas que vão mexer no projeto)
 
-Este guia explica **onde fica cada coisa** e **como mudar sem quebrar**. As regras curtas estão em `AGENTS.md` (leia primeiro). Cada pacote tem também um `AGENTS.md` próprio com as regras daquele pedaço. O Hermes e outras ferramentas carregam esses arquivos sozinhos quando você entra na pasta.
+Este guia explica **onde fica cada coisa** e **como mudar sem quebrar**. As regras curtas estão em `AGENTS.md` (leia primeiro). Cada pacote tem também um `AGENTS.md` próprio com as regras daquele pedaço.
 
 Se algo aqui estiver diferente do código, **o código vale**. Nesse caso, corrija este guia no mesmo PR.
 
@@ -24,7 +24,7 @@ packages/
   web/              junta tudo no navegador: Worker com o motor + render + ui
 tests/
   unit/             testes rápidos que cruzam pacotes
-  acceptance/       testes de aceitação do QA (o Dev não pode mexer)
+  acceptance/       testes de aceitação e regressão entre pacotes
   slow/             coorte do IBGE e cidade de 50 mil (SLOW=1)
   e2e/              navegador de verdade (Playwright)
 tools/              scripts: check, calibração da demografia, geração de nomes
@@ -103,7 +103,7 @@ Toda receita termina igual: `npm run format`, depois `npm run check` até dar `T
 1. Coloque o valor no `config/<assunto>.yaml`, com a **fonte** num comentário logo acima. Sem fonte, escreva `PENDENTE:` e o porquê.
 2. Declare o campo em `packages/sim/src/config/schema.ts` (zod). Use os tipos prontos (`pos`, `nonneg`, `prob`, `intPos`).
 3. Use no código com `sim.config.<assunto>.<campo>`.
-4. Mudanças no schema precisam de aprovação do dono do projeto (é "formato").
+4. Mudanças no schema exigem atenção à compatibilidade e aos testes de config/save; não crie um gate humano extra por padrão.
 
 Atenção: nos overrides (cenários e testes), objetos são mesclados, mas **arrays e tabelas numéricas são trocados inteiros** (`config/load.ts`).
 
@@ -141,7 +141,7 @@ saem de cabeça. O caminho é:
 
 ### 3.3 Um serviço novo (ex.: creche, hospital)
 
-Serviço mexe em várias camadas. O Arquiteto deve quebrar em tarefas:
+Serviço mexe em várias camadas. Mantenha a mudança coerente entre elas:
 
 1. Prédio em `data/buildings.yaml` com `service` (e o valor novo no enum de `schema.ts`).
 2. Mercado de vagas em `markets/markets.ts` e quem procura vaga em `systems/matching.ts`.
@@ -179,7 +179,7 @@ Isso é o que alimenta o roadmap ("4.200 pessoas queriam X e não tinha"):
 
 ### 3.8 Um comando novo (algo que o jogador ou bot pode fazer)
 
-1. Formato em `packages/contract/src/commands.ts` (precisa de aprovação do dono).
+1. Formato em `packages/contract/src/commands.ts`; preserve compatibilidade e versionamento quando necessário.
 2. Regra em `packages/sim/src/commands/apply.ts`: devolva `ok: false` com um motivo em português quando não pode.
 3. Teste em `packages/sim/test/commands.test.ts`.
 4. Ferramenta na tela (`packages/web/src/tools.ts`), se o jogador puder usar.
@@ -310,7 +310,7 @@ Os gatilhos do bot ficam em `MayorOptions` (`packages/bots/src/mayor.ts`):
 
 - **Atualizar Playwright sem a imagem do CI:** o job de tela usa `mcr.microsoft.com/playwright:v1.63.0-noble`, com navegador e dependências prontos. Ao atualizar `@playwright/test`/`package-lock.json`, atualize também a imagem e a conferência de versão em `.github/workflows/ci.yml`. O comando e todos os testes de tela continuam iguais; não reinstale dependências via apt em cada execução.
 - **Esconder o erro com `| tail`:** `npm run check | tail` devolve sucesso mesmo quando falha. Use `set -o pipefail` antes.
-- **CI em duas partes:** Vitest e Playwright usam `--shard=1/2` e `--shard=2/2` em máquinas separadas. Nenhum arquivo é excluído. Os checks obrigatórios `npm run check` e `teste de tela (Playwright)` só ficam verdes quando todas as partes passam; falha, cancelamento ou parte pulada impedem o verde. Tipos, estilo, camadas, cenários/mutantes do Hermes e testes lentos continuam obrigatórios. Reversão: restaurar `.github/workflows/ci.yml` anterior, sem mudar a proteção da branch.
+- **CI proporcional ao risco:** `npm run check` cobre tipos, estilo, camadas e Vitest normal. Mudanças no núcleo da simulação/dados acionam `test:slow`; render/UI/web e integrações visuais acionam Playwright. Os nomes de quatro checks ainda preservam compatibilidade com o ruleset atual da `main`.
 - **Idade no aniversário:** quem faz aniversário hoje viveu `idade - 1` anos completos. Usar a idade nova zerou a mortalidade infantil.
 - **Ordem dos eventos:** registre a chegada antes de mover a família para a casa, senão o verificador acha alguém "surgindo do nada".
 - **Filhos acompanham os pais:** ao mudar um adulto de casa, veja os filhos menores (`people/actions.ts`).
