@@ -67,7 +67,6 @@ jobs:
               continue
             fi
 
-            ref_error=""
             if sha="$(gh api "repos/$REPO/git/ref/heads/$branch" --jq '.object.sha' 2>&1)"; then
               :
             elif [[ "$sha" == *"HTTP 404"* ]]; then
