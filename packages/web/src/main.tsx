@@ -110,7 +110,7 @@ renderer
   .loadAssets()
   .then(() => {
     pocVisual?.activate();
-    if (pocVisual) renderer.zoomBy(0.65);
+    if (pocVisual) renderer.zoomBy(0.48);
     let lastView = 0;
     renderer.start(() => {
       const p = tools.preview();
