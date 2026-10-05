@@ -37,33 +37,77 @@ function stableHash(value: number): number {
   return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
 }
 
-function styleMaterial(material: unknown, seen: Set<unknown>) {
+const facadePalette: readonly RGB[] = [
+  [0.94, 0.9, 0.78],
+  [0.93, 0.76, 0.72],
+  [0.73, 0.86, 0.82],
+  [0.74, 0.82, 0.9],
+  [0.92, 0.83, 0.64],
+  [0.85, 0.8, 0.9],
+];
+
+function stringHash(value: string) {
+  let h = 2166136261;
+  for (let i = 0; i < value.length; i++) h = Math.imul(h ^ value.charCodeAt(i), 16777619);
+  return h >>> 0;
+}
+
+function illustratedColor(original: Color3, accent: Color3): Color3 {
+  const max = Math.max(original.r, original.g, original.b);
+  const min = Math.min(original.r, original.g, original.b);
+  const luma = (original.r + original.g + original.b) / 3;
+  const saturation = max - min;
+
+  // Vidro azul/ciano é uma assinatura forte das referências.
+  if (original.b > original.r * 1.04 && original.b >= original.g * 0.95 && luma < 0.72)
+    return new Color3(0.29, 0.61, 0.73);
+
+  // Telhados, esquadrias e bases continuam escuros para segurar o contraste.
+  if (luma < 0.26) return new Color3(0.24, 0.28, 0.3);
+
+  // Concreto/reboco claro vira um branco quente, não cinza puro.
+  if (luma > 0.72 && saturation < 0.22) return new Color3(0.94, 0.93, 0.87);
+
+  // Cinzas médios viram a cor pastel da família do prédio.
+  if (saturation < 0.16) return Color3.Lerp(accent, new Color3(1, 1, 1), 0.2);
+
+  // Cores próprias do asset são mantidas, apenas suavizadas.
+  return Color3.Lerp(original, new Color3(1, 1, 1), 0.12);
+}
+
+function styleMaterial(material: unknown, seen: Set<unknown>, accent: Color3, recolor: boolean) {
   if (!material || seen.has(material)) return;
   seen.add(material);
 
   if (material instanceof MultiMaterial) {
-    for (const sub of material.subMaterials) styleMaterial(sub, seen);
+    for (const sub of material.subMaterials) styleMaterial(sub, seen, accent, recolor);
     return;
   }
   if (material instanceof StandardMaterial) {
-    material.specularColor = new Color3(0.015, 0.015, 0.015);
-    material.ambientColor = material.diffuseColor.scale(0.18);
+    if (recolor) material.diffuseColor = illustratedColor(material.diffuseColor, accent);
+    material.specularColor = new Color3(0.01, 0.01, 0.01);
+    material.ambientColor = material.diffuseColor.scale(0.2);
     return;
   }
   if (material instanceof PBRMaterial) {
+    if (recolor) material.albedoColor = illustratedColor(material.albedoColor, accent);
     material.metallic = 0;
-    material.roughness = 0.93;
-    material.environmentIntensity = 0.18;
+    material.roughness = 0.96;
+    material.environmentIntensity = 0.14;
   }
 }
 
 /**
- * Deixa os GLBs existentes com leitura mais próxima de uma ilustração:
- * superfícies foscas, sem brilho plástico e com a paleta original preservada.
+ * Deixa os GLBs existentes com leitura próxima de uma ilustração editorial:
+ * fachadas pastel, vidro ciano, telhados escuros e superfícies foscas.
  */
 export function stylizeIllustratedMeshes(meshes: AbstractMesh[]) {
   const seen = new Set<unknown>();
-  for (const mesh of meshes) styleMaterial(mesh.material, seen);
+  for (const mesh of meshes) {
+    const accent = c(facadePalette[stringHash(mesh.name) % facadePalette.length]!);
+    const recolor = mesh.name.startsWith("suburban/") || mesh.name.startsWith("commercial/");
+    styleMaterial(mesh.material, seen, accent, recolor);
+  }
 }
 
 /**
