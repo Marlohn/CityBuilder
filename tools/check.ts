@@ -11,7 +11,12 @@ interface Step {
 const STEPS: Step[] = [
   { id: "types", label: "Tipos (TypeScript)", cmd: "npx", args: ["tsc", "-p", "tsconfig.json", "--noEmit"] },
   { id: "lint", label: "Estilo (Biome)", cmd: "npx", args: ["biome", "check", "."] },
-  { id: "layers", label: "Camadas (dependency-cruiser)", cmd: "npx", args: ["depcruise", "packages", "--config", ".dependency-cruiser.cjs", "--output-type", "err"] },
+  {
+    id: "layers",
+    label: "Camadas (dependency-cruiser)",
+    cmd: "npx",
+    args: ["depcruise", "packages", "--config", ".dependency-cruiser.cjs", "--output-type", "err"],
+  },
   { id: "tests", label: "Testes (Vitest)", cmd: "npx", args: ["vitest", "run", "--reporter=dot"] },
 ];
 
@@ -41,14 +46,17 @@ process.stdout.write(`\nQUEBROU: ${failed.map((f) => f.step.id).join(", ")}\n`);
 for (const f of failed) {
   process.stdout.write(`\n--- ${f.step.label} ---\n${f.tail}\n`);
   process.stdout.write(`Para rodar só esta etapa: npm run check -- --only=${f.step.id}\n`);
-  if (f.step.id === "lint") process.stdout.write("Muitos erros de estilo se corrigem com: npm run format\n");
+  if (f.step.id === "lint")
+    process.stdout.write("Muitos erros de estilo se corrigem com: npm run format\n");
 }
 process.exit(1);
 
 function relevantLines(out: string): string {
   const lines = out.split("\n").filter((l) => l.trim() !== "");
   const important = lines.filter((l) =>
-    /error|erro|fail|✘|×|FAIL|expected|received|AssertionError|at .*\.(ts|tsx):\d+|\.tsx?:\d+|semente|seed|reproduzir/i.test(l),
+    /error|erro|fail|✘|×|FAIL|expected|received|AssertionError|at .*\.(ts|tsx):\d+|\.tsx?:\d+|semente|seed|reproduzir/i.test(
+      l,
+    ),
   );
   return (important.length > 0 ? important : lines).slice(0, 60).join("\n");
 }
