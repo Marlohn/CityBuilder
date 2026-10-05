@@ -165,7 +165,7 @@ jobs:
           SH
           chmod +x "$ROOT/INICIAR-POC.sh"
           tar             --exclude='./.git'             --exclude='./node_modules'             --exclude='./dist'             --exclude='./out'             --exclude='./test-results'             --exclude='./playwright-report'             --exclude='./.github/workflows/poc-preview.yml'             -cf - . | tar -xf - -C "$ROOT/fonte"
-          (cd out/poc-package && zip -qr ../CityBuilder-POC-visual.zip CityBuilder-POC)
+          (cd out/poc-package && python3 -m zipfile -c ../CityBuilder-POC-visual.zip CityBuilder-POC)
       - uses: actions/upload-artifact@v4
         with:
           name: CityBuilder-POC-visual
