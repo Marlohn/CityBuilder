@@ -19,6 +19,19 @@ import { OUTSIDE_JOB, PSTATUS, ROLE, SEX } from "../people/population";
 import type { System } from "../sim";
 import { divorce, giveBirth, maybeLeaveParents, tryMarry } from "./family";
 
+/** Potência com expoente inteiro usando só multiplicações determinísticas no motor. */
+function powInt(base: number, exponent: number): number {
+  let result = 1;
+  let factor = base;
+  let n = exponent;
+  while (n > 0) {
+    if (n % 2 === 1) result *= factor;
+    n = Math.floor(n / 2);
+    if (n > 0) factor *= factor;
+  }
+  return result;
+}
+
 export class LifecycleSystem implements System {
   readonly name = "lifecycle";
   private hospitalDischargeCursor = 0;
@@ -194,7 +207,7 @@ export class LifecycleSystem implements System {
     // então 5,3 dias ocupam 5,3 / 365 do dia/ano comprimido da simulação.
     const meanStayTicks = (city.config.health.hospitalAvgLengthOfStayDays / 365) * city.sim.clock.ticksPerDay;
     const chancePerTick = Math.min(1, 1 / meanStayTicks);
-    const chancePerVisit = 1 - (1 - chancePerTick) ** ticksBetweenVisits;
+    const chancePerVisit = 1 - powInt(1 - chancePerTick, ticksBetweenVisits);
 
     for (let k = 0; k < count; k++) {
       if (city.hospitalized.size === 0) {
