@@ -75,6 +75,8 @@ Ajuste a prioridade quando dependências ou o contexto atual do repositório jus
 
 ## Fluxo de pull requests
 
+A `main` usa checks obrigatórios em modo estrito. Antes do merge, a branch da PR precisa conter o HEAD atual da `main`; CI verde de um merge sintético antigo não satisfaz essa regra. Se a API de merge responder `405` dizendo que os checks obrigatórios estão “expected” apesar de um CI verde, confira se a base avançou, sincronize a branch com a `main` atual e valide novamente o novo HEAD.
+
 Ao revisar uma PR:
 
 1. Leia a issue/tarefa relacionada e as regras do repositório.
