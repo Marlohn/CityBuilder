@@ -167,7 +167,7 @@ export class LifecycleSystem implements System {
     // independentes: ter atendimento primário não impede precisar de internação.
     if (
       pop.hospital[p]! < 0 &&
-      city.rng.hospital.chance(config.health.hospitalAdmissionRatePerYear / 365)
+      city.rng.hospital.chance(config.health.hospitalAdmissionRatePerYear)
     )
       city.seekHospital.add(p);
 
