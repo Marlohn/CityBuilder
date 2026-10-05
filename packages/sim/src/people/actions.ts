@@ -280,6 +280,8 @@ export function registerHospital(city: City, p: number, hospital: number) {
   unregisterHospital(city, p);
   pop.hospital[p] = hospital;
   city.seekClinic.delete(p);
+  city.seekHospital.delete(p);
+  city.hospitalized.add(p);
   sim.buildings.patients[hospital]!++;
   markets.hospitals.update(hospital);
   // `patients` continua sendo um contador só (UBS e hospital dividem o mesmo campo). A separação
@@ -296,6 +298,7 @@ export function unregisterHospital(city: City, p: number) {
   // `patients` continua sendo um contador só (UBS e hospital dividem o mesmo campo). A separação
   // é por tipo de prédio, feita no filtro do mercado: só hospital entra no mercado de leito.
   pop.hospital[p] = -1;
+  city.hospitalized.delete(p);
   if (pop.isAlive(p)) city.seekClinic.add(p);
 }
 
@@ -359,6 +362,8 @@ function removeFromCity(city: City, p: number, status: number) {
   city.seekJob.delete(p);
   city.seekSchool.delete(p);
   city.seekClinic.delete(p);
+  city.seekHospital.delete(p);
+  city.hospitalized.delete(p);
   city.singles.delete(p);
 }
 
@@ -373,6 +378,9 @@ export function handleOrphans(city: City, h: number) {
   const adult = members.some((m) => city.age(m) >= 18);
   if (adult) return;
   for (const child of members) {
+    // A lista é uma foto: casar ou mudar de família dentro do laço tira gente da `h`.
+    // Quem já saiu não pode ser tratado de novo, senão a mesma pessoa pode ser removida duas vezes.
+    if (!pop.isAlive(child) || pop.household[child]! !== h) continue;
     const guardianHh = findRelativeHousehold(city, child);
     if (guardianHh >= 0 && guardianHh !== h) {
       joinHousehold(city, child, guardianHh);
