@@ -16,7 +16,7 @@ jobs:
           cache: npm
       - run: npm ci
       - name: Formatar a POC no workspace
-        run: npm run format
+        run: npx biome format --write packages/web/src/pocVisual.ts packages/web/src/main.tsx packages/web/src/style.css
       - name: Conferir tipos e build
         run: |
           npm run check -- --only=types
