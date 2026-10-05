@@ -66,6 +66,8 @@ jobs:
               continue
             fi
 
+            # PR fechada + tip idêntico prova que a branch não recebeu trabalho novo desde o fechamento.
+            # O histórico continua rastreável pela própria PR fechada; qualquer commit posterior impede a remoção.
             closed_tip="$(
               gh api --method GET "repos/$REPO/pulls"                 -f state=closed -f head="$OWNER:$branch" -f per_page=100                 --jq ".[] | select(.head.sha == \"$sha\") | .number"                 | head -n 1
             )"
