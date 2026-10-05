@@ -53,6 +53,8 @@ Cada pacote tem um `AGENTS.md` com as regras dele (ex.: `packages/sim/AGENTS.md`
 | `npm run dev` | Abre o jogo no navegador. Agentes de produto também experimentam a interface; o relatório sem tela complementa essa observação. |
 | `npm run factory:browser -- act '<ações JSON>' baseline` | Ações públicas e evidência da partida no ciclo de produto (navegador iniciado pelo worker). |
 
+No GitHub, mudanças exclusivamente operacionais/documentais conhecidas (skill/docs, sincronizador + teste dele e higiene de branches) mantêm os mesmos checks obrigatórios, mas dispensam Vitest completo, simulações lentas e Playwright. Qualquer código de jogo/config/dado/teste comum — e qualquer alteração no próprio `ci.yml` — executa a suíte completa.
+
 ## Fluxo de trabalho (GitHub)
 
 **Missões do ciclo de produto aprovado em 03/10:** siga `hermes/FACTORY.md`. O executor direto implementa um comportamento completo; critérios prévios, CI e avaliação independente continuam obrigatórios. Os passos abaixo continuam para os cartões antigos.
