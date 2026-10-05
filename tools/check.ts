@@ -1,4 +1,4 @@
-/** `npm run check`: tipos, estilo, camadas e suíte Vitest normal. */
+/** `npm run check`: tipos, estilo, camadas e suíte Vitest normal. Para na primeira falha. */
 import { spawnSync } from "node:child_process";
 
 interface Step {
@@ -20,42 +20,39 @@ const STEPS: Step[] = [
   { id: "tests", label: "Testes (Vitest)", cmd: "npx", args: ["vitest", "run", "--reporter=dot"] },
 ];
 
-const only = process.argv.find((a) => a.startsWith("--only="))?.split("=")[1];
-const results: { step: Step; ok: boolean; tail: string }[] = [];
+const only = process.argv.find((arg) => arg.startsWith("--only="))?.split("=")[1];
 
 for (const step of STEPS) {
   if (only && step.id !== only) continue;
+
   const started = Date.now();
-  const r = spawnSync(step.cmd, step.args, {
+  const result = spawnSync(step.cmd, step.args, {
     encoding: "utf8",
     env: { ...process.env, FORCE_COLOR: "0" },
     maxBuffer: 64 * 1024 * 1024,
   });
-  const out = `${r.stdout ?? ""}\n${r.stderr ?? ""}`;
-  const ok = r.status === 0;
-  results.push({ step, ok, tail: ok ? "" : relevantLines(out) });
+  const output = `${result.stdout ?? ""}\n${result.stderr ?? ""}`;
+  const ok = result.status === 0;
   process.stdout.write(`${ok ? "✔" : "✘"} ${step.label} (${((Date.now() - started) / 1000).toFixed(1)}s)\n`);
-}
 
-const failed = results.filter((r) => !r.ok);
-if (failed.length === 0) {
-  process.stdout.write("\nTUDO OK\n");
-  process.exit(0);
-}
-process.stdout.write(`\nQUEBROU: ${failed.map((f) => f.step.id).join(", ")}\n`);
-for (const f of failed) {
-  process.stdout.write(`\n--- ${f.step.label} ---\n${f.tail}\n`);
-  process.stdout.write(`Para rodar só esta etapa: npm run check -- --only=${f.step.id}\n`);
-  if (f.step.id === "lint")
+  if (ok) continue;
+
+  process.stdout.write(`\nQUEBROU: ${step.id}\n`);
+  process.stdout.write(`\n--- ${step.label} ---\n${relevantLines(output)}\n`);
+  process.stdout.write(`Para rodar só esta etapa: npm run check -- --only=${step.id}\n`);
+  if (step.id === "lint") {
     process.stdout.write("Muitos erros de estilo se corrigem com: npm run format\n");
+  }
+  process.exit(1);
 }
-process.exit(1);
 
-function relevantLines(out: string): string {
-  const lines = out.split("\n").filter((l) => l.trim() !== "");
-  const important = lines.filter((l) =>
+process.stdout.write("\nTUDO OK\n");
+
+function relevantLines(output: string): string {
+  const lines = output.split("\n").filter((line) => line.trim() !== "");
+  const important = lines.filter((line) =>
     /error|erro|fail|✘|×|FAIL|expected|received|AssertionError|at .*\.(ts|tsx):\d+|\.tsx?:\d+|semente|seed|reproduzir/i.test(
-      l,
+      line,
     ),
   );
   return (important.length > 0 ? important : lines).slice(0, 60).join("\n");

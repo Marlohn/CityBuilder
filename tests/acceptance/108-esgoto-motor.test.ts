@@ -28,7 +28,7 @@
  * - `hasSewage` ainda nao existe na main: o acesso vai por `sewageOf` (cast nominal, sem
  *   `as any`), que falha em execucao com `undefined[b]` ate a #108 criar o array de verdade.
  */
-import { BSTATE, type Game } from "@city/sim";
+import { type Game } from "@city/sim";
 import { describe, expect, it } from "vitest";
 import { createTestGame } from "../helpers";
 

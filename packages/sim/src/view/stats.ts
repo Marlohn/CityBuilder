@@ -24,16 +24,16 @@ function bar(v: number, scale: number): number {
 /** Custeio do ano: gasto que a cidade repete todo ano (chave ausente conta como 0). */
 function operatingCost(expensesByCategory: Record<string, number>): number {
   return (
-    (expensesByCategory["educacao"] ?? 0) +
-    (expensesByCategory["saude"] ?? 0) +
-    (expensesByCategory["agua_e_luz"] ?? 0) +
-    (expensesByCategory["manutencao_vias"] ?? 0)
+    (expensesByCategory.educacao ?? 0) +
+    (expensesByCategory.saude ?? 0) +
+    (expensesByCategory.agua_e_luz ?? 0) +
+    (expensesByCategory.manutencao_vias ?? 0)
   );
 }
 
 /** Investimento do ano: só a obra, que acontece uma vez (chave ausente conta como 0). */
 function investmentCost(expensesByCategory: Record<string, number>): number {
-  return (expensesByCategory["obras_vias"] ?? 0) + (expensesByCategory["obras_servicos"] ?? 0);
+  return (expensesByCategory.obras_vias ?? 0) + (expensesByCategory.obras_servicos ?? 0);
 }
 
 /** Soma dos valores de um breakdown por categoria. */

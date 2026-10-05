@@ -21,7 +21,7 @@
  */
 import { readFileSync } from "node:fs";
 import { createRun, loadConfigAndData, loadScenario, runGame } from "@city/cli";
-import { BSTATE, checkInvariants, currentCensus, type Game, joinHousehold, newPerson } from "@city/sim";
+import { BSTATE, checkInvariants, type Game, joinHousehold, newPerson } from "@city/sim";
 import { describe, expect, it } from "vitest";
 import { EV } from "../../packages/sim/src/people/events";
 
