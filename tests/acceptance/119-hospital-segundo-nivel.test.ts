@@ -179,65 +179,154 @@ describe("issue #119: hospital é o segundo nível de saúde", () => {
         `sem ele ninguém registra leito de hospital`,
     ).not.toBe("undefined");
     if (pop.hospital === undefined) return;
+    const n = contaComLeito(game, pop.hospital);
+    expect(
+      n,
+      `era esperado 0 pessoas com leito de hospital (a UBS perto tem vaga para todo mundo), ` +
+        `mas ${n} pessoas estão com pop.hospital >= 0: quem tem UBS perto está gastando leito à toa`,
+    ).toBe(0);
+  });
+
+  it("sem UBS a menos de 2 km, o leito do hospital a até 15 km ainda registra", { timeout: 300000 }, () => {
+    const game = cidadeSemUbs(true);
+    const b = game.sim.buildings;
+    let ubs = -1;
+    for (let i = 0; i < b.count; i++) {
+      if (b.typeOf(i).id !== "ubs") continue;
+      ubs = i;
+      break;
+    }
+    expect(
+      ubs,
+      `era esperado 1 prédio ubs no cenário bairro-basico (placeService ubs em x=73, y=141), ` +
+        `mas não há nenhum: sem UBS o teste não prova nada`,
+    ).toBeGreaterThanOrEqual(0);
+    if (ubs < 0) return;
+    expect(
+      b.state[ubs],
+      `a UBS ${ubs} deveria estar demolida (state ${BSTATE.demolished}), mas está com state ` +
+        `${b.state[ubs]}: sem demolir a UBS o teste não prova nada`,
+    ).toBe(BSTATE.demolished);
+    expect(
+      game.sim.config.health.maxDistanceMeters,
+      `o override do cenário deveria fixar health.maxDistanceMeters em 200 m, mas veio ` +
+        `${game.sim.config.health.maxDistanceMeters} m: sem o alcance curto o teste não prova nada`,
+    ).toBe(200);
+    const pop = game.city.pop as PopWithHospital & typeof game.city.pop;
+    expect(
+      typeof pop.hospital,
+      `o motor ainda não tem o campo pop.hospital ` +
+        `(packages/sim/src/people/population.ts, preenchido em people/actions.ts): ` +
+        `sem ele o hospital não registra ninguém`,
+    ).not.toBe("undefined");
+    if (pop.hospital === undefined) return;
+    const n = contaComLeito(game, pop.hospital);
+    expect(
+      n,
+      `era esperado mais de 0 pessoas com leito (a UBS sumiu do alcance e o hospital alcança ` +
+        `15 km), mas veio ${n}: o alcance maior do hospital não registrou ninguém`,
+    ).toBeGreaterThan(0);
+    const hospitais = prediosAtivos(game, "hospital");
+    expect(
+      hospitais.length,
+      `era esperado pelo menos 1 hospital ativo (quatro hospitais em x=76, 84, 92 e 100 (y=141)), ` +
+        `mas há ${hospitais.length}: sem hospital o teste não prova nada`,
+    ).toBeGreaterThanOrEqual(1);
+    if (hospitais.length === 0) return;
+    const totalDeLeitos = hospitais.reduce((soma, h) => soma + game.sim.buildings.patientsCapacity(h), 0);
+    expect(
+      n,
+      `era esperado no máximo ${totalDeLeitos} pessoas com leito (a soma de patientsCapacity de ` +
+        `todos os hospitais ativos), mas veio ${n}`,
+    ).toBeLessThanOrEqual(totalDeLeitos);
+    const hospital = hospitais[0]!;
+    // Casa de alguém vivo (prédio da família); senão, qualquer prédio residencial ativo.
+    // A conta usa world.manhattanMeters, que já multiplica por 16 m por quadradinho.
+    let casa = -1;
+    const city = game.city;
+    for (let p = 0; p < city.pop.count; p++) {
+      if (city.pop.status[p] !== 1) continue; // 1 = vivo (PSTATUS.alive)
+      const lar = city.homeBuilding(p);
+      if (lar >= 0) {
+        casa = lar;
+        break;
+      }
+    }
+    if (casa < 0) {
+      const bs = game.sim.buildings;
+      for (let i = 0; i < bs.count; i++) {
+        if (!bs.isActive(i)) continue;
+        if (bs.homesCapacity(i) > 0) {
+          casa = i;
+          break;
+        }
+      }
+    }
+    expect(
+      casa,
+      `ninguém na cidade tem casa e não há prédio residencial ativo: sem casa o teste não prova nada`,
+    ).toBeGreaterThanOrEqual(0);
+    if (casa < 0) return;
+    const dist = game.sim.world.manhattanMeters(
+      game.sim.buildings.access[casa]!,
+      game.sim.buildings.access[hospital]!,
+    );
+    expect(
+      dist,
+      `a distância casa-hospital é ${dist} m e deveria ser MAIOR que 200 m ` +
+        `(maxDistanceMeters do override): se coubesse em 200 m, teria sido a UBS que registrou`,
+    ).toBeGreaterThan(200);
+    expect(
+      dist,
+      `a distância casa-hospital é ${dist} m e deveria ser no máximo 15000 m ` +
+        `(hospitalMaxDistanceMeters da config): prova que foi o alcance maior do hospital que registrou`,
+    ).toBeLessThanOrEqual(15000);
+    expect(
+      checkInvariants(game.city),
+      `regras que nunca podem quebrar foram violadas na cidade com hospital`,
+    ).toEqual([]);
+  });
+
+  it("o censo conta a fila real de internação e amostra seus locais", { timeout: 300000 }, () => {
+    const game = cidadeSemUbs(true);
+    const census = currentCensus(game) as unknown as CensusWithHospital;
     const waiting = game.city.seekHospital.size;
+
     expect(
       typeof census.withoutHospital,
       `o censo ainda não conta withoutHospital (packages/sim/src/people/census.ts): ` +
         `sem esse número o roadmap não sabe onde falta hospital`,
     ).toBe("number");
     if (typeof census.withoutHospital !== "number") return;
+
     expect(
       census.withoutHospital,
-      `depois da #239, sem hospital é a fila seekHospital: esperado ${waiting}, ` +
+      `depois da #241, sem hospital é a fila seekHospital: esperado ${waiting}, ` +
         `mas o censo trouxe ${census.withoutHospital}`,
     ).toBe(waiting);
 
     const amostra = census.samples.hospital;
-    expect(
-      Array.isArray(amostra),
-      `samples.hospital deveria ser um array de locais da fila de internação, ` +
-        `mas veio ${String(amostra)}`,
-    ).toBe(true);
+    expect(Array.isArray(amostra), "samples.hospital deveria ser um array").toBe(true);
     if (!Array.isArray(amostra)) return;
-    expect(
-      amostra.length,
-      `samples.hospital tem ${amostra.length} itens para uma fila de ${waiting}: ` +
-        `a amostra não pode ter mais pessoas que a fila nem passar do limite de 200`,
-    ).toBeLessThanOrEqual(Math.min(200, waiting));
+    expect(amostra.length).toBeLessThanOrEqual(Math.min(200, waiting));
+
     const total = game.sim.world.width * game.sim.world.height;
     for (const q of amostra) {
-      expect(
-        q,
-        `samples.hospital tem o local ${q}, fora do mapa (válido de 0 a ${total - 1} ` +
-          `num mapa de ${game.sim.world.width}x${game.sim.world.height})`,
-      ).toBeGreaterThanOrEqual(0);
-      expect(
-        q,
-        `samples.hospital tem o local ${q}, fora do mapa (válido de 0 a ${total - 1} ` +
-          `num mapa de ${game.sim.world.width}x${game.sim.world.height})`,
-      ).toBeLessThan(total);
+      expect(q).toBeGreaterThanOrEqual(0);
+      expect(q).toBeLessThan(total);
     }
 
-    // Segunda cidade igual, SEM nenhum hospital: o censo continua seguindo a fila real,
-    // que pode ser menor que a população porque internação é um episódio, não cadastro vitalício.
     const game2 = cidadeSemUbs(false);
     const census2 = currentCensus(game2) as unknown as CensusWithHospital;
     const waiting2 = game2.city.seekHospital.size;
-    expect(
-      typeof census2.withoutHospital,
-      `o censo ainda não conta withoutHospital (packages/sim/src/people/census.ts)`,
-    ).toBe("number");
+    expect(typeof census2.withoutHospital).toBe("number");
     if (typeof census2.withoutHospital !== "number") return;
-    expect(
-      census2.withoutHospital,
-      `sem hospital, withoutHospital ainda deve ser a fila seekHospital (${waiting2}), ` +
-        `não a população inteira (${census2.population})`,
-    ).toBe(waiting2);
+    expect(census2.withoutHospital).toBe(waiting2);
     const amostra2 = census2.samples.hospital;
     expect(Array.isArray(amostra2), "samples.hospital deveria continuar sendo um array").toBe(true);
-    if (Array.isArray(amostra2))
+    if (Array.isArray(amostra2)) {
       expect(amostra2.length).toBeLessThanOrEqual(Math.min(200, waiting2));
-
+    }
   });
 
   it("quem tem leito de hospital morre menos do que quem não tem", { timeout: 300000 }, () => {
