@@ -3,6 +3,7 @@
  *
  * A taxa hospitalAdmissionRatePerYear é sorteada uma vez por aniversário. Se uma pessoa ficou
  * na fila no ciclo anterior e o novo sorteio é negativo, o pedido antigo precisa desaparecer.
+ * A semente é fixa para congelar esse sorteio negativo sem usar relógio nem Math.random.
  */
 import { loadConfigAndData } from "@city/cli";
 import { createGame, newPerson } from "@city/sim";
