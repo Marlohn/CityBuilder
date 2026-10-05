@@ -25,15 +25,6 @@ jobs:
       - run: npm ci
       - name: Formatar a POC
         run: npx biome format --write packages/web/src/pocVisual.ts packages/web/src/main.tsx packages/web/src/style.css
-      - name: Salvar formatação na branch
-        run: |
-          if ! git diff --quiet; then
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add packages/web/src/pocVisual.ts packages/web/src/main.tsx packages/web/src/style.css
-            git commit -m "style: format refined visual POC"
-            git push origin HEAD:${{ github.head_ref }}
-          fi
       - name: Montar cenário visual temporário
         shell: bash
         run: |
