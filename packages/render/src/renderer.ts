@@ -117,7 +117,7 @@ export class CityRenderer {
     this.lib = new ModelLibrary(this.scene, opts.modelsBaseUrl);
     this.ground = new GroundLayer(this.scene, this.illustrated);
     this.roads = new RoadLayer(this.lib);
-    this.buildingLayer = new BuildingLayer(this.lib, opts.buildingVisuals, opts.tileMeters);
+    this.buildingLayer = new BuildingLayer(this.lib, opts.buildingVisuals, opts.tileMeters, this.illustrated ? 0.82 : 0.92);
     this.trees = new TreeLayer(this.lib);
     this.vehicles = new VehicleLayer(this.lib, opts.tileMeters);
     if (this.illustrated) this.dressing = new IllustratedLotLayer(this.scene);
