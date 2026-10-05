@@ -208,6 +208,24 @@ describe("sinais", () => {
     expect(merged[0]!.seen).toBe(2);
   });
 
+  it("funde comparação e realismo quando a associação do tema é explícita", () => {
+    const merged = mergeRuns([
+      [
+        { ...sig("comparacao:faculdade", 50), source: "comparacao" },
+        {
+          ...sig("realismo:higherEducation", 300),
+          source: "realismo",
+          category: "realismo",
+          evidence: "dataAndSource",
+          metric: "realism.higherEducation entre 15 e 45",
+        },
+      ],
+    ]);
+    expect(merged.map((s) => s.id)).toEqual(["realismo:higherEducation"]);
+    expect(merged[0]!.reach).toBe(300);
+    expect(merged[0]!.evidence).toBe("dataAndSource");
+  });
+
   it("mortalidade infantil usa a amostra agregada, não outlier de uma corrida", () => {
     type Sample = { births: number; infantDeaths: number; population: number };
     type AggregateFns = {
