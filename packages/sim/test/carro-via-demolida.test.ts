@@ -49,12 +49,13 @@ describe("carro em via demolida", () => {
     // Espera um carro chegar ao trabalho e ficar na garagem de um prédio.
     let v = -1;
     for (let t = 0; t < sim.clock.ticksPerDay * 6 && v < 0; t++) {
-      v = [...Array(veh.count).keys()].find(
-        (x) =>
-          veh.state[x] === VSTATE.moving &&
-          veh.destBuilding[x]! >= 0 &&
-          bs.typeOf(veh.destBuilding[x]!).jobs > 0,
-      )!;
+      v =
+        [...Array(veh.count).keys()].find(
+          (x) =>
+            veh.state[x] === VSTATE.moving &&
+            veh.destBuilding[x]! >= 0 &&
+            bs.typeOf(veh.destBuilding[x]!).jobs > 0,
+        ) ?? -1;
       if (v < 0) {
         sim.step(1);
         sim.drainResults();
