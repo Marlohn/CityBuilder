@@ -8,6 +8,7 @@ import { App, Store } from "@city/ui";
 import { createRoot } from "react-dom/client";
 import { configTexts, dataTexts } from "./assets";
 import { WorkerClient } from "./client";
+import { IsometricPocVisual } from "./pocVisual";
 import { ToolController, toolDefs } from "./tools";
 
 const params = new URLSearchParams(location.search);
@@ -25,6 +26,14 @@ const renderer = new CityRenderer(canvas, {
   buildingVisuals: data.buildings.map((b) => ({ id: b.id, models: b.models, floors: b.floors })),
   tileMeters: config.world.tileMeters,
 });
+// A branch da POC nasce com a nova direção ligada. ?visual=legacy permite comparação imediata.
+const pocVisual =
+  params.get("visual") === "legacy"
+    ? null
+    : new IsometricPocVisual(
+        renderer.scene,
+        data.buildings.map((b) => ({ id: b.id, floors: b.floors, zone: b.zone, service: b.service })),
+      );
 
 let buildings: BuildingView[] = [];
 let lastMap: MapView | null = null;
@@ -67,15 +76,19 @@ client.onFrame = (f) => {
   if (f.map) {
     lastMap = f.map;
     renderer.setMap(f.map);
+    pocVisual?.setMap(f.map);
   }
   if (f.buildings) {
     indexBuildings(f.buildings);
     renderer.setBuildings(f.buildings);
+    pocVisual?.setBuildings(f.buildings);
     const sel = store.get().selectedBuilding;
     if (sel) store.set({ selectedBuilding: f.buildings.find((b) => b.id === sel.id) ?? null });
   }
   renderer.setVehicles(f.vehicles);
+  pocVisual?.setVehicles(f.vehicles);
   renderer.setTimeOfDay(f.stats.minuteOfDay);
+  pocVisual?.setTimeOfDay(f.stats.minuteOfDay);
   store.set({ stats: f.stats });
   store.pushResults(f.commandResults);
 };
@@ -92,6 +105,7 @@ createRoot(document.getElementById("ui")!).render(
 renderer
   .loadAssets()
   .then(() => {
+    pocVisual?.activate();
     let lastView = 0;
     renderer.start(() => {
       const p = tools.preview();
