@@ -66,7 +66,8 @@ function illustratedColor(original: Color3, accent: Color3): Color3 {
   if (luma < 0.26) return new Color3(0.24, 0.28, 0.3);
 
   // Concreto/reboco claro vira um branco quente, não cinza puro.
-  if (luma > 0.72 && saturation < 0.22) return new Color3(0.94, 0.93, 0.87);
+  if (luma > 0.72 && saturation < 0.22)
+    return Color3.Lerp(accent, new Color3(0.98, 0.97, 0.93), 0.55);
 
   // Cinzas médios viram a cor pastel da família do prédio.
   if (saturation < 0.16) return Color3.Lerp(accent, new Color3(1, 1, 1), 0.2);
