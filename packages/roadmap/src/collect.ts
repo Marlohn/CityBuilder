@@ -6,6 +6,7 @@ import type { Game } from "@city/sim";
 import { parseReference, parseRoadmapConfig, type RoadmapConfig } from "./config";
 import {
   aggregateInfantMortalitySignal,
+  aggregateInfantMortalityValue,
   averageMetrics,
   mergeRuns,
   metricsOf,
@@ -68,15 +69,19 @@ export function collectSignals(
   ).filter((s) => s.id !== "realismo:infantMortality");
   const infantRange = config.realism.items.find((item) => item.id === "infantMortality");
   if (infantRange) {
+    const infantSamples = games.map((g, i) => {
+      const w = g.game.demo.window();
+      return {
+        births: w.births,
+        infantDeaths: w.infantDeaths,
+        population: gameMetrics[i]?.population ?? 0,
+      };
+    });
+    const infantValue = aggregateInfantMortalityValue(infantSamples, config.realism.minSamples.births);
+    if (infantValue === null) delete metrics["realism.infantMortality"];
+    else metrics["realism.infantMortality"] = infantValue;
     const infant = aggregateInfantMortalitySignal(
-      games.map((g, i) => {
-        const w = g.game.demo.window();
-        return {
-          births: w.births,
-          infantDeaths: w.infantDeaths,
-          population: gameMetrics[i]?.population ?? 0,
-        };
-      }),
+      infantSamples,
       infantRange,
       config.realism.minSamples.births,
     );
