@@ -91,14 +91,14 @@ jobs:
               continue
             fi
 
-            # PR fechada + tip idêntico prova que a branch não recebeu trabalho novo desde o fechamento.
-            # O histórico continua rastreável pela própria PR fechada; qualquer commit posterior impede a remoção.
-            closed_tip="$(
-              gh api --method GET "repos/$REPO/pulls"                 -f state=closed -f head="$OWNER:$branch" -f per_page=100                 --jq ".[] | select(.head.sha == \"$sha\") | .number"                 | head -n 1
+            # Só PR realmente mergeada prova incorporação. PR apenas fechada pode conter trabalho
+            # abandonado temporariamente ou ainda útil e, portanto, não autoriza remoção automática.
+            merged_tip="$(
+              gh api --method GET "repos/$REPO/pulls"                 -f state=closed -f head="$OWNER:$branch" -f per_page=100                 --jq ".[] | select(.head.sha == \"$sha\" and .merged_at != null) | .number"                 | head -n 1
             )"
 
-            if [[ -n "$closed_tip" ]]; then
-              echo "closed PR #$closed_tip owns current tip"
+            if [[ -n "$merged_tip" ]]; then
+              echo "merged PR #$merged_tip owns current tip"
               delete_branch "$branch"
               continue
             fi
