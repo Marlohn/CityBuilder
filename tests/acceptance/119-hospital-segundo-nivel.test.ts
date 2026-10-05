@@ -287,86 +287,46 @@ describe("issue #119: hospital é o segundo nível de saúde", () => {
     ).toEqual([]);
   });
 
-  it("o censo conta quem está sem leito e amostra os locais para o hospital", { timeout: 300000 }, () => {
+  it("o censo conta a fila real de internação e amostra seus locais", { timeout: 300000 }, () => {
     const game = cidadeSemUbs(true);
     const census = currentCensus(game) as unknown as CensusWithHospital;
-    const pop = game.city.pop as PopWithHospital & typeof game.city.pop;
-    expect(
-      typeof pop.hospital,
-      `o motor ainda não tem o campo pop.hospital ` +
-        `(packages/sim/src/people/population.ts): sem ele não dá para conferir a conta do censo`,
-    ).not.toBe("undefined");
-    if (pop.hospital === undefined) return;
-    const n = contaComLeito(game, pop.hospital);
-    const semLeito = census.population - n;
-    const hospitais = prediosAtivos(game, "hospital");
-    const totalDeLeitos = hospitais.reduce((soma, h) => soma + game.sim.buildings.patientsCapacity(h), 0);
+    const waiting = game.city.seekHospital.size;
+
     expect(
       typeof census.withoutHospital,
       `o censo ainda não conta withoutHospital (packages/sim/src/people/census.ts): ` +
         `sem esse número o roadmap não sabe onde falta hospital`,
     ).toBe("number");
     if (typeof census.withoutHospital !== "number") return;
+
     expect(
       census.withoutHospital,
-      `era esperado withoutHospital = população (${census.population}) menos pessoas com leito ` +
-        `(${n}) = ${semLeito}, mas veio ${census.withoutHospital}`,
-    ).toBe(semLeito);
-    expect(
-      census.withoutHospital,
-      `era esperado withoutHospital >= população (${census.population}) menos a soma de ` +
-        `patientsCapacity (${totalDeLeitos}) = ${census.population - totalDeLeitos}, ` +
-        `mas veio ${census.withoutHospital}`,
-    ).toBeGreaterThanOrEqual(census.population - totalDeLeitos);
+      `depois da #241, sem hospital é a fila seekHospital: esperado ${waiting}, ` +
+        `mas o censo trouxe ${census.withoutHospital}`,
+    ).toBe(waiting);
+
     const amostra = census.samples.hospital;
-    expect(
-      Array.isArray(amostra),
-      `samples.hospital deveria ser um array de locais para o roadmap, ` +
-        `mas veio ${String(amostra)}: o censo não está amostrando onde falta hospital`,
-    ).toBe(true);
+    expect(Array.isArray(amostra), "samples.hospital deveria ser um array").toBe(true);
     if (!Array.isArray(amostra)) return;
-    expect(
-      amostra.length,
-      `samples.hospital deveria ter entre 1 e 200 locais (há ${semLeito} pessoas sem leito), ` +
-        `mas veio com ${amostra.length}`,
-    ).toBeGreaterThanOrEqual(1);
-    expect(
-      amostra.length,
-      `samples.hospital deveria ter entre 1 e 200 locais (há ${semLeito} pessoas sem leito), ` +
-        `mas veio com ${amostra.length}`,
-    ).toBeLessThanOrEqual(200);
+    expect(amostra.length).toBeLessThanOrEqual(Math.min(200, waiting));
+
     const total = game.sim.world.width * game.sim.world.height;
     for (const q of amostra) {
-      expect(
-        q,
-        `samples.hospital tem o local ${q}, fora do mapa (válido de 0 a ${total - 1} ` +
-          `num mapa de ${game.sim.world.width}x${game.sim.world.height})`,
-      ).toBeGreaterThanOrEqual(0);
-      expect(
-        q,
-        `samples.hospital tem o local ${q}, fora do mapa (válido de 0 a ${total - 1} ` +
-          `num mapa de ${game.sim.world.width}x${game.sim.world.height})`,
-      ).toBeLessThan(total);
+      expect(q).toBeGreaterThanOrEqual(0);
+      expect(q).toBeLessThan(total);
     }
-    // Segunda cidade igual, SEM nenhum hospital: todo mundo fica sem leito, mas com amostra.
+
     const game2 = cidadeSemUbs(false);
     const census2 = currentCensus(game2) as unknown as CensusWithHospital;
-    expect(
-      typeof census2.withoutHospital,
-      `o censo ainda não conta withoutHospital (packages/sim/src/people/census.ts)`,
-    ).toBe("number");
+    const waiting2 = game2.city.seekHospital.size;
+    expect(typeof census2.withoutHospital).toBe("number");
     if (typeof census2.withoutHospital !== "number") return;
-    expect(
-      census2.withoutHospital,
-      `sem nenhum hospital era esperado withoutHospital igual à população ` +
-        `(${census2.population}), mas veio ${census2.withoutHospital}`,
-    ).toBe(census2.population);
+    expect(census2.withoutHospital).toBe(waiting2);
     const amostra2 = census2.samples.hospital;
-    expect(
-      Array.isArray(amostra2) && amostra2.length > 0,
-      `sem nenhum hospital era esperado samples.hospital não vazio (há ${census2.population} ` +
-        `pessoas sem leito), mas veio ${Array.isArray(amostra2) ? amostra2.length : String(amostra2)}`,
-    ).toBe(true);
+    expect(Array.isArray(amostra2), "samples.hospital deveria continuar sendo um array").toBe(true);
+    if (Array.isArray(amostra2)) {
+      expect(amostra2.length).toBeLessThanOrEqual(Math.min(200, waiting2));
+    }
   });
 
   it("quem tem leito de hospital morre menos do que quem não tem", { timeout: 300000 }, () => {

@@ -24,17 +24,17 @@
  *
  * Cenário: cidade com hospital de verdade (semente fixa, sem relógio, sem
  * `Math.random`). A UBS do cenário é demolida (`bulldoze` em x 73-74,
- * y 141-142, como no teste 173) com `health.maxDistanceMeters: 200`, senão
- * a UBS atende todo mundo e `withoutHospital` vale a população inteira sem
- * provar nada sobre o hospital. A cidade é simulada uma única vez (`Map`
- * memoizado no escopo do arquivo).
+ * y 141-142, como no teste 173) com `health.maxDistanceMeters: 200`. Para o
+ * sinal de desejo, a fila `seekHospital` é controlada explicitamente: depois da
+ * #241 `withoutHospital` mede essa fila real, não toda a população sem leito.
+ * Cada variante de cidade é simulada uma única vez (`Map` memoizado no arquivo).
  */
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { loadConfigAndData, ROOT } from "@city/cli";
 import type { Command } from "@city/contract";
 import { parseReference, parseRoadmapConfig, type RoadmapConfig, signalsFromRun } from "@city/roadmap";
-import { currentCensus, type Game, statsView } from "@city/sim";
+import { currentCensus, type Game, reportText, statsView } from "@city/sim";
 import { describe, expect, it } from "vitest";
 import { createTestGame } from "../helpers";
 
@@ -79,8 +79,8 @@ function semAcento(text: string): string {
 /** Cidade com hospital já rodada (não roda a mesma cidade duas vezes). */
 const jogos = new Map<string, Game>();
 
-function cidadeComHospital(): Game {
-  const pronto = jogos.get("com-hospital");
+function cidadeComHospital(chave = "com-hospital"): Game {
+  const pronto = jogos.get(chave);
   if (pronto) return pronto;
   const game = createTestGame({
     seed: SEED,
@@ -89,8 +89,43 @@ function cidadeComHospital(): Game {
     overrides: { economy: { mode: "sandbox" }, health: { maxDistanceMeters: 200 } },
     commands: [BULLDOZE_UBS, ...HOSPITAL_COMMANDS],
   });
-  jogos.set("com-hospital", game);
+  jogos.set(chave, game);
   return game;
+}
+
+/**
+ * Cenário controlado da #241: mantém hospital ativo, mas força demanda hospitalar
+ * suficiente para o sinal do roadmap. A fila é montada antes da primeira leitura
+ * do censo deste Game, evitando o cache por tick de currentCensus.
+ */
+function cidadeComDemandaHospital(): { game: Game; population: number; waiting: number } {
+  const game = cidadeComHospital("com-demanda-hospital");
+  const city = game.city;
+
+  for (const p of city.seekHospital.toArray()) city.seekHospital.delete(p);
+
+  let population = 0;
+  for (let p = 0; p < city.pop.count; p++) if (city.pop.status[p] === 1) population++;
+
+  const target = Math.max(2, Math.ceil(population * cfg.thresholds.unmetShare));
+  expect(
+    target,
+    `o limiar do roadmap (${target}) precisa ser menor que a população (${population})`,
+  ).toBeLessThan(population);
+
+  for (let p = 0; p < city.pop.count && city.seekHospital.size < target; p++) {
+    if (city.pop.status[p] !== 1) continue;
+    if (city.pop.hospital[p]! >= 0) continue;
+    if (city.homeAccess(p) < 0) continue;
+    city.seekHospital.add(p);
+  }
+
+  expect(
+    city.seekHospital.size,
+    `o cenário precisa de ${target} pessoas vivas, com casa e sem leito para montar a fila real`,
+  ).toBe(target);
+
+  return { game, population, waiting: city.seekHospital.size };
 }
 
 describe("issue #176: manual e sinal de roadmap do hospital", () => {
@@ -118,33 +153,35 @@ describe("issue #176: manual e sinal de roadmap do hospital", () => {
     ).toHaveLength(0);
   });
 
-  it("o sinal desejo:hospital aparece quando há pessoas sem leito numa cidade que já tem hospital", () => {
-    const game = cidadeComHospital();
+  it("o sinal desejo:hospital usa a fila real numa cidade que já tem hospital", () => {
+    const { game, population, waiting } = cidadeComDemandaHospital();
     const census = currentCensus(game);
     const semLeito = statsView(game).unmet.hospital;
+
+    // Regressão da #241: a fonte é a fila de internação, não toda pessoa sem leito.
+    expect(census.population).toBe(population);
     expect(
-      typeof semLeito,
-      `a chave \`hospital\` não existe em statsView(game).unmet: sem ela o motor de ` +
-        `roadmap não mede as pessoas sem leito`,
-    ).toBe("number");
-    if (typeof semLeito !== "number") return;
+      census.withoutHospital,
+      `withoutHospital deveria ser a fila seekHospital (${waiting}), mas veio ${census.withoutHospital}`,
+    ).toBe(waiting);
+    expect(semLeito).toBe(waiting);
+    expect(semLeito).toBeLessThan(population);
+    const noRelatorio = new Intl.NumberFormat("pt-BR").format(waiting);
+    expect(reportText(game)).toContain(`sem hospital: ${noRelatorio}`);
+
     expect(
       semLeito,
-      `o cenário não tem gente sem leito (unmet.hospital vale 0): sem gente sem leito ` +
-        `o teste não prova que o sinal aparece`,
-    ).toBeGreaterThan(0);
-    expect(
-      semLeito,
-      `há só ${semLeito} pessoas sem leito numa cidade de ${census.population}: abaixo de ` +
-        `population * thresholds.unmetShare (${census.population} * ${cfg.thresholds.unmetShare}) ` +
-        `o sinal é ignorado por serem poucas pessoas, então o cenário não prova nada`,
-    ).toBeGreaterThanOrEqual(census.population * cfg.thresholds.unmetShare);
+      `há só ${semLeito} pessoas na fila de internação numa cidade de ${population}: abaixo de ` +
+        `population * thresholds.unmetShare (${population} * ${cfg.thresholds.unmetShare}) ` +
+        `o sinal é ignorado, então o cenário não prova nada`,
+    ).toBeGreaterThanOrEqual(population * cfg.thresholds.unmetShare);
+
     const sinais = signalsFromRun(game, cfg, reference, services);
     const sinal = sinais.find((s) => s.id === "desejo:hospital");
     expect(
       sinal,
-      `o sinal \`desejo:hospital\` não apareceu mesmo com ${semLeito} pessoas sem leito: ` +
-        `packages/roadmap/src/signals.ts precisa da entrada do desejo \`hospital\` em DESIRES`,
+      `o sinal \`desejo:hospital\` não apareceu mesmo com ${semLeito} pessoas na fila de internação: ` +
+        `packages/roadmap/src/signals.ts precisa medir o desejo \`hospital\``,
     ).toBeDefined();
     if (!sinal) return;
     expect(

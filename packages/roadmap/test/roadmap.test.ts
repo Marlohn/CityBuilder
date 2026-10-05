@@ -8,6 +8,7 @@ import { parseReference, parseRoadmapConfig, type RoadmapConfig } from "../src/c
 import { formSections, fromGithubApi, leadingNumber, parseItem } from "../src/items";
 import { checkMetric, isValidMetric } from "../src/metric";
 import { plan, rice, scoreItem } from "../src/rice";
+import * as signalFns from "../src/signals";
 import { mergeRuns, metricsOf, pendingSignals, signalsFromRun } from "../src/signals";
 import type { IssueInput, Signal, SignalsFile } from "../src/types";
 
@@ -207,6 +208,45 @@ describe("sinais", () => {
     expect(merged[0]!.seen).toBe(2);
   });
 
+  it("mortalidade infantil usa a amostra agregada, não outlier de uma corrida", () => {
+    type Sample = { births: number; infantDeaths: number; population: number };
+    type AggregateFns = {
+      aggregateInfantMortalityValue?: (samples: Sample[], minBirths: number) => number | null;
+      aggregateInfantMortalitySignal?: (
+        samples: Sample[],
+        range: { min: number; max: number; source: string },
+        minBirths: number,
+      ) => Signal | null;
+    };
+    const aggregate = signalFns as typeof signalFns & AggregateFns;
+    expect(
+      aggregate.aggregateInfantMortalityValue,
+      "o roadmap precisa agregar nascimentos e óbitos antes de classificar a taxa",
+    ).toBeTypeOf("function");
+    expect(aggregate.aggregateInfantMortalitySignal).toBeTypeOf("function");
+    if (!aggregate.aggregateInfantMortalityValue || !aggregate.aggregateInfantMortalitySignal) return;
+
+    const range = { min: 6, max: 20, source: "IBGE 2023: 12,5 por mil" };
+    const samples = [
+      { births: 300, infantDeaths: 0, population: 1000 },
+      { births: 300, infantDeaths: 1, population: 1000 },
+      { births: 300, infantDeaths: 6, population: 1000 },
+      { births: 300, infantDeaths: 5, population: 1000 },
+      { births: 300, infantDeaths: 7, population: 1000 },
+    ];
+
+    expect(aggregate.aggregateInfantMortalityValue(samples, 300)).toBe(12.67);
+    expect(aggregate.aggregateInfantMortalitySignal(samples, range, 300)).toBeNull();
+
+    const low = aggregate.aggregateInfantMortalitySignal(
+      samples.map((s) => ({ ...s, infantDeaths: 0 })),
+      range,
+      300,
+    );
+    expect(low?.id).toBe("realismo:infantMortality");
+    expect(low?.detail).toMatch(/1\.500 nascimentos/);
+  });
+
   it("acha valores PENDENTE na config", () => {
     const out = pendingSignals({ "a.yaml": "x: 1\n# PENDENTE: fonte\ny: 2", "b.yaml": "z: 1" }, 1000);
     expect(out.map((s) => s.id)).toEqual(["pendente:a.yaml"]);
@@ -224,10 +264,9 @@ describe("sinais", () => {
     const s2 = signalsFromRun(run(), cfg, reference, services);
     expect(s1).toEqual(s2);
     expect(s1.filter((s) => s.urgent)).toEqual([]);
-    // Cidade real de qualquer tamanho tem coleta de esgoto: o jogo ainda não tem.
-    expect(s1.map((s) => s.id)).toContain("comparacao:esgoto");
-    // Água e luz agora existem no jogo: não aparecem como falta.
+    // Água, luz e esgoto já existem no catálogo: nenhum pode aparecer como falta.
     expect(s1.map((s) => s.id)).not.toContain("comparacao:agua");
+    expect(s1.map((s) => s.id)).not.toContain("comparacao:esgoto");
     const m = metricsOf(a);
     expect(m.population).toBeGreaterThan(0);
     expect(m.invariantViolations).toBe(0);
