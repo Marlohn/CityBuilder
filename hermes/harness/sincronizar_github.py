@@ -380,7 +380,21 @@ def escalar_pr(pr, existentes, motivo):
 
 
 def revisoes(prs, existentes, esperando_qa=frozenset()):
-    """PR em revisão -> um cartão aberto por PR. Encerrar cartão sem decidir não encerra o PR."""
+    """PR em revisão -> fila serial: só a mais antiga sincroniza/valida por vez.
+
+    Atualizar várias branches contra o mesmo HEAD da main desperdiça CI: o primeiro merge deixa todas as
+    seguintes atrasadas de novo. PRs fora de revisão continuam recebendo ajustes normalmente.
+    """
+    elegiveis = []
+    for candidato in prs:
+        esperando = (
+            re.fullmatch(r"dev/(\d+)", candidato["headRefName"])
+            and int(candidato["headRefName"][4:]) in esperando_qa
+        )
+        if any(lb["name"] == "em-revisão" for lb in candidato["labels"]) and not esperando:
+            elegiveis.append(candidato)
+    frente = min(elegiveis, key=lambda candidato: candidato["number"])["number"] if elegiveis else None
+
     for pr in prs:
         n, sha = pr["number"], pr["headRefOid"][:7]
         # Issue de volta no QA (teste errado): o Dev recoloca `em-revisão` no PR, mas revisar de novo só repete a devolução
@@ -389,6 +403,8 @@ def revisoes(prs, existentes, esperando_qa=frozenset()):
         if any(lb["name"] == "em-revisão" for lb in pr["labels"]) and no_qa:
             continue
         if any(lb["name"] == "em-revisão" for lb in pr["labels"]):
+            if n != frente:
+                continue
             chave = f"revisar-pr-{n}-{sha}"
             # Commit novo com a revisão anterior ainda na fila: não cria outra, a que está aberta olha o PR como está.
             if not aberto(existentes, f"revisar-pr-{n}-") and preparar_revisao(pr):
