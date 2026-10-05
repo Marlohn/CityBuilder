@@ -69,6 +69,21 @@ export interface InfantMortalitySample {
   population: number;
 }
 
+/** Taxa agregada (por mil) ou null quando a soma ainda não tem amostra suficiente. */
+export function aggregateInfantMortalityValue(
+  samples: InfantMortalitySample[],
+  minBirths: number,
+): number | null {
+  let births = 0;
+  let infantDeaths = 0;
+  for (const s of samples) {
+    births += s.births;
+    infantDeaths += s.infantDeaths;
+  }
+  if (samples.length === 0 || births < minBirths) return null;
+  return Math.round(((infantDeaths / births) * 1000) * 100) / 100;
+}
+
 /**
  * Mortalidade infantil é evento raro: classifica pela soma dos numeradores/denominadores
  * de todas as cidades de avaliação, em vez de transformar um outlier isolado em prioridade.
@@ -78,18 +93,15 @@ export function aggregateInfantMortalitySignal(
   range: { min: number; max: number; source: string },
   minBirths: number,
 ): Signal | null {
+  const rounded = aggregateInfantMortalityValue(samples, minBirths);
+  if (rounded === null || (rounded >= range.min && rounded <= range.max)) return null;
   let births = 0;
-  let infantDeaths = 0;
   let population = 0;
   for (const s of samples) {
     births += s.births;
-    infantDeaths += s.infantDeaths;
     population += s.population;
   }
-  if (samples.length === 0 || births < minBirths) return null;
-  const value = (infantDeaths / births) * 1000;
-  if (value >= range.min && value <= range.max) return null;
-  const rounded = Math.round(value * 100) / 100;
+  const value = rounded;
   return {
     id: "realismo:infantMortality",
     source: "realismo",
