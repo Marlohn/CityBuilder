@@ -186,14 +186,16 @@ export class LifecycleSystem implements System {
       1,
       1 / city.config.health.hospitalAvgLengthOfStayDays / city.sim.clock.ticksPerDay,
     );
-    for (let i = 0; i < city.hospitalized.size; i++) {
+    let i = 0;
+    while (i < city.hospitalized.size) {
       const p = city.hospitalized.at(i);
       city.sim.perf.count("personsUpdated");
       if (city.rng.hospital.chance(chance)) {
         unregisterHospital(city, p);
         // Alta é cura, não um pedido novo de UBS.
         city.seekClinic.delete(p);
-      }
+        // O IndexedSet move o último item para esta posição; reprocessa o mesmo índice.
+      } else i++;
     }
   }
 
