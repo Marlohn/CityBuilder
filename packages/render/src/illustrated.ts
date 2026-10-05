@@ -1,7 +1,7 @@
 import {
   type AbstractMesh,
   Color3,
-  Mesh,
+  type Mesh,
   MeshBuilder,
   MultiMaterial,
   PBRMaterial,
