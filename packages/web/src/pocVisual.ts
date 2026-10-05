@@ -7,9 +7,9 @@ import {
   Mesh,
   MeshBuilder,
   Quaternion,
+  StandardMaterial,
   type Scene,
   type ShadowGenerator,
-  StandardMaterial,
   Vector3,
 } from "@babylonjs/core";
 import type { BuildingView, MapView, VehiclesView } from "@city/contract";
