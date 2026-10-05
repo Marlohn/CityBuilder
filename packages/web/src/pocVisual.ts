@@ -31,17 +31,17 @@ const P = {
   sidewalk: [0.84, 0.85, 0.82],
   white: [0.96, 0.96, 0.92],
   yellow: [0.96, 0.74, 0.18],
-  water: [0.14, 0.64, 0.8],
-  terrain: [0.42, 0.68, 0.32],
-  zoneLow: [0.56, 0.78, 0.44],
-  zoneHigh: [0.42, 0.7, 0.52],
-  zoneCommercial: [0.44, 0.66, 0.86],
-  zoneIndustrial: [0.86, 0.7, 0.32],
+  water: [0.08, 0.5, 0.72],
+  terrain: [0.27, 0.5, 0.23],
+  zoneLow: [0.48, 0.67, 0.4],
+  zoneHigh: [0.39, 0.62, 0.48],
+  zoneCommercial: [0.42, 0.59, 0.76],
+  zoneIndustrial: [0.75, 0.61, 0.3],
   parking: [0.67, 0.7, 0.68],
   lot: [0.88, 0.87, 0.8],
-  lawn: [0.46, 0.72, 0.35],
-  tree: [0.22, 0.64, 0.28],
-  tree2: [0.38, 0.76, 0.35],
+  lawn: [0.33, 0.6, 0.27],
+  tree: [0.14, 0.46, 0.2],
+  tree2: [0.27, 0.58, 0.24],
   trunk: [0.46, 0.31, 0.2],
   window: [0.17, 0.43, 0.55],
   roof: [0.87, 0.89, 0.87],
@@ -175,8 +175,8 @@ export class IsometricPocVisual {
         mesh.visibility = 0;
     }
     this.scene.ambientColor = new Color3(0.42, 0.44, 0.42);
-    this.scene.imageProcessingConfiguration.contrast = 1.04;
-    this.scene.imageProcessingConfiguration.exposure = 1.08;
+    this.scene.imageProcessingConfiguration.contrast = 1.02;
+    this.scene.imageProcessingConfiguration.exposure = 0.94;
     const shadow = this.scene.getLightByName("sun")?.getShadowGenerator() as ShadowGenerator | null;
     for (const batch of this.batches.values()) {
       shadow?.addShadowCaster(batch.mesh);
@@ -277,17 +277,14 @@ export class IsometricPocVisual {
         const i = y * map.width + x,
           kind = map.roads[i]!;
         if (map.water[i]) this.b("water").push(x + 0.5, 0.045, y + 0.5, 0, 0.99, 0.045, 0.99);
-        if (!kind && !map.water[i] && !occupied[i] && map.zones[i]) {
-          const zoneKey = ["", "zoneLow", "zoneHigh", "zoneCommercial", "zoneIndustrial"][map.zones[i]!]!;
-          if (zoneKey) this.b(zoneKey).push(x + 0.5, 0.023, y + 0.5, 0, 0.985, 0.025, 0.985);
-        }
         if (kind) this.road(map, x, y, kind);
-        if (map.trees[i] && !kind && !map.water[i] && !occupied[i]) {
-          const tx = x + 0.24 + hash(i * 17) * 0.52,
-            tz = y + 0.24 + hash(i * 31) * 0.52,
-            treeScale = 0.26 + hash(i * 47) * 0.1;
-          this.b("trunk").push(tx, 0.14, tz, 0, 0.045, 0.28, 0.045);
-          this.b(i % 3 ? "tree" : "tree2").push(tx, 0.4, tz, 0, treeScale, treeScale * 1.12, treeScale);
+        // A POC usa vegetação mais deliberada que o mapa-base: menos ruído e árvores maiores.
+        if (map.trees[i] && !kind && !map.water[i] && !occupied[i] && hash(i * 97) > 0.6) {
+          const tx = x + 0.22 + hash(i * 17) * 0.56,
+            tz = y + 0.22 + hash(i * 31) * 0.56,
+            treeScale = 0.3 + hash(i * 47) * 0.12;
+          this.b("trunk").push(tx, 0.16, tz, 0, 0.05, 0.32, 0.05);
+          this.b(i % 3 ? "tree" : "tree2").push(tx, 0.46, tz, 0, treeScale, treeScale * 1.12, treeScale);
         }
       }
     for (const building of this.buildings) this.building(building);
