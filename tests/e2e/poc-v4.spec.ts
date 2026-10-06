@@ -22,74 +22,33 @@ test("POC v4 usa os novos GLBs no renderer e mantém a cidade real funcional", a
 
   const state = await page.evaluate(() => {
     const renderer = window.__city.renderer;
-    const used = renderer.scene.meshes
-      .filter(
-        (m: { name: string; thinInstanceCount: number }) =>
-          m.name.startsWith("poc-v4-chunk/") && m.thinInstanceCount > 0,
-      )
+    const sources = renderer.scene.meshes.filter(
+      (m: { name: string }) => m.name.startsWith("poc-v4/") || m.name === "proc/construction",
+    );
+    const used = sources
+      .filter((m: { thinInstanceCount: number }) => m.thinInstanceCount > 0)
       .map((m: { name: string; thinInstanceCount: number }) => ({
         name: m.name,
         count: m.thinInstanceCount,
       }));
-    const chunks = renderer.scene.meshes.filter((m: { name: string }) => m.name.startsWith("poc-v4-chunk/"));
-    const roadSubMeshes = chunks
-      .filter((m: { name: string }) => m.name.includes("/poc-v4/rua_"))
+    const roadSubMeshes = sources
+      .filter((m: { name: string }) => m.name.startsWith("poc-v4/rua_"))
       .map((m: { subMeshes: unknown[] }) => m.subMeshes.length);
-    const lotSubMeshes = chunks
-      .filter((m: { name: string }) => m.name.includes("/poc-v4/lote_"))
+    const lotSubMeshes = sources
+      .filter((m: { name: string }) => m.name.startsWith("poc-v4/lote_"))
       .map((m: { subMeshes: unknown[] }) => m.subMeshes.length);
-    const subMeshFidelity = chunks.every(
-      (mesh: {
-        name: string;
-        material: unknown;
-        subMeshes: {
-          materialIndex: number;
-          verticesStart: number;
-          verticesCount: number;
-          indexStart: number;
-          indexCount: number;
-        }[];
-      }) => {
-        const model = mesh.name.split("/").slice(3).join("/");
-        const source = renderer.scene.meshes.find((m: { name: string }) => m.name === model) as
-          | {
-              material: unknown;
-              subMeshes: {
-                materialIndex: number;
-                verticesStart: number;
-                verticesCount: number;
-                indexStart: number;
-                indexCount: number;
-              }[];
-            }
-          | undefined;
-        if (!source || mesh.material !== source.material || mesh.subMeshes.length !== source.subMeshes.length)
-          return false;
-        return mesh.subMeshes.every((sub, index) => {
-          const original = source.subMeshes[index];
-          return (
-            original !== undefined &&
-            sub.materialIndex === original.materialIndex &&
-            sub.verticesStart === original.verticesStart &&
-            sub.verticesCount === original.verticesCount &&
-            sub.indexStart === original.indexStart &&
-            sub.indexCount === original.indexCount
-          );
-        });
-      },
-    );
     return {
       poc: renderer.pocV4State(),
       used,
       roadSubMeshes,
       lotSubMeshes,
-      subMeshFidelity,
+      chunkMeshes: renderer.scene.meshes.filter((m: { name: string }) => m.name.startsWith("poc-v4-chunk/"))
+        .length,
       buildings: window.__city.buildings().length,
       uiChildren: document.getElementById("ui")?.childElementCount ?? 0,
       badge: document.getElementById("poc-v4-badge")?.textContent ?? "",
     };
   });
-
   expect(state.poc.enabled).toBe(true);
   expect(state.poc.camera).toBe("perspective");
   expect(state.poc.fovDegrees).toBeCloseTo(27, 3);
@@ -101,16 +60,17 @@ test("POC v4 usa os novos GLBs no renderer e mantém a cidade real funcional", a
   expect(state.badge).toContain("POC v4");
 
   const names: string[] = state.used.map((x: { name: string }) => x.name);
-  expect(names.some((name: string) => name.includes("/poc-v4/rua_"))).toBe(true);
-  expect(names.some((name: string) => name.includes("/poc-v4/lote_"))).toBe(true);
-  expect(names.some((name: string) => name.includes("/poc-v4/arvore_"))).toBe(true);
+  expect(names.some((name: string) => name.startsWith("poc-v4/rua_"))).toBe(true);
+  expect(names.some((name: string) => name.startsWith("poc-v4/lote_"))).toBe(true);
+  expect(names.some((name: string) => name.startsWith("poc-v4/arvore_"))).toBe(true);
   expect(
-    names.some((name: string) => name.includes("/poc-v4/carro_") || name.includes("/poc-v4/pessoa_")),
+    names.some((name: string) => name.startsWith("poc-v4/carro_") || name.startsWith("poc-v4/pessoa_")),
   ).toBe(true);
   expect(state.poc.chunks.active).toBeGreaterThan(0);
+  expect(state.poc.chunks.visible).toBeGreaterThan(0);
   expect(Math.max(...state.roadSubMeshes)).toBeGreaterThan(1);
   expect(Math.max(...state.lotSubMeshes)).toBeGreaterThan(1);
-  expect(state.subMeshFidelity).toBe(true);
+  expect(state.chunkMeshes).toBe(0);
 
   await mkdir("test-results", { recursive: true });
   await writeFile(
