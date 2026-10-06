@@ -11,19 +11,44 @@ import { WorkerClient } from "./client";
 import { ToolController, toolDefs } from "./tools";
 
 const params = new URLSearchParams(location.search);
-const seed = params.get("seed") ?? `cidade-${Math.floor(Math.random() * 1e9)}`;
-// ?modo=livre = dinheiro infinito (modo "sandbox" da config).
-const overrides = params.get("modo") === "livre" ? { economy: { mode: "sandbox" } } : undefined;
+const pocV4 = params.get("poc") === "v4";
+const pocV4Cinema = pocV4 && params.get("cinema") === "1";
+const seed = params.get("seed") ?? (pocV4 ? "poc-v4-live" : `cidade-${Math.floor(Math.random() * 1e9)}`);
+// A POC visual usa sandbox só para montar uma cidade de avaliação determinística.
+const overrides =
+  params.get("modo") === "livre" || pocV4 ? { economy: { mode: "sandbox" } } : undefined;
 
 const config = parseGameConfig(configTexts, overrides);
 const data = parseGameData(dataTexts, config);
 const store = new Store();
 const client = new WorkerClient();
 const canvas = document.getElementById("city") as HTMLCanvasElement;
+
+if (pocV4) {
+  document.title = "CityBuilder · POC visual v4 · assets GLB";
+  const badge = document.createElement("div");
+  badge.id = "poc-v4-badge";
+  badge.textContent = "POC v4 · novos GLBs";
+  Object.assign(badge.style, {
+    position: "fixed",
+    zIndex: "20",
+    top: "12px",
+    right: "12px",
+    padding: "7px 10px",
+    borderRadius: "9px",
+    background: "rgba(24, 29, 34, 0.82)",
+    color: "#f4f6f6",
+    font: "12px system-ui, sans-serif",
+    pointerEvents: "none",
+  });
+  document.body.append(badge);
+}
+
 const renderer = new CityRenderer(canvas, {
   modelsBaseUrl: new URL("./models", location.href).href.replace(/\/$/, ""),
   buildingVisuals: data.buildings.map((b) => ({ id: b.id, models: b.models, floors: b.floors })),
   tileMeters: config.world.tileMeters,
+  visualStyle: pocV4 ? "poc-v4" : "default",
 });
 
 let buildings: BuildingView[] = [];
@@ -62,7 +87,59 @@ client.onLoadRequested = (save) => {
   store.set({ ready: false, error: null });
   client.send({ type: "load", save, configTexts, dataTexts });
 };
-client.onReady = () => store.set({ ready: true });
+let pocV4Built = false;
+
+function buildPocV4City() {
+  if (!pocV4 || pocV4Built) return;
+  pocV4Built = true;
+
+  // Cidade pequena e real: usa os mesmos comandos/Worker da aplicação e apenas fixa a composição
+  // para a avaliação visual. A espinha dorsal nasce conectada à estrada de acesso.
+  const gridX = [68, 72, 76, 80, 84, 88, 92];
+  const gridY = [116, 120, 124, 128, 132, 136, 140];
+  client.command({ type: "buildRoad", kind: "avenue", x0: 47, y0: 128, x1: 96, y1: 128 });
+
+  for (const x of gridX)
+    client.command({ type: "buildRoad", kind: "street", x0: x, y0: gridY[0]!, x1: x, y1: gridY.at(-1)! });
+  for (const y of gridY) {
+    if (y === 128) continue;
+    client.command({
+      type: "buildRoad",
+      kind: "street",
+      x0: gridX[0]!,
+      y0: y,
+      x1: gridX.at(-1)!,
+      y1: y,
+    });
+  }
+
+  // Infraestrutura fica fora do enquadramento principal, mas mantém o crescimento da cidade real.
+  client.command({ type: "placeService", service: "poco", x: 58, y: 129 });
+  client.command({ type: "placeService", service: "subestacao", x: 60, y: 129 });
+
+  const zones = ["residential_low", "commercial", "residential_low", "commercial"] as const;
+  for (let row = 0; row < gridY.length - 1; row++) {
+    for (let col = 0; col < gridX.length - 1; col++) {
+      client.command({
+        type: "zone",
+        zone: zones[(row + col) % zones.length]!,
+        x0: gridX[col]! + 1,
+        y0: gridY[row]! + 1,
+        x1: gridX[col + 1]! - 1,
+        y1: gridY[row + 1]! - 1,
+      });
+    }
+  }
+
+  client.send({ type: "advance", ticks: 9000 });
+  renderer.lookAt(80, 128);
+  renderer.zoomBy(9.5 / renderer.cameraState().zoom);
+}
+
+client.onReady = () => {
+  store.set({ ready: true });
+  buildPocV4City();
+};
 client.onFrame = (f) => {
   if (f.map) {
     lastMap = f.map;
@@ -80,14 +157,16 @@ client.onFrame = (f) => {
   store.pushResults(f.commandResults);
 };
 
-createRoot(document.getElementById("ui")!).render(
-  <App
-    store={store}
-    client={client}
-    tools={toolDefs(config, data.buildings)}
-    typeLabels={Object.fromEntries(data.buildings.map((b) => [b.id, b.label]))}
-  />,
-);
+if (!pocV4Cinema) {
+  createRoot(document.getElementById("ui")!).render(
+    <App
+      store={store}
+      client={client}
+      tools={toolDefs(config, data.buildings)}
+      typeLabels={Object.fromEntries(data.buildings.map((b) => [b.id, b.label]))}
+    />,
+  );
+}
 
 renderer
   .loadAssets()

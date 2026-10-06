@@ -25,11 +25,20 @@ import { type PickBox, pickTile, rayGround, screenAxesOnGround, startTarget } fr
 import { GroundLayer } from "./ground";
 import { BuildingLayer, type BuildingVisual, RoadLayer, TreeLayer, VehicleLayer } from "./layers";
 import { ModelLibrary } from "./models";
+import {
+  PocV4BuildingLayer,
+  PocV4Environment,
+  PocV4RoadLayer,
+  PocV4TreeLayer,
+  PocV4VehicleLayer,
+} from "./pocV4";
 
 export interface RendererOptions {
   modelsBaseUrl: string;
   buildingVisuals: BuildingVisual[];
   tileMeters: number;
+  /** POC visual isolada; o padrão continua usando as camadas atuais. */
+  visualStyle?: "default" | "poc-v4";
 }
 
 export interface TileEvent {
@@ -56,10 +65,10 @@ export class CityRenderer {
   readonly camera: ArcRotateCamera;
   private lib: ModelLibrary;
   private ground: GroundLayer;
-  private roads: RoadLayer;
-  private buildingLayer: BuildingLayer;
-  private trees: TreeLayer;
-  private vehicles: VehicleLayer;
+  private roads: RoadLayer | PocV4RoadLayer;
+  private buildingLayer: BuildingLayer | PocV4BuildingLayer;
+  private trees: TreeLayer | PocV4TreeLayer;
+  private vehicles: VehicleLayer | PocV4VehicleLayer;
   private sun: DirectionalLight;
   private sky: HemisphericLight;
   private shadows: ShadowGenerator;
@@ -69,6 +78,9 @@ export class CityRenderer {
   private targetChosen = false;
   private occupied = new Uint8Array(0);
   private zoom = 30;
+  private readonly pocV4: boolean;
+  private pocV4Environment: PocV4Environment | null = null;
+  private pocV4Ready = false;
   /** Tecla apertada → momento (ms) até onde o movimento dela já foi aplicado. */
   private keys = new Map<string, number>();
   private lastBuildings: BuildingView[] = [];
@@ -85,9 +97,21 @@ export class CityRenderer {
     this.scene = new Scene(this.engine);
     this.scene.clearColor = new Color4(0.62, 0.78, 0.92, 1);
     this.scene.ambientColor = new Color3(0.3, 0.3, 0.3);
+    this.pocV4 = opts.visualStyle === "poc-v4";
 
-    this.camera = new ArcRotateCamera("cam", -Math.PI / 4, ISO_BETA, 200, new Vector3(64, 0, 64), this.scene);
-    this.camera.mode = Camera.ORTHOGRAPHIC_CAMERA;
+    this.camera = new ArcRotateCamera(
+      "cam",
+      this.pocV4 ? (57 * Math.PI) / 180 : -Math.PI / 4,
+      this.pocV4 ? (50 * Math.PI) / 180 : ISO_BETA,
+      200,
+      new Vector3(64, 0, 64),
+      this.scene,
+    );
+    this.camera.mode = this.pocV4 ? Camera.PERSPECTIVE_CAMERA : Camera.ORTHOGRAPHIC_CAMERA;
+    if (this.pocV4) {
+      this.camera.fov = (27 * Math.PI) / 180;
+      this.zoom = 9.5;
+    }
     this.camera.minZ = 0.1;
     this.camera.maxZ = 2000;
     this.applyZoom();
@@ -97,16 +121,31 @@ export class CityRenderer {
     this.sky.groundColor = new Color3(0.35, 0.35, 0.3);
     this.sun = new DirectionalLight("sun", new Vector3(-0.5, -1, 0.4), this.scene);
     this.sun.intensity = 0.9;
-    this.shadows = new ShadowGenerator(2048, this.sun);
+    this.shadows = new ShadowGenerator(this.pocV4 ? 4096 : 2048, this.sun);
     this.shadows.usePercentageCloserFiltering = true;
     this.shadows.bias = 0.002;
 
+    if (this.pocV4) {
+      this.sky.diffuse = Color3.FromHexString("#aab7d8");
+      this.sky.groundColor = Color3.FromHexString("#8c8273");
+      this.sky.intensity = 0.55;
+      this.sun.direction.set(-0.62, -0.5, -0.62).normalize();
+      this.sun.diffuse = Color3.FromHexString("#ffcf96");
+      this.sun.intensity = 3.2;
+      this.pocV4Environment = new PocV4Environment(this.scene, this.camera, this.shadows, opts.tileMeters);
+      this.applyZoom();
+    }
+
     this.lib = new ModelLibrary(this.scene, opts.modelsBaseUrl);
     this.ground = new GroundLayer(this.scene);
-    this.roads = new RoadLayer(this.lib);
-    this.buildingLayer = new BuildingLayer(this.lib, opts.buildingVisuals, opts.tileMeters);
-    this.trees = new TreeLayer(this.lib);
-    this.vehicles = new VehicleLayer(this.lib, opts.tileMeters);
+    this.roads = this.pocV4 ? new PocV4RoadLayer(this.lib, opts.tileMeters) : new RoadLayer(this.lib);
+    this.buildingLayer = this.pocV4
+      ? new PocV4BuildingLayer(this.lib, opts.buildingVisuals, opts.tileMeters)
+      : new BuildingLayer(this.lib, opts.buildingVisuals, opts.tileMeters);
+    this.trees = this.pocV4 ? new PocV4TreeLayer(this.lib, opts.tileMeters) : new TreeLayer(this.lib);
+    this.vehicles = this.pocV4
+      ? new PocV4VehicleLayer(this.lib, opts.tileMeters)
+      : new VehicleLayer(this.lib, opts.tileMeters);
 
     this.previewMat = new StandardMaterial("preview", this.scene);
     this.previewMat.alpha = 0.45;
@@ -121,17 +160,26 @@ export class CityRenderer {
   }
 
   async loadAssets() {
-    await this.lib.load([
-      ...RoadLayer.models(),
-      ...BuildingLayer.models(this.opts.buildingVisuals),
-      ...TreeLayer.models(),
-      ...VehicleLayer.models(),
-    ]);
+    const models = this.pocV4
+      ? [
+          ...PocV4RoadLayer.models(),
+          ...PocV4BuildingLayer.models(this.opts.buildingVisuals),
+          ...PocV4TreeLayer.models(),
+          ...PocV4VehicleLayer.models(),
+        ]
+      : [
+          ...RoadLayer.models(),
+          ...BuildingLayer.models(this.opts.buildingVisuals),
+          ...TreeLayer.models(),
+          ...VehicleLayer.models(),
+        ];
+    await this.lib.load(models);
     for (const m of this.lib.all()) {
       if (m.name.startsWith("roads/road")) continue;
-      this.shadows.addShadowCaster(m);
+      if (!m.name.startsWith("poc-v4/rua_")) this.shadows.addShadowCaster(m);
       m.receiveShadows = true;
     }
+    this.pocV4Ready = this.pocV4;
   }
 
   start(onFrame: () => void) {
@@ -175,6 +223,7 @@ export class CityRenderer {
 
   /** Luz do sol conforme a hora (minuto do dia). */
   setTimeOfDay(minuteOfDay: number) {
+    if (this.pocV4) return;
     const t = minuteOfDay / 1440;
     const sunHeight = -Math.cos(t * 2 * Math.PI); // -1 meia-noite, 1 meio-dia
     const day = Math.max(0, Math.min(1, (sunHeight + 0.15) / 0.5));
@@ -261,6 +310,20 @@ export class CityRenderer {
     return { alpha: this.camera.alpha, beta: this.camera.beta, zoom: this.zoom, x: t.x, z: t.z };
   }
 
+  /** Evidência observável da POC v4 para Playwright e inspeção manual. */
+  pocV4State() {
+    return {
+      enabled: this.pocV4,
+      ready: this.pocV4Ready,
+      camera: this.camera.mode === Camera.PERSPECTIVE_CAMERA ? "perspective" : "orthographic",
+      fovDegrees: (this.camera.fov * 180) / Math.PI,
+      environment: this.pocV4Environment?.state() ?? null,
+      fps: Math.round(this.engine.getFps()),
+      meshes: this.scene.meshes.length,
+      activeMeshes: this.scene.getActiveMeshes().length,
+    };
+  }
+
   private pickBoxes(): PickBox[] {
     if (this.pickCache) return this.pickCache;
     this.pickCache = this.lastBuildings.map((b) => ({
@@ -287,6 +350,7 @@ export class CityRenderer {
   }
 
   dispose() {
+    this.pocV4Environment?.dispose();
     this.engine.dispose();
   }
 
@@ -301,10 +365,14 @@ export class CityRenderer {
 
   private applyZoom() {
     const ar = this.canvas.width / Math.max(1, this.canvas.height);
-    this.camera.orthoTop = this.zoom;
-    this.camera.orthoBottom = -this.zoom;
-    this.camera.orthoLeft = -this.zoom * ar;
-    this.camera.orthoRight = this.zoom * ar;
+    if (this.camera.mode === Camera.PERSPECTIVE_CAMERA) {
+      this.camera.radius = this.zoom / Math.tan(this.camera.fov / 2);
+    } else {
+      this.camera.orthoTop = this.zoom;
+      this.camera.orthoBottom = -this.zoom;
+      this.camera.orthoLeft = -this.zoom * ar;
+      this.camera.orthoRight = this.zoom * ar;
+    }
     // A sombra acompanha o que está na tela.
     if (this.sun) {
       this.sun.shadowFrustumSize = this.zoom * 3;
