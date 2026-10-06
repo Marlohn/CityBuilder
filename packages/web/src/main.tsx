@@ -231,6 +231,8 @@ function setupPocV4Cinema() {
   renderer.setBuildings(showcaseBuildings);
   renderer.setVehicles({ data: vehicles, count: vehicles.length / 4 });
   renderer.lookAt(15, 12);
+  renderer.zoomBy(0.58);
+  renderer.tiltBy((5 * Math.PI) / 180);
   store.set({ ready: true });
 }
 
