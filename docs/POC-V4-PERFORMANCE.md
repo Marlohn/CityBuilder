@@ -28,8 +28,10 @@ thin instances em cada clone de chunk sem duplicar a geometria. Duplicar milhare
 o objetivo de escala.
 
 A solução adotada mantém **uma Geometry/mesh por modelo** e compacta, para esse mesh, somente as matrizes
-dos chunks na janela visível (com margem de segurança). O buffer GPU só é recomposto quando a câmera cruza
-fronteiras de chunk ou quando um chunk visível muda. Assim:
+dos chunks que realmente intersectam a projeção do frustum da câmera no chão, com margem curta de segurança.
+O buffer GPU só é recomposto quando a janela de chunks muda ou quando um chunk visível muda. Props pequenos
+(bancos/floreiras), árvores e veículos/pessoas também têm distância máxima no perfil de escala, evitando desenhar
+detalhe subpixel no horizonte. Assim:
 
 - geometria/material/submeshes dos GLBs permanecem exatamente os originais;
 - chunks fora da janela não entram no buffer GPU;
@@ -44,11 +46,11 @@ somente o subconjunto visível compactado.
 
 `?poc=v4&cinema=1&perf=1` ativa o perfil de benchmark:
 
-- shadow map 2048, qualidade medium;
+- shadow map 1024, qualidade low;
 - MSAA 1x + FXAA;
 - bloom ligado;
 - SSAO desligado;
-- resolução interna em 85%;
+- resolução interna em 75%;
 - WebGL por padrão.
 
 Toggles de diagnóstico:
@@ -59,7 +61,7 @@ Toggles de diagnóstico:
 | cenário | `stress=small`, `stress=medium`, `stress=large` |
 | câmera | `view=street`, `view=medium`, `view=overview` |
 | sombras | `shadows=0`, `shadows=1024`, `shadows=2048`, `shadows=4096` |
-| resolução | `scale=0.75`, `scale=0.85`, `scale=1` |
+| resolução | `scale=0.5`, `scale=0.75`, `scale=0.85`, `scale=1` |
 | anti-alias | `msaa=1`, `msaa=2`, `msaa=4` |
 | pós | `ssao=1`, `bloom=0` |
 
