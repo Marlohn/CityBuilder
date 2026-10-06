@@ -31,17 +31,52 @@ test("POC v4 usa os novos GLBs no renderer e mantém a cidade real funcional", a
         name: m.name,
         count: m.thinInstanceCount,
       }));
-    const roadSubMeshes = renderer.scene.meshes
+    const chunks = renderer.scene.meshes.filter((m: { name: string }) => m.name.startsWith("poc-v4-chunk/"));
+    const roadSubMeshes = chunks
       .filter((m: { name: string }) => m.name.includes("/poc-v4/rua_"))
       .map((m: { subMeshes: unknown[] }) => m.subMeshes.length);
-    const lotSubMeshes = renderer.scene.meshes
+    const lotSubMeshes = chunks
       .filter((m: { name: string }) => m.name.includes("/poc-v4/lote_"))
       .map((m: { subMeshes: unknown[] }) => m.subMeshes.length);
+    const subMeshFidelity = chunks.every(
+      (mesh: {
+        name: string;
+        material: unknown;
+        subMeshes: { materialIndex: number; verticesStart: number; verticesCount: number; indexStart: number; indexCount: number }[];
+      }) => {
+        const model = mesh.name.split("/").slice(3).join("/");
+        const source = renderer.scene.meshes.find((m: { name: string }) => m.name === model) as
+          | {
+              material: unknown;
+              subMeshes: {
+                materialIndex: number;
+                verticesStart: number;
+                verticesCount: number;
+                indexStart: number;
+                indexCount: number;
+              }[];
+            }
+          | undefined;
+        if (!source || mesh.material !== source.material || mesh.subMeshes.length !== source.subMeshes.length) return false;
+        return mesh.subMeshes.every((sub, index) => {
+          const original = source.subMeshes[index];
+          return (
+            original !== undefined &&
+            sub.materialIndex === original.materialIndex &&
+            sub.verticesStart === original.verticesStart &&
+            sub.verticesCount === original.verticesCount &&
+            sub.indexStart === original.indexStart &&
+            sub.indexCount === original.indexCount
+          );
+        });
+      },
+    );
     return {
       poc: renderer.pocV4State(),
       used,
       roadSubMeshes,
       lotSubMeshes,
+      subMeshFidelity,
       buildings: window.__city.buildings().length,
       uiChildren: document.getElementById("ui")?.childElementCount ?? 0,
       badge: document.getElementById("poc-v4-badge")?.textContent ?? "",
@@ -68,6 +103,7 @@ test("POC v4 usa os novos GLBs no renderer e mantém a cidade real funcional", a
   expect(state.poc.chunks.active).toBeGreaterThan(0);
   expect(Math.max(...state.roadSubMeshes)).toBeGreaterThan(1);
   expect(Math.max(...state.lotSubMeshes)).toBeGreaterThan(1);
+  expect(state.subMeshFidelity).toBe(true);
 
   await mkdir("test-results", { recursive: true });
   await writeFile(
