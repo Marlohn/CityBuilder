@@ -75,7 +75,7 @@ const ZOOM_PER_SEC = 1.8;
 const PAN_SCREENS_PER_SEC = 0.9;
 
 export class CityRenderer {
-  readonly engine: Engine;
+  readonly engine: Engine | WebGPUEngine;
   readonly scene: Scene;
   readonly camera: ArcRotateCamera;
   private lib: ModelLibrary;
@@ -130,7 +130,7 @@ export class CityRenderer {
   constructor(
     private canvas: HTMLCanvasElement,
     private opts: RendererOptions,
-    engine?: Engine,
+    engine?: Engine | WebGPUEngine,
     backend: "WebGL" | "WebGPU" = "WebGL",
     fallback = false,
   ) {
