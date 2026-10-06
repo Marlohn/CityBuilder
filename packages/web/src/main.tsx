@@ -13,6 +13,16 @@ import { ToolController, toolDefs } from "./tools";
 const params = new URLSearchParams(location.search);
 const pocV4 = params.get("poc") === "v4";
 const pocV4Cinema = pocV4 && params.get("cinema") === "1";
+const pocV4Perf = pocV4Cinema && params.get("perf") === "1";
+const pocV4Stress =
+  params.get("stress") === "large" ? "large" : params.get("stress") === "medium" ? "medium" : "small";
+const requestedShadow = Number(params.get("shadows") ?? 2048);
+const shadowMapSize = [1024, 2048, 4096].includes(requestedShadow) ? requestedShadow : 2048;
+const requestedScale = Number(params.get("scale") ?? 0.85);
+const resolutionScale = Number.isFinite(requestedScale)
+  ? Math.max(0.5, Math.min(1, requestedScale))
+  : 0.85;
+const msaaSamples = params.get("msaa") === "4" ? 4 : params.get("msaa") === "2" ? 2 : 1;
 const seed = params.get("seed") ?? (pocV4 ? "poc-v4-live" : `cidade-${Math.floor(Math.random() * 1e9)}`);
 // A POC visual usa sandbox só para montar uma cidade de avaliação determinística.
 const overrides = params.get("modo") === "livre" || pocV4 ? { economy: { mode: "sandbox" } } : undefined;
@@ -48,6 +58,21 @@ const renderer = new CityRenderer(canvas, {
   buildingVisuals: data.buildings.map((b) => ({ id: b.id, models: b.models, floors: b.floors })),
   tileMeters: config.world.tileMeters,
   visualStyle: pocV4 ? "poc-v4" : "default",
+  pocV4Runtime: pocV4Perf
+    ? {
+        profile: "perf",
+        shadowMapSize,
+        shadowsEnabled: params.get("shadows") !== "0",
+        resolutionScale,
+        graphics: {
+          msaaSamples,
+          fxaa: true,
+          bloom: params.get("bloom") !== "0",
+          ssao: params.get("ssao") === "1",
+          shadowQuality: shadowMapSize <= 1024 ? "low" : "medium",
+        },
+      }
+    : undefined,
 });
 
 let buildings: BuildingView[] = [];
@@ -56,9 +81,10 @@ const byTile = new Map<number, BuildingView>();
 function indexBuildings(list: BuildingView[]) {
   buildings = list;
   byTile.clear();
+  const width = lastMap?.width ?? config.world.width;
   for (const b of list)
     for (let dy = 0; dy < b.h; dy++)
-      for (let dx = 0; dx < b.w; dx++) byTile.set((b.y + dy) * config.world.width + b.x + dx, b);
+      for (let dx = 0; dx < b.w; dx++) byTile.set((b.y + dy) * width + b.x + dx, b);
 }
 
 const tools = new ToolController(
@@ -236,6 +262,93 @@ function setupPocV4Cinema() {
   store.set({ ready: true });
 }
 
+
+function setupPocV4Stress(kind: "medium" | "large") {
+  const size = kind === "large" ? 256 : 128;
+  const buildingTarget = kind === "large" ? 6000 : 1500;
+  const vehicleTarget = kind === "large" ? 1500 : 500;
+  const roads = new Uint8Array(size * size);
+  const zones = new Uint8Array(size * size);
+  const trees = new Uint8Array(size * size);
+  const water = new Uint8Array(size * size);
+  const at = (x: number, y: number) => y * size + x;
+
+  // Grade densa e determinística. Blocos de 3 tiles entre vias deixam bastante conteúdo
+  // fora da câmera, justamente para verificar se o custo acompanha chunks visíveis.
+  for (let y = 2; y < size - 2; y += 4)
+    for (let x = 1; x < size - 1; x++) roads[at(x, y)] = y % 16 === 2 ? 2 : 1;
+  for (let x = 2; x < size - 2; x += 4)
+    for (let y = 1; y < size - 1; y++) roads[at(x, y)] = x % 16 === 2 ? 2 : 1;
+
+  const stressBuildings: BuildingView[] = [];
+  let id = 1;
+  for (let y = 1; y < size - 1; y++) {
+    for (let x = 1; x < size - 1; x++) {
+      const i = at(x, y);
+      if (roads[i]) continue;
+      if (stressBuildings.length < buildingTarget && (x * 7 + y * 11) % 3 !== 0) {
+        const commercial = (x * 13 + y * 5) % 7 === 0;
+        stressBuildings.push({
+          id: id++,
+          type: commercial ? "loja" : "casa",
+          x,
+          y,
+          w: 1,
+          h: 1,
+          state: 1,
+          facing: (x + y) % 4,
+          variant: (x * 3 + y) % 2,
+          residents: commercial ? 0 : 3,
+          households: commercial ? 0 : 1,
+          homesCapacity: commercial ? 0 : 1,
+          jobs: commercial ? 6 : 0,
+          jobsCapacity: commercial ? 13 : 0,
+          students: 0,
+          studentsCapacity: 0,
+          patients: 0,
+          patientsCapacity: 0,
+        });
+      } else if ((x * 17 + y * 31) % 5 === 0) {
+        trees[i] = 1;
+      }
+    }
+  }
+
+  const vehicles = new Float32Array(vehicleTarget * 4);
+  const roadRows = Math.floor((size - 4) / 4);
+  for (let k = 0; k < vehicleTarget; k++) {
+    const horizontal = k % 2 === 0;
+    const lane = 2 + (k % roadRows) * 4;
+    const along = 1.5 + ((k * 17) % (size - 3));
+    vehicles[k * 4] = horizontal ? along : lane + 0.35;
+    vehicles[k * 4 + 1] = horizontal ? lane + 0.35 : along;
+    vehicles[k * 4 + 2] = horizontal ? Math.PI / 2 : 0;
+    vehicles[k * 4 + 3] = k % 9 === 0 ? 100 : k % 3;
+  }
+
+  const map: MapView = {
+    width: size,
+    height: size,
+    tileMeters: config.world.tileMeters,
+    roads,
+    zones,
+    trees,
+    water,
+    version: 1,
+  };
+
+  lastMap = map;
+  indexBuildings(stressBuildings);
+  renderer.setMap(map);
+  renderer.setBuildings(stressBuildings);
+  renderer.setVehicles({ data: vehicles, count: vehicleTarget });
+  renderer.lookAt(size / 2, size / 2);
+  const targetZoom = kind === "large" ? 48 : 30;
+  renderer.zoomBy(targetZoom / renderer.cameraState().zoom);
+  renderer.tiltBy((5 * Math.PI) / 180);
+  store.set({ ready: true });
+}
+
 function buildPocV4City() {
   if (!pocV4 || pocV4Built) return;
   pocV4Built = true;
@@ -328,12 +441,57 @@ renderer
         client.setView(renderer.visibleTileRect());
       }
     });
-    if (pocV4Cinema) setupPocV4Cinema();
-    else client.send({ type: "init", seed, configTexts, dataTexts, overrides });
+    if (pocV4Cinema) {
+      if (pocV4Perf && pocV4Stress !== "small") setupPocV4Stress(pocV4Stress);
+      else setupPocV4Cinema();
+    } else client.send({ type: "init", seed, configTexts, dataTexts, overrides });
   })
   .catch((e) => store.set({ error: `Erro ao carregar modelos: ${(e as Error).message}` }));
 
+if (pocV4Perf) {
+  const hud = document.createElement("pre");
+  hud.id = "poc-v4-perf";
+  Object.assign(hud.style, {
+    position: "fixed",
+    zIndex: "30",
+    left: "12px",
+    top: "12px",
+    margin: "0",
+    padding: "9px 11px",
+    borderRadius: "8px",
+    background: "rgba(12, 16, 20, 0.86)",
+    color: "#e9f1f5",
+    font: "11px/1.35 ui-monospace, SFMono-Regular, Menlo, monospace",
+    pointerEvents: "none",
+    whiteSpace: "pre",
+  });
+  document.body.append(hud);
+  const refreshHud = () => {
+    const state = renderer.pocV4State();
+    hud.textContent = [
+      `v4 perf · ${pocV4Stress} · ${state.engine}`,
+      `fps ${state.fps} · frame ${state.frameTimeMs} ms · p95 ${state.frameTimeP95Ms} · p99 ${state.frameTimeP99Ms}`,
+      `internal ${state.resolution.width}x${state.resolution.height} · scale ${state.graphics.resolutionScale}`,
+      `meshes ${state.meshes} · active ${state.activeMeshes} · draws ${state.drawCalls ?? "n/a"}`,
+      `tri ${state.triangles} · vertices ${state.vertices}`,
+      `chunks ${state.chunks.visible}/${state.chunks.active} · instances ${state.chunks.visibleInstances}/${state.chunks.instances}`,
+      `shadow ${state.graphics.shadowsEnabled ? state.graphics.shadowMapSize : "off"} · MSAA ${state.environment?.msaaSamples ?? 0} · SSAO ${state.environment?.ssao ? "on" : "off"} · bloom ${state.environment?.bloom ? "on" : "off"}`,
+    ].join("\n");
+  };
+  window.setInterval(refreshHud, 500);
+  refreshHud();
+}
+
 // Acesso para testes automáticos (Playwright) e depuração no console.
 Object.assign(window, {
-  __city: { client, store, renderer, seed, buildings: () => buildings, map: () => lastMap },
+  __city: {
+    client,
+    store,
+    renderer,
+    seed,
+    buildings: () => buildings,
+    map: () => lastMap,
+    performance: () => renderer.pocV4State(),
+    stress: pocV4Stress,
+  },
 });
