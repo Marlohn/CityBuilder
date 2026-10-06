@@ -26,9 +26,9 @@ import { GroundLayer } from "./ground";
 import { BuildingLayer, type BuildingVisual, RoadLayer, TreeLayer, VehicleLayer } from "./layers";
 import { ModelLibrary } from "./models";
 import {
+  POC_V4_HERO_GRAPHICS,
   PocV4BuildingLayer,
   PocV4Environment,
-  POC_V4_HERO_GRAPHICS,
   type PocV4GraphicsOptions,
   PocV4RoadLayer,
   PocV4TreeLayer,
@@ -378,11 +378,11 @@ export class CityRenderer {
     const buildings =
       this.buildingLayer instanceof PocV4BuildingLayer ? this.buildingLayer.stats(activeMeshNames) : null;
     const trees = this.trees instanceof PocV4TreeLayer ? this.trees.stats(activeMeshNames) : null;
-    const vehicles =
-      this.vehicles instanceof PocV4VehicleLayer ? this.vehicles.stats(activeMeshNames) : null;
+    const vehicles = this.vehicles instanceof PocV4VehicleLayer ? this.vehicles.stats(activeMeshNames) : null;
     const layers = [road, buildings, trees, vehicles].filter((x) => x !== null);
-    const sum = (key: "chunks" | "batches" | "instances" | "visibleChunks" | "visibleBatches" | "visibleInstances") =>
-      layers.reduce((total, layer) => total + layer[key], 0);
+    const sum = (
+      key: "chunks" | "batches" | "instances" | "visibleChunks" | "visibleBatches" | "visibleInstances",
+    ) => layers.reduce((total, layer) => total + layer[key], 0);
     const drawCalls =
       (this.engine as unknown as { _drawCalls?: { current?: number } })._drawCalls?.current ?? null;
 
