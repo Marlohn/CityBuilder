@@ -177,9 +177,7 @@ test("POC v4 perf particiona cidade grande e expõe métricas do gate", async ({
       hud: document.getElementById("poc-v4-perf")?.textContent ?? "",
       repeatedStaticUploads: after - before,
       gpuInstances: window.__city.renderer.scene.meshes
-        .filter(
-          (m: { name: string }) => m.name.startsWith("poc-v4/") || m.name === "proc/construction",
-        )
+        .filter((m: { name: string }) => m.name.startsWith("poc-v4/") || m.name === "proc/construction")
         .reduce((total: number, m: { thinInstanceCount: number }) => total + m.thinInstanceCount, 0),
     };
   });
