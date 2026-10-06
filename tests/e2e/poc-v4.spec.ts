@@ -239,7 +239,6 @@ test("POC v4 perf particiona cidade grande e expõe métricas do gate", async ({
       2,
     ),
   );
-  await page.screenshot({ path: "test-results/poc-v4-large.png", animations: "disabled" });
 });
 
 test("POC v4 integrada continua ligada ao Worker e à simulação real", async ({ page }) => {
