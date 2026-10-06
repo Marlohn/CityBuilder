@@ -137,6 +137,78 @@ test("POC v4 perf mantém o baseline pequeno comparável à hero original", asyn
   await page.locator("#city").screenshot({ path: "test-results/poc-v4-tuned-small.png" });
 });
 
+test("POC v4 integrada continua ligada ao Worker e à simulação real", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await page.goto("/?seed=poc-v4-scale-integration&poc=v4");
+  await page.waitForFunction(
+    () => {
+      const city = window.__city;
+      return (
+        city?.renderer.pocV4State().ready &&
+        Boolean(city.map()) &&
+        (city.store.get().ready || Boolean(city.store.get().error))
+      );
+    },
+    null,
+    { timeout: 120_000 },
+  );
+  await page.waitForTimeout(800);
+
+  const state = await page.evaluate(() => ({
+    error: window.__city.store.get().error,
+    map: { width: window.__city.map()?.width, height: window.__city.map()?.height },
+    poc: window.__city.renderer.pocV4State(),
+    uiChildren: document.getElementById("ui")?.childElementCount ?? 0,
+  }));
+
+  expect(state.error).toBeNull();
+  expect(state.map).toEqual({ width: 256, height: 256 });
+  expect(state.poc.enabled).toBe(true);
+  expect(state.poc.ready).toBe(true);
+  expect(state.uiChildren).toBeGreaterThan(0);
+  expect(errors).toEqual([]);
+});
+
+test("POC v4 WebGPU mantém fallback WebGL seguro", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await page.goto("/?poc=v4&cinema=1&perf=1&engine=webgpu");
+  await page.waitForFunction(
+    () => {
+      const state = window.__city?.store.get();
+      return state?.ready || Boolean(state?.error);
+    },
+    null,
+    { timeout: 120_000 },
+  );
+
+  const state = await page.evaluate(() => ({
+    error: window.__city.store.get().error,
+    perf: window.__city.performance(),
+  }));
+
+  expect(state.error).toBeNull();
+  expect(state.perf.engineRequested).toBe("webgpu");
+  expect(["WebGPU", "WebGL"]).toContain(state.perf.engine);
+  expect(state.perf.engineFallback).toBe(state.perf.engine === "WebGL");
+  expect(errors).toEqual([]);
+});
+
+test("renderer padrão continua fora da POC v4", async ({ page }) => {
+  const errors = await openGame(page, "poc-v4-default");
+  const state = await page.evaluate(() => ({
+    poc: window.__city.renderer.pocV4State(),
+    badge: document.getElementById("poc-v4-badge"),
+  }));
+
+  expect(state.poc.enabled).toBe(false);
+  expect(state.poc.camera).toBe("orthographic");
+  expect(state.poc.environment).toBeNull();
+  expect(state.badge).toBeNull();
+  expect(errors).toEqual([]);
+});
+
 test("POC v4 perf particiona cidade grande e expõe métricas do gate", async ({ page }) => {
   test.setTimeout(300_000);
   const errors: string[] = [];
@@ -219,76 +291,5 @@ test("POC v4 perf particiona cidade grande e expõe métricas do gate", async ({
       2,
     ),
   );
-});
-
-test("POC v4 integrada continua ligada ao Worker e à simulação real", async ({ page }) => {
-  const errors: string[] = [];
-  page.on("pageerror", (e) => errors.push(e.message));
-  await page.goto("/?seed=poc-v4-scale-integration&poc=v4");
-  await page.waitForFunction(
-    () => {
-      const city = window.__city;
-      return (
-        city?.renderer.pocV4State().ready &&
-        Boolean(city.map()) &&
-        (city.store.get().ready || Boolean(city.store.get().error))
-      );
-    },
-    null,
-    { timeout: 120_000 },
-  );
-  await page.waitForTimeout(800);
-
-  const state = await page.evaluate(() => ({
-    error: window.__city.store.get().error,
-    map: { width: window.__city.map()?.width, height: window.__city.map()?.height },
-    poc: window.__city.renderer.pocV4State(),
-    uiChildren: document.getElementById("ui")?.childElementCount ?? 0,
-  }));
-
-  expect(state.error).toBeNull();
-  expect(state.map).toEqual({ width: 256, height: 256 });
-  expect(state.poc.enabled).toBe(true);
-  expect(state.poc.ready).toBe(true);
-  expect(state.uiChildren).toBeGreaterThan(0);
-  expect(errors).toEqual([]);
-});
-
-test("POC v4 WebGPU mantém fallback WebGL seguro", async ({ page }) => {
-  const errors: string[] = [];
-  page.on("pageerror", (e) => errors.push(e.message));
-  await page.goto("/?poc=v4&cinema=1&perf=1&engine=webgpu");
-  await page.waitForFunction(
-    () => {
-      const state = window.__city?.store.get();
-      return state?.ready || Boolean(state?.error);
-    },
-    null,
-    { timeout: 120_000 },
-  );
-
-  const state = await page.evaluate(() => ({
-    error: window.__city.store.get().error,
-    perf: window.__city.performance(),
-  }));
-
-  expect(state.error).toBeNull();
-  expect(state.perf.engineRequested).toBe("webgpu");
-  expect(["WebGPU", "WebGL"]).toContain(state.perf.engine);
-  expect(state.perf.engineFallback).toBe(state.perf.engine === "WebGL");
-  expect(errors).toEqual([]);
-});
-
-test("renderer padrão continua fora da POC v4", async ({ page }) => {
-  const errors = await openGame(page, "poc-v4-default");
-  const state = await page.evaluate(() => ({
-    poc: window.__city.renderer.pocV4State(),
-    badge: document.getElementById("poc-v4-badge"),
-  }));
-
-  expect(state.poc.enabled).toBe(false);
-  expect(state.poc.camera).toBe("orthographic");
-  expect(state.poc.environment).toBeNull();
-  expect(state.badge).toBeNull();
-  expect(errors).toEqual([]);
+  await page.evaluate(() => window.__city.renderer.dispose());
 });
