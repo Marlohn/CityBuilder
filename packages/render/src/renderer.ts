@@ -208,7 +208,12 @@ export class CityRenderer {
     this.ground = new GroundLayer(this.scene);
     const configurePocV4Chunk = (mesh: Mesh, model: string) => {
       mesh.receiveShadows = true;
-      if (this.pocV4Runtime.shadowsEnabled && !model.startsWith("poc-v4/rua_"))
+      const decorative =
+        model === "poc-v4/banco" ||
+        model === "poc-v4/floreira" ||
+        model.startsWith("poc-v4/carro_") ||
+        model.startsWith("poc-v4/pessoa_");
+      if (this.pocV4Runtime.shadowsEnabled && !model.startsWith("poc-v4/rua_") && !decorative)
         this.shadows.addShadowCaster(mesh);
     };
     this.roads = this.pocV4
@@ -489,11 +494,37 @@ export class CityRenderer {
   }
 
   private updatePocV4Visibility() {
-    const rect = this.visibleTileRect();
-    if (this.roads instanceof PocV4RoadLayer) this.roads.setVisibleRect(rect);
-    if (this.buildingLayer instanceof PocV4BuildingLayer) this.buildingLayer.setVisibleRect(rect);
-    if (this.trees instanceof PocV4TreeLayer) this.trees.setVisibleRect(rect);
-    if (this.vehicles instanceof PocV4VehicleLayer) this.vehicles.setVisibleRect(rect);
+    const width = this.engine.getRenderWidth();
+    const height = this.engine.getRenderHeight();
+    const polygon: { x: number; y: number }[] = [];
+    for (const [sx, sy] of [
+      [0, 0],
+      [width, 0],
+      [width, height],
+      [0, height],
+    ] as const) {
+      const point = this.screenToGround(sx, sy);
+      if (point) polygon.push({ x: point.x, y: point.z });
+    }
+
+    if (polygon.length < 3) {
+      const rect = this.visibleTileRect();
+      polygon.splice(
+        0,
+        polygon.length,
+        { x: rect.x0, y: rect.y0 },
+        { x: rect.x1, y: rect.y0 },
+        { x: rect.x1, y: rect.y1 },
+        { x: rect.x0, y: rect.y1 },
+      );
+    }
+
+    const target = this.camera.target;
+    const center = { x: target.x, y: target.z };
+    if (this.roads instanceof PocV4RoadLayer) this.roads.setVisiblePolygon(polygon, center);
+    if (this.buildingLayer instanceof PocV4BuildingLayer) this.buildingLayer.setVisiblePolygon(polygon, center);
+    if (this.trees instanceof PocV4TreeLayer) this.trees.setVisiblePolygon(polygon, center);
+    if (this.vehicles instanceof PocV4VehicleLayer) this.vehicles.setVisiblePolygon(polygon, center);
   }
 
   /** Retângulo aproximado (em quadradinhos) que aparece na tela. */
