@@ -474,7 +474,7 @@ if (pocV4Perf) {
       `internal ${state.resolution.width}x${state.resolution.height} · scale ${state.graphics.resolutionScale}`,
       `meshes ${state.meshes} · active ${state.activeMeshes} · draws ${state.drawCalls ?? "n/a"}`,
       `tri ${state.triangles} · vertices ${state.vertices}`,
-      `chunks ${state.chunks.visible}/${state.chunks.active} · instances ${state.chunks.visibleInstances}/${state.chunks.instances}`,
+      `chunks ${state.chunks.visible}/${state.chunks.active} · instances ${state.chunks.visibleInstances}/${state.chunks.instances} · uploads ${state.chunks.bufferUpdates}`,
       `shadow ${state.graphics.shadowsEnabled ? state.graphics.shadowMapSize : "off"} · MSAA ${state.environment?.msaaSamples ?? 0} · SSAO ${state.environment?.ssao ? "on" : "off"} · bloom ${state.environment?.bloom ? "on" : "off"}`,
     ].join("\n");
   };
