@@ -135,15 +135,18 @@ export class ChunkedBatchSet {
     for (const entry of this.batches.values()) entry.batch.reset();
   }
 
-  applyAll() {
+  resetChunks(chunks: ReadonlySet<string>) {
     for (const entry of this.batches.values()) {
-      if (entry.batch.count === 0) {
-        if (entry.mesh) entry.batch.apply(entry.mesh);
-        continue;
-      }
-      if (!entry.mesh) entry.mesh = this.createMesh(entry);
-      entry.batch.apply(entry.mesh);
+      if (chunks.has(`${entry.chunkX}:${entry.chunkY}`)) entry.batch.reset();
     }
+  }
+
+  applyAll() {
+    this.applyWhere();
+  }
+
+  applyChunks(chunks: ReadonlySet<string>) {
+    this.applyWhere(chunks);
   }
 
   stats(activeMeshNames?: ReadonlySet<string>): BatchStats {
@@ -178,6 +181,18 @@ export class ChunkedBatchSet {
       visibleInstances,
       bufferUpdates,
     };
+  }
+
+  private applyWhere(chunks?: ReadonlySet<string>) {
+    for (const entry of this.batches.values()) {
+      if (chunks && !chunks.has(`${entry.chunkX}:${entry.chunkY}`)) continue;
+      if (entry.batch.count === 0) {
+        if (entry.mesh) entry.batch.apply(entry.mesh);
+        continue;
+      }
+      if (!entry.mesh) entry.mesh = this.createMesh(entry);
+      entry.batch.apply(entry.mesh);
+    }
   }
 
   private createMesh(entry: ChunkBatch): Mesh {
