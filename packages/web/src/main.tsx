@@ -19,9 +19,7 @@ const pocV4Stress =
 const requestedShadow = Number(params.get("shadows") ?? 2048);
 const shadowMapSize = [1024, 2048, 4096].includes(requestedShadow) ? requestedShadow : 2048;
 const requestedScale = Number(params.get("scale") ?? 0.85);
-const resolutionScale = Number.isFinite(requestedScale)
-  ? Math.max(0.5, Math.min(1, requestedScale))
-  : 0.85;
+const resolutionScale = Number.isFinite(requestedScale) ? Math.max(0.5, Math.min(1, requestedScale)) : 0.85;
 const msaaSamples = params.get("msaa") === "4" ? 4 : params.get("msaa") === "2" ? 2 : 1;
 const seed = params.get("seed") ?? (pocV4 ? "poc-v4-live" : `cidade-${Math.floor(Math.random() * 1e9)}`);
 // A POC visual usa sandbox só para montar uma cidade de avaliação determinística.
@@ -261,7 +259,6 @@ function setupPocV4Cinema() {
   renderer.tiltBy((5 * Math.PI) / 180);
   store.set({ ready: true });
 }
-
 
 function setupPocV4Stress(kind: "medium" | "large") {
   const size = kind === "large" ? 256 : 128;
