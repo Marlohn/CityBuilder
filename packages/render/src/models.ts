@@ -46,7 +46,7 @@ export class ModelLibrary {
       unique.map(async (name) => {
         const mesh = name.startsWith("proc/") ? this.procedural(name) : await this.loadGlb(name);
         mesh.isPickable = false;
-        mesh.alwaysSelectAsActiveMesh = true;
+        mesh.alwaysSelectAsActiveMesh = false;
         mesh.thinInstanceCount = 0;
         mesh.refreshBoundingInfo();
         const bb = mesh.getBoundingInfo().boundingBox;
