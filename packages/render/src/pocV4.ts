@@ -8,12 +8,13 @@ import {
   Color4,
   DefaultRenderingPipeline,
   ImageProcessingConfiguration,
+  type Mesh,
   type Scene,
   ShadowGenerator,
   SSAO2RenderingPipeline,
 } from "@babylonjs/core";
 import type { BuildingView, MapView, VehiclesView } from "@city/contract";
-import { BatchSet } from "./instances";
+import { type BatchStats, ChunkedBatchSet } from "./instances";
 import type { BuildingVisual } from "./layers";
 import type { ModelLibrary } from "./models";
 import { type RoadPiece, roadPieceFor } from "./roads";
@@ -23,6 +24,33 @@ const MODEL_FRONT = 2;
 const FLOOR_METERS = 3;
 const PEDESTRIAN_TYPE = 100;
 const PREFIX = "poc-v4/";
+const CHUNK_TILES = 16;
+
+export interface PocV4GraphicsOptions {
+  msaaSamples: 1 | 2 | 4;
+  fxaa: boolean;
+  bloom: boolean;
+  ssao: boolean;
+  shadowQuality: "low" | "medium" | "high";
+}
+
+export const POC_V4_HERO_GRAPHICS: PocV4GraphicsOptions = {
+  msaaSamples: 4,
+  fxaa: true,
+  bloom: true,
+  ssao: true,
+  shadowQuality: "high",
+};
+
+export const POC_V4_PERF_GRAPHICS: PocV4GraphicsOptions = {
+  msaaSamples: 1,
+  fxaa: true,
+  bloom: true,
+  ssao: false,
+  shadowQuality: "medium",
+};
+
+type ConfigureChunkMesh = (mesh: Mesh, model: string) => void;
 
 const ROAD_MODELS: Record<RoadPiece, string> = {
   straight: `${PREFIX}rua_reta`,
@@ -63,30 +91,41 @@ export class PocV4Environment {
   private readonly pipeline: DefaultRenderingPipeline;
   private readonly ssao: SSAO2RenderingPipeline | null;
 
-  constructor(scene: Scene, camera: Camera, shadows: ShadowGenerator, tileMeters: number) {
+  constructor(
+    scene: Scene,
+    camera: Camera,
+    shadows: ShadowGenerator,
+    tileMeters: number,
+    private readonly graphics: PocV4GraphicsOptions = POC_V4_HERO_GRAPHICS,
+  ) {
     scene.clearColor = Color4.FromHexString("#c8cad6ff");
     scene.ambientColor = new Color3(0.32, 0.34, 0.38);
 
     this.pipeline = new DefaultRenderingPipeline("poc-v4-pp", true, scene, [camera]);
-    this.pipeline.samples = 4;
-    this.pipeline.fxaaEnabled = true;
+    this.pipeline.samples = graphics.msaaSamples;
+    this.pipeline.fxaaEnabled = graphics.fxaa;
     this.pipeline.imageProcessing.toneMappingEnabled = true;
     this.pipeline.imageProcessing.toneMappingType = ImageProcessingConfiguration.TONEMAPPING_ACES;
     this.pipeline.imageProcessing.exposure = 1;
     this.pipeline.imageProcessing.contrast = 1.1;
-    this.pipeline.bloomEnabled = true;
+    this.pipeline.bloomEnabled = graphics.bloom;
     this.pipeline.bloomThreshold = 0.85;
     this.pipeline.bloomWeight = 0.22;
     this.pipeline.bloomKernel = 48;
 
     shadows.usePercentageCloserFiltering = true;
-    shadows.filteringQuality = ShadowGenerator.QUALITY_HIGH;
+    shadows.filteringQuality =
+      graphics.shadowQuality === "high"
+        ? ShadowGenerator.QUALITY_HIGH
+        : graphics.shadowQuality === "medium"
+          ? ShadowGenerator.QUALITY_MEDIUM
+          : ShadowGenerator.QUALITY_LOW;
     shadows.darkness = 0.18;
     shadows.bias = 0.0008;
     shadows.normalBias = 0.03;
 
     let ssao: SSAO2RenderingPipeline | null = null;
-    if (SSAO2RenderingPipeline.IsSupported) {
+    if (graphics.ssao && SSAO2RenderingPipeline.IsSupported) {
       ssao = new SSAO2RenderingPipeline("poc-v4-ssao", scene, { ssaoRatio: 0.75, blurRatio: 1 }, [camera]);
       ssao.radius = 1.6 / tileMeters;
       ssao.totalStrength = 1.15;
@@ -103,6 +142,9 @@ export class PocV4Environment {
       contrast: this.pipeline.imageProcessing.contrast,
       bloom: this.pipeline.bloomEnabled,
       ssao: this.ssao !== null,
+      msaaSamples: this.graphics.msaaSamples,
+      fxaa: this.graphics.fxaa,
+      shadowQuality: this.graphics.shadowQuality,
     };
   }
 
@@ -113,12 +155,15 @@ export class PocV4Environment {
 }
 
 export class PocV4RoadLayer {
-  private batches = new BatchSet();
+  private readonly batches: ChunkedBatchSet;
 
   constructor(
     private lib: ModelLibrary,
     private tileMeters: number,
-  ) {}
+    configureMesh?: ConfigureChunkMesh,
+  ) {
+    this.batches = new ChunkedBatchSet(CHUNK_TILES, (model) => this.lib.get(model).mesh, configureMesh);
+  }
 
   static models(): string[] {
     return [...new Set([...Object.values(ROAD_MODELS), `${PREFIX}banco`, `${PREFIX}floreira`])];
@@ -126,7 +171,6 @@ export class PocV4RoadLayer {
 
   update(map: MapView) {
     this.batches.resetAll();
-    for (const m of PocV4RoadLayer.models()) this.batches.get(m);
     const { width, height, roads } = map;
     const s = 1 / this.tileMeters;
     const sidewalkY = 0.18 / this.tileMeters;
@@ -143,7 +187,9 @@ export class PocV4RoadLayer {
         if (x > 0 && roads[i - 1]) mask |= 8;
 
         const { piece, quarterTurns } = roadPieceFor(mask);
-        this.batches.get(ROAD_MODELS[piece]).push(x + 0.5, 0, y + 0.5, quarterTurns * HALF_PI, s, s, s);
+        this.batches
+          .get(ROAD_MODELS[piece], x + 0.5, y + 0.5)
+          .push(x + 0.5, 0, y + 0.5, quarterTurns * HALF_PI, s, s, s);
 
         if (piece === "straight" && (x + y) % 2 === 0) {
           const alongX = (mask & 10) === 10;
@@ -151,7 +197,7 @@ export class PocV4RoadLayer {
           const ox = alongX ? 0 : side * 0.41;
           const oz = alongX ? side * 0.41 : 0;
           this.batches
-            .get(`${PREFIX}banco`)
+            .get(`${PREFIX}banco`, x + 0.5 + ox, y + 0.5 + oz)
             .push(x + 0.5 + ox, sidewalkY, y + 0.5 + oz, alongX ? HALF_PI : 0, s, s, s);
         }
 
@@ -159,23 +205,31 @@ export class PocV4RoadLayer {
           const alongX = (mask & 10) === 10;
           const ox = alongX ? 0.34 : -0.39;
           const oz = alongX ? -0.39 : 0.34;
-          this.batches.get(`${PREFIX}floreira`).push(x + 0.5 + ox, sidewalkY, y + 0.5 + oz, 0, s, s, s);
+          this.batches
+            .get(`${PREFIX}floreira`, x + 0.5 + ox, y + 0.5 + oz)
+            .push(x + 0.5 + ox, sidewalkY, y + 0.5 + oz, 0, s, s, s);
         }
       }
     }
-    this.batches.applyAll((m) => this.lib.get(m).mesh);
+    this.batches.applyAll();
+  }
+
+  stats(activeMeshNames?: ReadonlySet<string>): BatchStats {
+    return this.batches.stats(activeMeshNames);
   }
 }
 
 export class PocV4BuildingLayer {
-  private batches = new BatchSet();
+  private readonly batches: ChunkedBatchSet;
   private visuals = new Map<string, BuildingVisual>();
 
   constructor(
     private lib: ModelLibrary,
     visuals: BuildingVisual[],
     private tileMeters: number,
+    configureMesh?: ConfigureChunkMesh,
   ) {
+    this.batches = new ChunkedBatchSet(CHUNK_TILES, (model) => this.lib.get(model).mesh, configureMesh);
     for (const v of visuals) this.visuals.set(v.id, v);
   }
 
@@ -200,7 +254,6 @@ export class PocV4BuildingLayer {
 
   update(list: BuildingView[]) {
     this.batches.resetAll();
-    for (const m of PocV4BuildingLayer.models([...this.visuals.values()])) this.batches.get(m);
 
     for (const b of list) {
       const vis = this.visuals.get(b.type);
@@ -213,7 +266,7 @@ export class PocV4BuildingLayer {
       if (b.state === 0) {
         const scale = Math.min(b.w, b.h);
         this.batches
-          .get("proc/construction")
+          .get("proc/construction", cx, cz)
           .push(cx, 0, cz, 0, scale, Math.max(0.6, vis.floors * 0.5) * scale, scale);
         continue;
       }
@@ -228,26 +281,33 @@ export class PocV4BuildingLayer {
 
       if (model.startsWith(`${PREFIX}lote_`)) {
         // O lote GLB já contém prédio, jardim, árvores e cotas corretas em metros.
-        this.batches.get(model).push(cx, 0, cz, rot, s, s, s);
+        this.batches.get(model, cx, cz).push(cx, 0, cz, rot, s, s, s);
         continue;
       }
 
       const target = (vis.floors * FLOOR_METERS + 2) / this.tileMeters;
       const natural = info.size.y * s;
       const sy = model.startsWith("proc/") ? s : s * Math.min(1.6, Math.max(0.7, target / natural));
-      this.batches.get(model).push(cx, 0, cz, rot, s, sy, s);
+      this.batches.get(model, cx, cz).push(cx, 0, cz, rot, s, sy, s);
     }
-    this.batches.applyAll((m) => this.lib.get(m).mesh);
+    this.batches.applyAll();
+  }
+
+  stats(activeMeshNames?: ReadonlySet<string>): BatchStats {
+    return this.batches.stats(activeMeshNames);
   }
 }
 
 export class PocV4TreeLayer {
-  private batches = new BatchSet();
+  private readonly batches: ChunkedBatchSet;
 
   constructor(
     private lib: ModelLibrary,
     private tileMeters: number,
-  ) {}
+    configureMesh?: ConfigureChunkMesh,
+  ) {
+    this.batches = new ChunkedBatchSet(CHUNK_TILES, (model) => this.lib.get(model).mesh, configureMesh);
+  }
 
   static models(): string[] {
     return [...TREE_MODELS];
@@ -255,7 +315,6 @@ export class PocV4TreeLayer {
 
   update(map: MapView, occupied: Uint8Array) {
     this.batches.resetAll();
-    for (const m of PocV4TreeLayer.models()) this.batches.get(m);
     const { width, trees } = map;
 
     for (let i = 0; i < trees.length; i++) {
@@ -270,21 +329,28 @@ export class PocV4TreeLayer {
         const model = TREE_MODELS[Math.floor(hash(i * 5 + k * 19) * TREE_MODELS.length)]!;
         const s = (0.8 + h1 * 0.4) / this.tileMeters;
         this.batches
-          .get(model)
+          .get(model, x + 0.18 + h1 * 0.64, y + 0.18 + h2 * 0.64)
           .push(x + 0.18 + h1 * 0.64, 0, y + 0.18 + h2 * 0.64, h2 * Math.PI * 2, s, s, s);
       }
     }
-    this.batches.applyAll((m) => this.lib.get(m).mesh);
+    this.batches.applyAll();
+  }
+
+  stats(activeMeshNames?: ReadonlySet<string>): BatchStats {
+    return this.batches.stats(activeMeshNames);
   }
 }
 
 export class PocV4VehicleLayer {
-  private batches = new BatchSet();
+  private readonly batches: ChunkedBatchSet;
 
   constructor(
     private lib: ModelLibrary,
     private tileMeters: number,
-  ) {}
+    configureMesh?: ConfigureChunkMesh,
+  ) {
+    this.batches = new ChunkedBatchSet(CHUNK_TILES, (model) => this.lib.get(model).mesh, configureMesh);
+  }
 
   static models(): string[] {
     return [...CAR_MODELS, ...PEOPLE_MODELS];
@@ -292,7 +358,6 @@ export class PocV4VehicleLayer {
 
   update(v: VehiclesView) {
     this.batches.resetAll();
-    for (const m of PocV4VehicleLayer.models()) this.batches.get(m);
 
     const carScale = 1.15 / this.tileMeters;
     const personScale = 1.33 / this.tileMeters;
@@ -307,13 +372,17 @@ export class PocV4VehicleLayer {
 
       if (type >= PEDESTRIAN_TYPE) {
         const model = PEOPLE_MODELS[(type - PEDESTRIAN_TYPE) % PEOPLE_MODELS.length]!;
-        this.batches.get(model).push(x, sidewalkY, y, angle, personScale, personScale, personScale);
+        this.batches.get(model, x, y).push(x, sidewalkY, y, angle, personScale, personScale, personScale);
         continue;
       }
 
       const model = CAR_MODELS[type % CAR_MODELS.length]!;
-      this.batches.get(model).push(x, roadY, y, angle, carScale, carScale, carScale);
+      this.batches.get(model, x, y).push(x, roadY, y, angle, carScale, carScale, carScale);
     }
-    this.batches.applyAll((m) => this.lib.get(m).mesh);
+    this.batches.applyAll();
+  }
+
+  stats(activeMeshNames?: ReadonlySet<string>): BatchStats {
+    return this.batches.stats(activeMeshNames);
   }
 }
