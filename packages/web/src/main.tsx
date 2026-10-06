@@ -15,8 +15,7 @@ const pocV4 = params.get("poc") === "v4";
 const pocV4Cinema = pocV4 && params.get("cinema") === "1";
 const seed = params.get("seed") ?? (pocV4 ? "poc-v4-live" : `cidade-${Math.floor(Math.random() * 1e9)}`);
 // A POC visual usa sandbox só para montar uma cidade de avaliação determinística.
-const overrides =
-  params.get("modo") === "livre" || pocV4 ? { economy: { mode: "sandbox" } } : undefined;
+const overrides = params.get("modo") === "livre" || pocV4 ? { economy: { mode: "sandbox" } } : undefined;
 
 const config = parseGameConfig(configTexts, overrides);
 const data = parseGameData(dataTexts, config);
