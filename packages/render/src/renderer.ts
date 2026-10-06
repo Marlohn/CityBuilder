@@ -28,10 +28,20 @@ import { ModelLibrary } from "./models";
 import {
   PocV4BuildingLayer,
   PocV4Environment,
+  POC_V4_HERO_GRAPHICS,
+  type PocV4GraphicsOptions,
   PocV4RoadLayer,
   PocV4TreeLayer,
   PocV4VehicleLayer,
 } from "./pocV4";
+
+export interface PocV4RuntimeOptions {
+  graphics?: PocV4GraphicsOptions;
+  shadowMapSize?: number;
+  resolutionScale?: number;
+  shadowsEnabled?: boolean;
+  profile?: string;
+}
 
 export interface RendererOptions {
   modelsBaseUrl: string;
@@ -39,6 +49,8 @@ export interface RendererOptions {
   tileMeters: number;
   /** POC visual isolada; o padrão continua usando as camadas atuais. */
   visualStyle?: "default" | "poc-v4";
+  /** Ajustes medidos pela POC de performance. Ausente = aparência hero original. */
+  pocV4Runtime?: PocV4RuntimeOptions;
 }
 
 export interface TileEvent {
@@ -81,6 +93,9 @@ export class CityRenderer {
   private readonly pocV4: boolean;
   private pocV4Environment: PocV4Environment | null = null;
   private pocV4Ready = false;
+  private readonly pocV4Runtime: Required<PocV4RuntimeOptions>;
+  private readonly frameTimes: number[] = [];
+  private lastFrameAt = performance.now();
   /** Tecla apertada → momento (ms) até onde o movimento dela já foi aplicado. */
   private keys = new Map<string, number>();
   private lastBuildings: BuildingView[] = [];
@@ -93,11 +108,19 @@ export class CityRenderer {
     private canvas: HTMLCanvasElement,
     private opts: RendererOptions,
   ) {
+    this.pocV4 = opts.visualStyle === "poc-v4";
+    this.pocV4Runtime = {
+      graphics: opts.pocV4Runtime?.graphics ?? POC_V4_HERO_GRAPHICS,
+      shadowMapSize: opts.pocV4Runtime?.shadowMapSize ?? 4096,
+      resolutionScale: opts.pocV4Runtime?.resolutionScale ?? 1,
+      shadowsEnabled: opts.pocV4Runtime?.shadowsEnabled ?? true,
+      profile: opts.pocV4Runtime?.profile ?? "hero",
+    };
     this.engine = new Engine(canvas, true, { preserveDrawingBuffer: true, stencil: true }, true);
+    if (this.pocV4) this.engine.setHardwareScalingLevel(1 / this.pocV4Runtime.resolutionScale);
     this.scene = new Scene(this.engine);
     this.scene.clearColor = new Color4(0.62, 0.78, 0.92, 1);
     this.scene.ambientColor = new Color3(0.3, 0.3, 0.3);
-    this.pocV4 = opts.visualStyle === "poc-v4";
 
     this.camera = new ArcRotateCamera(
       "cam",
@@ -121,7 +144,11 @@ export class CityRenderer {
     this.sky.groundColor = new Color3(0.35, 0.35, 0.3);
     this.sun = new DirectionalLight("sun", new Vector3(-0.5, -1, 0.4), this.scene);
     this.sun.intensity = 0.9;
-    this.shadows = new ShadowGenerator(this.pocV4 ? 4096 : 2048, this.sun);
+    this.shadows = new ShadowGenerator(
+      this.pocV4 ? Math.max(256, this.pocV4Runtime.shadowMapSize) : 2048,
+      this.sun,
+    );
+    this.scene.shadowsEnabled = !this.pocV4 || this.pocV4Runtime.shadowsEnabled;
     this.shadows.usePercentageCloserFiltering = true;
     this.shadows.bias = 0.002;
 
@@ -132,19 +159,34 @@ export class CityRenderer {
       this.sun.direction.set(-0.62, -0.5, -0.62).normalize();
       this.sun.diffuse = Color3.FromHexString("#ffcf96");
       this.sun.intensity = 3.2;
-      this.pocV4Environment = new PocV4Environment(this.scene, this.camera, this.shadows, opts.tileMeters);
+      this.pocV4Environment = new PocV4Environment(
+        this.scene,
+        this.camera,
+        this.shadows,
+        opts.tileMeters,
+        this.pocV4Runtime.graphics,
+      );
       this.applyZoom();
     }
 
     this.lib = new ModelLibrary(this.scene, opts.modelsBaseUrl);
     this.ground = new GroundLayer(this.scene);
-    this.roads = this.pocV4 ? new PocV4RoadLayer(this.lib, opts.tileMeters) : new RoadLayer(this.lib);
+    const configurePocV4Chunk = (mesh: Mesh, model: string) => {
+      mesh.receiveShadows = true;
+      if (this.pocV4Runtime.shadowsEnabled && !model.startsWith("poc-v4/rua_"))
+        this.shadows.addShadowCaster(mesh);
+    };
+    this.roads = this.pocV4
+      ? new PocV4RoadLayer(this.lib, opts.tileMeters, configurePocV4Chunk)
+      : new RoadLayer(this.lib);
     this.buildingLayer = this.pocV4
-      ? new PocV4BuildingLayer(this.lib, opts.buildingVisuals, opts.tileMeters)
+      ? new PocV4BuildingLayer(this.lib, opts.buildingVisuals, opts.tileMeters, configurePocV4Chunk)
       : new BuildingLayer(this.lib, opts.buildingVisuals, opts.tileMeters);
-    this.trees = this.pocV4 ? new PocV4TreeLayer(this.lib, opts.tileMeters) : new TreeLayer(this.lib);
+    this.trees = this.pocV4
+      ? new PocV4TreeLayer(this.lib, opts.tileMeters, configurePocV4Chunk)
+      : new TreeLayer(this.lib);
     this.vehicles = this.pocV4
-      ? new PocV4VehicleLayer(this.lib, opts.tileMeters)
+      ? new PocV4VehicleLayer(this.lib, opts.tileMeters, configurePocV4Chunk)
       : new VehicleLayer(this.lib, opts.tileMeters);
 
     this.previewMat = new StandardMaterial("preview", this.scene);
@@ -175,8 +217,14 @@ export class CityRenderer {
         ];
     await this.lib.load(models);
     for (const m of this.lib.all()) {
+      if (this.pocV4) {
+        // Na v4 as fontes só alimentam clones por chunk. Mantê-las fora da seleção evita
+        // um bounding global por modelo e deixa o frustum culling agir em cada chunk.
+        m.isVisible = false;
+        continue;
+      }
       if (m.name.startsWith("roads/road")) continue;
-      if (!m.name.startsWith("poc-v4/rua_")) this.shadows.addShadowCaster(m);
+      this.shadows.addShadowCaster(m);
       m.receiveShadows = true;
     }
     this.pocV4Ready = this.pocV4;
@@ -187,6 +235,13 @@ export class CityRenderer {
       this.updateCameraFromKeys();
       onFrame();
       this.scene.render();
+      const now = performance.now();
+      const dt = now - this.lastFrameAt;
+      this.lastFrameAt = now;
+      if (dt > 0 && dt < 1000) {
+        this.frameTimes.push(dt);
+        if (this.frameTimes.length > 300) this.frameTimes.shift();
+      }
     });
   }
 
@@ -312,16 +367,69 @@ export class CityRenderer {
 
   /** Evidência observável da POC v4 para Playwright e inspeção manual. */
   pocV4State() {
+    const active = this.scene.getActiveMeshes();
+    const activeMeshNames = new Set<string>();
+    for (let i = 0; i < active.length; i++) {
+      const mesh = active.data[i];
+      if (mesh) activeMeshNames.add(mesh.name);
+    }
+
+    const road = this.roads instanceof PocV4RoadLayer ? this.roads.stats(activeMeshNames) : null;
+    const buildings =
+      this.buildingLayer instanceof PocV4BuildingLayer ? this.buildingLayer.stats(activeMeshNames) : null;
+    const trees = this.trees instanceof PocV4TreeLayer ? this.trees.stats(activeMeshNames) : null;
+    const vehicles =
+      this.vehicles instanceof PocV4VehicleLayer ? this.vehicles.stats(activeMeshNames) : null;
+    const layers = [road, buildings, trees, vehicles].filter((x) => x !== null);
+    const sum = (key: "chunks" | "batches" | "instances" | "visibleChunks" | "visibleBatches" | "visibleInstances") =>
+      layers.reduce((total, layer) => total + layer[key], 0);
+    const drawCalls =
+      (this.engine as unknown as { _drawCalls?: { current?: number } })._drawCalls?.current ?? null;
+
     return {
       enabled: this.pocV4,
       ready: this.pocV4Ready,
+      engine: "WebGL",
       camera: this.camera.mode === Camera.PERSPECTIVE_CAMERA ? "perspective" : "orthographic",
       fovDegrees: (this.camera.fov * 180) / Math.PI,
       environment: this.pocV4Environment?.state() ?? null,
+      graphics: {
+        profile: this.pocV4Runtime.profile,
+        shadowMapSize: this.pocV4Runtime.shadowMapSize,
+        shadowsEnabled: this.pocV4Runtime.shadowsEnabled,
+        resolutionScale: this.pocV4Runtime.resolutionScale,
+        hardwareScaling: this.engine.getHardwareScalingLevel(),
+      },
       fps: Math.round(this.engine.getFps()),
+      frameTimeMs: this.percentile(this.frameTimes, 0.5),
+      frameTimeP95Ms: this.percentile(this.frameTimes, 0.95),
+      frameTimeP99Ms: this.percentile(this.frameTimes, 0.99),
+      resolution: {
+        width: this.engine.getRenderWidth(),
+        height: this.engine.getRenderHeight(),
+      },
       meshes: this.scene.meshes.length,
-      activeMeshes: this.scene.getActiveMeshes().length,
+      activeMeshes: active.length,
+      drawCalls,
+      triangles: Math.floor(this.scene.getActiveIndices() / 3),
+      vertices: this.scene.getTotalVertices(),
+      chunks: {
+        active: sum("chunks"),
+        visible: sum("visibleChunks"),
+        batches: sum("batches"),
+        visibleBatches: sum("visibleBatches"),
+        instances: sum("instances"),
+        visibleInstances: sum("visibleInstances"),
+        layers: { road, buildings, trees, vehicles },
+      },
     };
+  }
+
+  private percentile(values: number[], q: number): number {
+    if (values.length === 0) return 0;
+    const sorted = [...values].sort((a, b) => a - b);
+    const index = Math.min(sorted.length - 1, Math.max(0, Math.ceil(sorted.length * q) - 1));
+    return Math.round(sorted[index]! * 10) / 10;
   }
 
   private pickBoxes(): PickBox[] {
