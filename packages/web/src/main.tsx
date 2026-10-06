@@ -21,7 +21,7 @@ const pocV4View =
 const enginePreference =
   params.get("engine") === "webgpu" ? "webgpu" : params.get("engine") === "auto" ? "auto" : "webgl";
 const requestedShadow = Number(params.get("shadows") ?? 1024);
-const shadowMapSize = [1024, 2048, 4096].includes(requestedShadow) ? requestedShadow : 2048;
+const shadowMapSize = [1024, 2048, 4096].includes(requestedShadow) ? requestedShadow : 1024;
 const requestedScale = Number(params.get("scale") ?? 0.75);
 const resolutionScale = Number.isFinite(requestedScale) ? Math.max(0.5, Math.min(1, requestedScale)) : 0.75;
 const msaaSamples = params.get("msaa") === "4" ? 4 : params.get("msaa") === "2" ? 2 : 1;
