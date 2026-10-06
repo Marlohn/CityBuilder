@@ -1,7 +1,7 @@
 /**
  * Ajuda a montar buffers de matrizes para thin instances.
  */
-import { Matrix, type Mesh, Quaternion, SubMesh, Vector3 } from "@babylonjs/core";
+import { BoundingInfo, Matrix, type Mesh, Quaternion, SubMesh, Vector3 } from "@babylonjs/core";
 
 const tmpM = new Matrix();
 const tmpQ = new Quaternion();
@@ -59,7 +59,6 @@ export class InstanceBatch {
     if (this.appliedCount === this.count && this.matchesApplied(length)) return false;
 
     mesh.thinInstanceSetBuffer("matrix", this.data.subarray(0, length), 16, false);
-    mesh.thinInstanceRefreshBoundingInfo(true);
     if (this.appliedData.length < length) this.appliedData = new Float32Array(length);
     this.appliedData.set(this.data.subarray(0, length), 0);
     this.appliedCount = this.count;
@@ -191,8 +190,23 @@ export class ChunkedBatchSet {
         continue;
       }
       if (!entry.mesh) entry.mesh = this.createMesh(entry);
-      entry.batch.apply(entry.mesh);
+      const changed = entry.batch.apply(entry.mesh);
+      if (changed) this.setChunkBoundingInfo(entry.mesh, entry);
     }
+  }
+
+  private setChunkBoundingInfo(mesh: Mesh, entry: ChunkBatch) {
+    // As matrizes das thin instances já estão em coordenadas do mundo e o mesh-pai fica
+    // na identidade. Um AABB explícito do chunk evita falsos negativos do bounding
+    // agregado e dispensa percorrer todas as instâncias para recalcular bounds.
+    const pad = 1.5;
+    const min = new Vector3(entry.chunkX * this.chunkSize - pad, -2, entry.chunkY * this.chunkSize - pad);
+    const max = new Vector3(
+      (entry.chunkX + 1) * this.chunkSize + pad,
+      8,
+      (entry.chunkY + 1) * this.chunkSize + pad,
+    );
+    mesh.setBoundingInfo(new BoundingInfo(min, max));
   }
 
   private createMesh(entry: ChunkBatch): Mesh {
@@ -219,7 +233,9 @@ export class ChunkedBatchSet {
 
     mesh.isPickable = false;
     mesh.alwaysSelectAsActiveMesh = false;
+    mesh.doNotSyncBoundingInfo = true;
     mesh.thinInstanceCount = 0;
+    this.setChunkBoundingInfo(mesh, entry);
     this.configureMesh?.(mesh, entry.model);
     return mesh;
   }
