@@ -1,0 +1,65 @@
+name: POC visual v4 preview
+
+on:
+  pull_request:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: poc-v4-preview-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  preview:
+    if: github.head_ref == 'poc/visual-v4-city-assets'
+    runs-on: ubuntu-latest
+    container:
+      image: mcr.microsoft.com/playwright:v1.63.0-noble
+      options: --init --ipc=host
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Validar POC v4
+        run: |
+          (cd packages/web/public/models/poc-v4 && sha256sum -c SHA256SUMS.txt)
+          npx biome check packages/render/src/pocV4.ts packages/render/src/renderer.ts packages/render/src/models.ts packages/web/src/main.tsx tests/e2e/poc-v4.spec.ts
+          npm run check -- --only=types
+      - name: Capturar evidência visual da POC v4
+        run: npx playwright test tests/e2e/poc-v4.spec.ts --reporter=line
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: poc-v4-evidence
+          path: test-results/
+          retention-days: 7
+      - name: Build estático
+        run: npm run build
+      - name: Publicar preview isolado
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          LIVE="${RUNNER_TEMP}/citybuilder-poc-v4"
+          rm -rf "$LIVE"
+          mkdir -p "$LIVE"
+          cp -a dist/. "$LIVE/"
+          touch "$LIVE/.nojekyll"
+          printf '%s\n' "${GITHUB_SHA}" > "$LIVE/VERSION.txt"
+          cd "$LIVE"
+          git init
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b poc-v4-live
+          git add .
+          git commit -m "preview: visual POC v4 ${GITHUB_SHA}"
+          git remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git push --force origin poc-v4-live
