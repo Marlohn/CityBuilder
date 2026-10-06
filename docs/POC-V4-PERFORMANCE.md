@@ -98,7 +98,8 @@ O workflow `POC visual v4 preview` gera, para cada HEAD da PR:
 
 - `poc-v4-city.png` + `poc-v4-performance.json`: hero/small;
 - `poc-v4-tuned-small.png` + `poc-v4-performance-tuned-small.json`: perfil Web/small;
-- `poc-v4-large.png` + `poc-v4-scale-gate.json`: stress 256×256.
+- `poc-v4-scale-gate.json`: stress 256×256. A captura automática dessa cena é omitida porque o
+  screenshot do canvas em SwiftShader bloqueia por minutos; a captura visual grande fica para o navegador/GPU real.
 
 Esses números usam Chromium headless/SwiftShader e servem para regressão/arquitetura. A decisão final
 continua sendo a medição em GPU real.
