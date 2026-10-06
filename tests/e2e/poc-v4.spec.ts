@@ -77,6 +77,51 @@ test("POC v4 usa os novos GLBs no renderer e mantém a cidade real funcional", a
   expect(errors).toEqual([]);
 });
 
+
+test("POC v4 perf mantém o baseline pequeno comparável à hero original", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await page.goto("/?poc=v4&cinema=1&perf=1&stress=small&engine=webgl");
+  await page.waitForFunction(
+    () => {
+      const city = window.__city;
+      return city?.store.get().ready && city.renderer.pocV4State().ready;
+    },
+    null,
+    { timeout: 120_000 },
+  );
+  await page.waitForTimeout(1800);
+
+  const state = await page.evaluate(() => ({
+    perf: window.__city.performance(),
+    buildings: window.__city.buildings().length,
+  }));
+
+  expect(state.perf.engine).toBe("WebGL");
+  expect(state.perf.graphics.profile).toBe("perf");
+  expect(state.perf.environment?.toneMapping).toBe("ACES");
+  expect(state.perf.environment?.bloom).toBe(true);
+  expect(state.perf.environment?.ssao).toBe(false);
+  expect(state.perf.environment?.msaaSamples).toBe(1);
+  expect(state.buildings).toBe(22);
+  expect(errors).toEqual([]);
+
+  await mkdir("test-results", { recursive: true });
+  await writeFile(
+    "test-results/poc-v4-performance-tuned-small.json",
+    JSON.stringify(
+      {
+        note: "Amostra curta no Chromium headless/SwiftShader; comparar apenas como sinal de regressão, nunca como gate de GPU real.",
+        ...state.perf,
+        buildings: state.buildings,
+      },
+      null,
+      2,
+    ),
+  );
+  await page.locator("#city").screenshot({ path: "test-results/poc-v4-tuned-small.png" });
+});
+
 test("POC v4 perf particiona cidade grande e expõe métricas do gate", async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
