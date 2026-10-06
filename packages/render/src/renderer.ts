@@ -16,6 +16,7 @@ import {
   type Mesh,
   MeshBuilder,
   Scene,
+  SceneInstrumentation,
   ShadowGenerator,
   StandardMaterial,
   Vector3,
@@ -100,6 +101,8 @@ export class CityRenderer {
   private readonly engineBackend: "WebGL" | "WebGPU";
   private readonly engineFallback: boolean;
   private readonly frameTimes: number[] = [];
+  private readonly sceneInstrumentation: SceneInstrumentation;
+  private lastDrawCalls = 0;
   private lastFrameAt = performance.now();
   /** Tecla apertada → momento (ms) até onde o movimento dela já foi aplicado. */
   private keys = new Map<string, number>();
@@ -147,6 +150,10 @@ export class CityRenderer {
     this.engineFallback = fallback;
     if (this.pocV4) this.engine.setHardwareScalingLevel(1 / this.pocV4Runtime.resolutionScale);
     this.scene = new Scene(this.engine);
+    this.sceneInstrumentation = new SceneInstrumentation(this.scene);
+    this.scene.onAfterRenderObservable.add(() => {
+      this.lastDrawCalls = this.sceneInstrumentation.drawCallsCounter.current;
+    });
     this.scene.clearColor = new Color4(0.62, 0.78, 0.92, 1);
     this.scene.ambientColor = new Color3(0.3, 0.3, 0.3);
 
@@ -418,8 +425,7 @@ export class CityRenderer {
         | "visibleInstances"
         | "bufferUpdates",
     ) => layers.reduce((total, layer) => total + layer[key], 0);
-    const drawCalls =
-      (this.engine as unknown as { _drawCalls?: { current?: number } })._drawCalls?.current ?? null;
+    const drawCalls = this.lastDrawCalls;
 
     return {
       enabled: this.pocV4,
@@ -502,6 +508,7 @@ export class CityRenderer {
 
   dispose() {
     this.pocV4Environment?.dispose();
+    this.sceneInstrumentation.dispose();
     this.engine.dispose();
   }
 
