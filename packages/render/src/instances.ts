@@ -15,10 +15,14 @@ export interface BatchStats {
   visibleChunks: number;
   visibleBatches: number;
   visibleInstances: number;
+  bufferUpdates: number;
 }
 
 export class InstanceBatch {
   private data = new Float32Array(16 * 64);
+  private appliedData = new Float32Array(0);
+  private appliedCount = 0;
+  bufferUpdates = 0;
   count = 0;
 
   reset() {
@@ -39,16 +43,35 @@ export class InstanceBatch {
     this.count++;
   }
 
-  /** Envia para a malha e recalcula o bounding box agregado das thin instances. */
+  /** Envia somente quando o conteúdo mudou; chunks estáticos não refazem o buffer a cada update. */
   apply(mesh: Mesh) {
     if (this.count === 0) {
+      const changed = this.appliedCount !== 0;
       mesh.thinInstanceCount = 0;
       mesh.isVisible = false;
-      return;
+      this.appliedCount = 0;
+      if (changed) this.bufferUpdates++;
+      return changed;
     }
+
     mesh.isVisible = true;
-    mesh.thinInstanceSetBuffer("matrix", this.data.subarray(0, this.count * 16), 16, false);
+    const length = this.count * 16;
+    if (this.appliedCount === this.count && this.matchesApplied(length)) return false;
+
+    mesh.thinInstanceSetBuffer("matrix", this.data.subarray(0, length), 16, false);
     mesh.thinInstanceRefreshBoundingInfo(true);
+    if (this.appliedData.length < length) this.appliedData = new Float32Array(length);
+    this.appliedData.set(this.data.subarray(0, length), 0);
+    this.appliedCount = this.count;
+    this.bufferUpdates++;
+    return true;
+  }
+
+  private matchesApplied(length: number): boolean {
+    for (let i = 0; i < length; i++) {
+      if (this.data[i] !== this.appliedData[i]) return false;
+    }
+    return true;
   }
 }
 
@@ -130,11 +153,13 @@ export class ChunkedBatchSet {
     let instances = 0;
     let visibleBatches = 0;
     let visibleInstances = 0;
+    let bufferUpdates = 0;
 
     for (const entry of this.batches.values()) {
       if (entry.batch.count === 0) continue;
       batches++;
       instances += entry.batch.count;
+      bufferUpdates += entry.batch.bufferUpdates;
       const chunk = `${entry.chunkX}:${entry.chunkY}`;
       chunks.add(chunk);
       if (entry.mesh && activeMeshNames?.has(entry.mesh.name)) {
@@ -151,6 +176,7 @@ export class ChunkedBatchSet {
       visibleChunks: visibleChunks.size,
       visibleBatches,
       visibleInstances,
+      bufferUpdates,
     };
   }
 
