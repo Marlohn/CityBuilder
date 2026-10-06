@@ -1,0 +1,1 @@
+import{t as e}from"./background.vertex-nvciwNe2.js";export{e as backgroundVertexShaderWGSL};

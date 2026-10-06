@@ -1,0 +1,1 @@
+import{t as e}from"./default.fragment-DAT84Xen.js";export{e as defaultPixelShaderWGSL};

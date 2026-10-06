@@ -1,0 +1,1 @@
+import{t as e}from"./openpbrMaterialLoadingAdapter-DgrITuFy.js";export{e as OpenPBRMaterialLoadingAdapter};

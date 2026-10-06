@@ -1,0 +1,1 @@
+import{t as e}from"./default.vertex-BZFieZ58.js";export{e as defaultVertexShaderWGSL};

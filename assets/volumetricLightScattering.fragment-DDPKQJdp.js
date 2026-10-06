@@ -1,0 +1,1 @@
+import{t as e}from"./volumetricLightScattering.fragment-BH2C9ogL.js";export{e as volumetricLightScatteringPixelShader};

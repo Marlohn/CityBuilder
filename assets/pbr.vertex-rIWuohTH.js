@@ -1,0 +1,1 @@
+import{t as e}from"./pbr.vertex-BU7ghHw6.js";export{e as pbrVertexShaderWGSL};

@@ -1,0 +1,1 @@
+import{t as e}from"./volumetricLightScatteringPass.fragment-DnPk7UOC.js";export{e as volumetricLightScatteringPassPixelShaderWGSL};

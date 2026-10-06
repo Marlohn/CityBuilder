@@ -1,0 +1,1 @@
+import{t as e}from"./openpbr.vertex-DFVpk965.js";export{e as openpbrVertexShader};

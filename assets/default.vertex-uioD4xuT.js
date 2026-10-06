@@ -1,0 +1,1 @@
+import{t as e}from"./default.vertex-CnKqAEuT.js";export{e as defaultVertexShader};

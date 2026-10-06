@@ -1,0 +1,1 @@
+import{t as e}from"./default.fragment-DWrGiUiX.js";export{e as defaultPixelShader};
