@@ -522,7 +522,8 @@ export class CityRenderer {
     const target = this.camera.target;
     const center = { x: target.x, y: target.z };
     if (this.roads instanceof PocV4RoadLayer) this.roads.setVisiblePolygon(polygon, center);
-    if (this.buildingLayer instanceof PocV4BuildingLayer) this.buildingLayer.setVisiblePolygon(polygon, center);
+    if (this.buildingLayer instanceof PocV4BuildingLayer)
+      this.buildingLayer.setVisiblePolygon(polygon, center);
     if (this.trees instanceof PocV4TreeLayer) this.trees.setVisiblePolygon(polygon, center);
     if (this.vehicles instanceof PocV4VehicleLayer) this.vehicles.setVisiblePolygon(polygon, center);
   }
