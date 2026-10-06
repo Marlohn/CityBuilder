@@ -3,7 +3,19 @@ import { expect, test } from "@playwright/test";
 import { openGame } from "./helpers";
 
 test("POC v4 usa os novos GLBs no renderer e mantém a cidade real funcional", async ({ page }) => {
-  const errors = await openGame(page, "poc-v4-live", "&poc=v4&cinema=1");
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await page.goto("/?seed=poc-v4-live&poc=v4&cinema=1");
+  await page.waitForFunction(
+    () => {
+      const state = window.__city?.store.get();
+      return state?.ready || Boolean(state?.error);
+    },
+    null,
+    { timeout: 120_000 },
+  );
+  const bootError = await page.evaluate(() => window.__city.store.get().error);
+  expect(bootError).toBeNull();
   await page.waitForFunction(() => window.__city.renderer.pocV4State().ready, null, { timeout: 120_000 });
   await page.waitForFunction(() => window.__city.buildings().length >= 12, null, { timeout: 120_000 });
   await page.waitForTimeout(1200);
