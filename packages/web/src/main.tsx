@@ -88,6 +88,121 @@ client.onLoadRequested = (save) => {
 };
 let pocV4Built = false;
 
+function setupPocV4Cinema() {
+  const width = 30;
+  const height = 26;
+  const roads = new Uint8Array(width * height);
+  const zones = new Uint8Array(width * height);
+  const trees = new Uint8Array(width * height);
+  const water = new Uint8Array(width * height);
+  const at = (x: number, y: number) => y * width + x;
+
+  // Quatro quadras compactas: ruas locais + eixo comercial central.
+  for (const y of [5, 10, 15, 20]) {
+    for (let x = 3; x <= 26; x++) roads[at(x, y)] = y === 10 ? 2 : 1;
+  }
+  for (const x of [5, 10, 15, 20, 25]) {
+    for (let y = 3; y <= 22; y++) roads[at(x, y)] = 1;
+  }
+
+  for (const [x, y] of [
+    [2, 4],
+    [3, 8],
+    [7, 3],
+    [8, 8],
+    [12, 3],
+    [13, 8],
+    [17, 3],
+    [18, 8],
+    [22, 3],
+    [23, 8],
+    [4, 13],
+    [8, 13],
+    [12, 18],
+    [18, 18],
+    [23, 18],
+    [27, 14],
+    [27, 20],
+  ] as const)
+    trees[at(x, y)] = 1;
+
+  const map: MapView = {
+    width,
+    height,
+    tileMeters: config.world.tileMeters,
+    roads,
+    zones,
+    trees,
+    water,
+    version: 1,
+  };
+
+  const active = (id: number, type: string, x: number, y: number, facing: number, variant: number): BuildingView => ({
+    id,
+    type,
+    x,
+    y,
+    w: 1,
+    h: 1,
+    state: 1,
+    facing,
+    variant,
+    residents: type === "casa" ? 3 : 0,
+    households: type === "casa" ? 1 : 0,
+    homesCapacity: type === "casa" ? 1 : 0,
+    jobs: type === "loja" ? 6 : 0,
+    jobsCapacity: type === "loja" ? 13 : 0,
+    students: 0,
+    studentsCapacity: 0,
+    patients: 0,
+    patientsCapacity: 0,
+  });
+
+  const showcaseBuildings: BuildingView[] = [
+    active(1, "casa", 6, 6, 3, 0),
+    active(2, "casa", 8, 6, 1, 1),
+    active(3, "casa", 11, 6, 3, 1),
+    active(4, "casa", 13, 6, 1, 0),
+    active(5, "loja", 16, 6, 3, 0),
+    active(6, "loja", 18, 6, 1, 1),
+    active(7, "loja", 21, 6, 3, 1),
+    active(8, "casa", 23, 6, 1, 0),
+    active(9, "loja", 6, 11, 3, 0),
+    active(10, "loja", 8, 11, 1, 1),
+    active(11, "casa", 11, 11, 3, 0),
+    active(12, "casa", 13, 11, 1, 1),
+    active(13, "loja", 16, 11, 3, 1),
+    active(14, "casa", 18, 11, 1, 0),
+    active(15, "casa", 21, 11, 3, 1),
+    active(16, "loja", 23, 11, 1, 0),
+    active(17, "casa", 6, 16, 3, 1),
+    active(18, "loja", 8, 16, 1, 0),
+    active(19, "casa", 11, 16, 3, 0),
+    active(20, "loja", 13, 16, 1, 1),
+    active(21, "loja", 16, 16, 3, 0),
+    active(22, "casa", 18, 16, 1, 1),
+  ];
+
+  const vehicles = new Float32Array([
+    7.2, 10.5, Math.PI / 2, 0,
+    13.2, 10.5, -Math.PI / 2, 1,
+    19.2, 10.5, Math.PI / 2, 2,
+    10.5, 13.2, 0, 0,
+    20.5, 18.2, Math.PI, 1,
+    9.65, 8.4, 0, 100,
+    15.35, 12.4, Math.PI, 100,
+    20.35, 16.8, Math.PI / 2, 100,
+  ]);
+
+  lastMap = map;
+  indexBuildings(showcaseBuildings);
+  renderer.setMap(map);
+  renderer.setBuildings(showcaseBuildings);
+  renderer.setVehicles({ data: vehicles, count: vehicles.length / 4 });
+  renderer.lookAt(15, 12);
+  store.set({ ready: true });
+}
+
 function buildPocV4City() {
   if (!pocV4 || pocV4Built) return;
   pocV4Built = true;
@@ -175,12 +290,13 @@ renderer
       const p = tools.preview();
       renderer.setPreview(p.rect, p.valid);
       const now = performance.now();
-      if (now - lastView > 200) {
+      if (!pocV4Cinema && now - lastView > 200) {
         lastView = now;
         client.setView(renderer.visibleTileRect());
       }
     });
-    client.send({ type: "init", seed, configTexts, dataTexts, overrides });
+    if (pocV4Cinema) setupPocV4Cinema();
+    else client.send({ type: "init", seed, configTexts, dataTexts, overrides });
   })
   .catch((e) => store.set({ error: `Erro ao carregar modelos: ${(e as Error).message}` }));
 
