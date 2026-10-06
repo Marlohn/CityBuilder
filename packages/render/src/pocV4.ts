@@ -14,7 +14,7 @@ import {
   SSAO2RenderingPipeline,
 } from "@babylonjs/core";
 import type { BuildingView, MapView, VehiclesView } from "@city/contract";
-import { type BatchStats, ChunkedBatchSet } from "./instances";
+import { type BatchStats, ChunkedBatchSet, type TileRect } from "./instances";
 import type { BuildingVisual } from "./layers";
 import type { ModelLibrary } from "./models";
 import { type RoadPiece, roadPieceFor } from "./roads";
@@ -284,8 +284,12 @@ export class PocV4RoadLayer {
     this.batches.applyChunks(dirty);
   }
 
-  stats(activeMeshNames?: ReadonlySet<string>): BatchStats {
-    return this.batches.stats(activeMeshNames);
+  setVisibleRect(rect: TileRect) {
+    this.batches.setVisibleRect(rect);
+  }
+
+  stats(): BatchStats {
+    return this.batches.stats();
   }
 }
 
@@ -387,8 +391,12 @@ export class PocV4BuildingLayer {
     this.batches.applyChunks(dirty);
   }
 
-  stats(activeMeshNames?: ReadonlySet<string>): BatchStats {
-    return this.batches.stats(activeMeshNames);
+  setVisibleRect(rect: TileRect) {
+    this.batches.setVisibleRect(rect);
+  }
+
+  stats(): BatchStats {
+    return this.batches.stats();
   }
 }
 
@@ -446,8 +454,12 @@ export class PocV4TreeLayer {
     this.batches.applyChunks(dirty);
   }
 
-  stats(activeMeshNames?: ReadonlySet<string>): BatchStats {
-    return this.batches.stats(activeMeshNames);
+  setVisibleRect(rect: TileRect) {
+    this.batches.setVisibleRect(rect);
+  }
+
+  stats(): BatchStats {
+    return this.batches.stats();
   }
 }
 
@@ -492,7 +504,11 @@ export class PocV4VehicleLayer {
     this.batches.applyAll();
   }
 
-  stats(activeMeshNames?: ReadonlySet<string>): BatchStats {
-    return this.batches.stats(activeMeshNames);
+  setVisibleRect(rect: TileRect) {
+    this.batches.setVisibleRect(rect);
+  }
+
+  stats(): BatchStats {
+    return this.batches.stats();
   }
 }
