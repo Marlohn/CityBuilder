@@ -44,7 +44,7 @@ export class InstanceBatch {
   }
 
   /** Envia somente quando o conteúdo mudou; chunks estáticos não refazem o buffer a cada update. */
-  apply(mesh: Mesh) {
+  apply(mesh: Mesh, refreshBounds = true) {
     if (this.count === 0) {
       const changed = this.appliedCount !== 0;
       mesh.thinInstanceCount = 0;
@@ -59,6 +59,7 @@ export class InstanceBatch {
     if (this.appliedCount === this.count && this.matchesApplied(length)) return false;
 
     mesh.thinInstanceSetBuffer("matrix", this.data.subarray(0, length), 16, false);
+    if (refreshBounds) mesh.thinInstanceRefreshBoundingInfo(true);
     if (this.appliedData.length < length) this.appliedData = new Float32Array(length);
     this.appliedData.set(this.data.subarray(0, length), 0);
     this.appliedCount = this.count;
@@ -190,7 +191,7 @@ export class ChunkedBatchSet {
         continue;
       }
       if (!entry.mesh) entry.mesh = this.createMesh(entry);
-      const changed = entry.batch.apply(entry.mesh);
+      const changed = entry.batch.apply(entry.mesh, false);
       if (changed) this.setChunkBoundingInfo(entry.mesh, entry);
     }
   }
