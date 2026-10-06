@@ -62,7 +62,7 @@ function segmentsIntersect(a: TilePoint, b: TilePoint, c: TilePoint, d: TilePoin
   const abD = orientation(a, b, d);
   const cdA = orientation(c, d, a);
   const cdB = orientation(c, d, b);
-  if ((abC > 0) !== (abD > 0) && (cdA > 0) !== (cdB > 0)) return true;
+  if (abC > 0 !== abD > 0 && cdA > 0 !== cdB > 0) return true;
   return onSegment(a, b, c) || onSegment(a, b, d) || onSegment(c, d, a) || onSegment(c, d, b);
 }
 
