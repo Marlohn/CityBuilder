@@ -409,7 +409,14 @@ export class CityRenderer {
     const vehicles = this.vehicles instanceof PocV4VehicleLayer ? this.vehicles.stats(activeMeshNames) : null;
     const layers = [road, buildings, trees, vehicles].filter((x) => x !== null);
     const sum = (
-      key: "chunks" | "batches" | "instances" | "visibleChunks" | "visibleBatches" | "visibleInstances",
+      key:
+        | "chunks"
+        | "batches"
+        | "instances"
+        | "visibleChunks"
+        | "visibleBatches"
+        | "visibleInstances"
+        | "bufferUpdates",
     ) => layers.reduce((total, layer) => total + layer[key], 0);
     const drawCalls =
       (this.engine as unknown as { _drawCalls?: { current?: number } })._drawCalls?.current ?? null;
@@ -450,6 +457,7 @@ export class CityRenderer {
         visibleBatches: sum("visibleBatches"),
         instances: sum("instances"),
         visibleInstances: sum("visibleInstances"),
+        bufferUpdates: sum("bufferUpdates"),
         layers: { road, buildings, trees, vehicles },
       },
     };
