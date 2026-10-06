@@ -11,7 +11,10 @@ test("POC v4 usa os novos GLBs no renderer e mantém a cidade real funcional", a
   const state = await page.evaluate(() => {
     const renderer = window.__city.renderer;
     const used = renderer.scene.meshes
-      .filter((m: { name: string; thinInstanceCount: number }) => m.name.startsWith("poc-v4/") && m.thinInstanceCount > 0)
+      .filter(
+        (m: { name: string; thinInstanceCount: number }) =>
+          m.name.startsWith("poc-v4/") && m.thinInstanceCount > 0,
+      )
       .map((m: { name: string; thinInstanceCount: number }) => ({
         name: m.name,
         count: m.thinInstanceCount,
@@ -40,9 +43,7 @@ test("POC v4 usa os novos GLBs no renderer e mantém a cidade real funcional", a
   expect(names.some((name: string) => name.startsWith("poc-v4/lote_"))).toBe(true);
   expect(names.some((name: string) => name.startsWith("poc-v4/arvore_"))).toBe(true);
   expect(
-    names.some(
-      (name: string) => name.startsWith("poc-v4/carro_") || name.startsWith("poc-v4/pessoa_"),
-    ),
+    names.some((name: string) => name.startsWith("poc-v4/carro_") || name.startsWith("poc-v4/pessoa_")),
   ).toBe(true);
 
   await mkdir("test-results", { recursive: true });
