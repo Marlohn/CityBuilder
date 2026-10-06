@@ -208,6 +208,10 @@ export class ChunkedBatchSet {
       (entry.chunkY + 1) * this.chunkSize + pad,
     );
     mesh.setBoundingInfo(new BoundingInfo(min, max));
+    // Babylon também faz culling por submesh. Nos GLBs multi-material, manter os
+    // bounds locais originais faria calçadas/faixas/partes do lote sumirem apesar
+    // do chunk estar visível. Cada submesh herda o AABB espacial do próprio chunk.
+    for (const sub of mesh.subMeshes) sub.setBoundingInfo(new BoundingInfo(min, max));
   }
 
   private createMesh(entry: ChunkBatch): Mesh {
