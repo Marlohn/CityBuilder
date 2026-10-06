@@ -144,8 +144,6 @@ test("POC v4 perf particiona cidade grande e expõe métricas do gate", async ({
   await page.locator("#city").screenshot({ path: "test-results/poc-v4-large.png" });
 });
 
-
-
 test("POC v4 integrada continua ligada ao Worker e à simulação real", async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
@@ -153,7 +151,11 @@ test("POC v4 integrada continua ligada ao Worker e à simulação real", async (
   await page.waitForFunction(
     () => {
       const city = window.__city;
-      return city?.renderer.pocV4State().ready && Boolean(city.map()) && (city.store.get().ready || Boolean(city.store.get().error));
+      return (
+        city?.renderer.pocV4State().ready &&
+        Boolean(city.map()) &&
+        (city.store.get().ready || Boolean(city.store.get().error))
+      );
     },
     null,
     { timeout: 120_000 },
