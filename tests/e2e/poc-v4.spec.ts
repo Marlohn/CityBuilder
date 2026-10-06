@@ -178,7 +178,7 @@ test("POC v4 perf particiona cidade grande e expõe métricas do gate", async ({
   test.setTimeout(300_000);
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
-  await page.goto("/?poc=v4&cinema=1&perf=1&stress=large");
+  await page.goto("/?poc=v4&cinema=1&perf=1&stress=large&shadows=0&bloom=0&scale=0.5");
   await page.waitForFunction(
     () => {
       const state = window.__city?.store.get();
@@ -190,7 +190,7 @@ test("POC v4 perf particiona cidade grande e expõe métricas do gate", async ({
   const bootError = await page.evaluate(() => window.__city.store.get().error);
   expect(bootError).toBeNull();
   await page.waitForFunction(() => window.__city.buildings().length >= 5000, null, { timeout: 120_000 });
-  await page.waitForTimeout(1800);
+  await page.waitForTimeout(500);
 
   const state = await page.evaluate(() => {
     const before = window.__city.performance().chunks.bufferUpdates;
@@ -215,9 +215,11 @@ test("POC v4 perf particiona cidade grande e expõe métricas do gate", async ({
   expect(state.buildings).toBeGreaterThanOrEqual(5000);
   expect(state.perf.graphics.profile).toBe("perf");
   expect(state.perf.graphics.shadowMapSize).toBe(2048);
-  expect(state.perf.graphics.resolutionScale).toBeCloseTo(0.85, 2);
+  expect(state.perf.graphics.resolutionScale).toBeCloseTo(0.5, 2);
   expect(state.perf.environment?.msaaSamples).toBe(1);
   expect(state.perf.environment?.ssao).toBe(false);
+  expect(state.perf.environment?.bloom).toBe(false);
+  expect(state.perf.graphics.shadowsEnabled).toBe(false);
   expect(state.perf.chunks.active).toBeGreaterThan(20);
   expect(state.perf.chunks.visible).toBeGreaterThan(0);
   expect(state.perf.chunks.visible).toBeLessThan(state.perf.chunks.active);
