@@ -1,7 +1,7 @@
 /**
  * Ajuda a montar buffers de matrizes para thin instances.
  */
-import { Matrix, type Mesh, Quaternion, Vector3 } from "@babylonjs/core";
+import { Matrix, type Mesh, Quaternion, SubMesh, Vector3 } from "@babylonjs/core";
 
 const tmpM = new Matrix();
 const tmpQ = new Quaternion();
@@ -200,6 +200,23 @@ export class ChunkedBatchSet {
     const name = `poc-v4-chunk/${entry.chunkX}/${entry.chunkY}/${entry.model}`;
     const mesh = source.clone(name, null, true);
     if (!mesh) throw new Error(`não consegui criar batch espacial de ${entry.model}`);
+
+    // Os GLBs v4 usam MultiMaterial/submeshes. O clone do Babylon pode acabar com
+    // um submesh global, o que renderiza só o primeiro material (asfalto/base do lote).
+    // Reaproveitamos a geometria/material e espelhamos explicitamente os ranges do source.
+    mesh.material = source.material;
+    mesh.subMeshes = [];
+    for (const sub of source.subMeshes) {
+      new SubMesh(
+        sub.materialIndex,
+        sub.verticesStart,
+        sub.verticesCount,
+        sub.indexStart,
+        sub.indexCount,
+        mesh,
+      );
+    }
+
     mesh.isPickable = false;
     mesh.alwaysSelectAsActiveMesh = false;
     mesh.thinInstanceCount = 0;
