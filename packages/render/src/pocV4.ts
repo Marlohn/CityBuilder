@@ -14,7 +14,7 @@ import {
   SSAO2RenderingPipeline,
 } from "@babylonjs/core";
 import type { BuildingView, MapView, VehiclesView } from "@city/contract";
-import { type BatchStats, ChunkedBatchSet, type TileRect } from "./instances";
+import { type BatchStats, ChunkedBatchSet, type TilePoint, type TileRect } from "./instances";
 import type { BuildingVisual } from "./layers";
 import type { ModelLibrary } from "./models";
 import { type RoadPiece, roadPieceFor } from "./roads";
@@ -218,7 +218,12 @@ export class PocV4RoadLayer {
     private tileMeters: number,
     configureMesh?: ConfigureChunkMesh,
   ) {
-    this.batches = new ChunkedBatchSet(CHUNK_TILES, (model) => this.lib.get(model).mesh, configureMesh);
+    this.batches = new ChunkedBatchSet(
+      CHUNK_TILES,
+      (model) => this.lib.get(model).mesh,
+      configureMesh,
+      (model) => (model === `${PREFIX}banco` || model === `${PREFIX}floreira` ? 48 : undefined),
+    );
   }
 
   static models(): string[] {
@@ -286,6 +291,10 @@ export class PocV4RoadLayer {
 
   setVisibleRect(rect: TileRect) {
     this.batches.setVisibleRect(rect);
+  }
+
+  setVisiblePolygon(polygon: readonly TilePoint[], center: TilePoint) {
+    this.batches.setVisiblePolygon(polygon, center);
   }
 
   stats(): BatchStats {
@@ -395,6 +404,10 @@ export class PocV4BuildingLayer {
     this.batches.setVisibleRect(rect);
   }
 
+  setVisiblePolygon(polygon: readonly TilePoint[], center: TilePoint) {
+    this.batches.setVisiblePolygon(polygon, center);
+  }
+
   stats(): BatchStats {
     return this.batches.stats();
   }
@@ -409,7 +422,12 @@ export class PocV4TreeLayer {
     private tileMeters: number,
     configureMesh?: ConfigureChunkMesh,
   ) {
-    this.batches = new ChunkedBatchSet(CHUNK_TILES, (model) => this.lib.get(model).mesh, configureMesh);
+    this.batches = new ChunkedBatchSet(
+      CHUNK_TILES,
+      (model) => this.lib.get(model).mesh,
+      configureMesh,
+      () => 64,
+    );
   }
 
   static models(): string[] {
@@ -458,6 +476,10 @@ export class PocV4TreeLayer {
     this.batches.setVisibleRect(rect);
   }
 
+  setVisiblePolygon(polygon: readonly TilePoint[], center: TilePoint) {
+    this.batches.setVisiblePolygon(polygon, center);
+  }
+
   stats(): BatchStats {
     return this.batches.stats();
   }
@@ -471,7 +493,12 @@ export class PocV4VehicleLayer {
     private tileMeters: number,
     configureMesh?: ConfigureChunkMesh,
   ) {
-    this.batches = new ChunkedBatchSet(CHUNK_TILES, (model) => this.lib.get(model).mesh, configureMesh);
+    this.batches = new ChunkedBatchSet(
+      CHUNK_TILES,
+      (model) => this.lib.get(model).mesh,
+      configureMesh,
+      () => 64,
+    );
   }
 
   static models(): string[] {
@@ -506,6 +533,10 @@ export class PocV4VehicleLayer {
 
   setVisibleRect(rect: TileRect) {
     this.batches.setVisibleRect(rect);
+  }
+
+  setVisiblePolygon(polygon: readonly TilePoint[], center: TilePoint) {
+    this.batches.setVisiblePolygon(polygon, center);
   }
 
   stats(): BatchStats {
