@@ -42,7 +42,13 @@ test("POC v4 usa os novos GLBs no renderer e mantém a cidade real funcional", a
       (mesh: {
         name: string;
         material: unknown;
-        subMeshes: { materialIndex: number; verticesStart: number; verticesCount: number; indexStart: number; indexCount: number }[];
+        subMeshes: {
+          materialIndex: number;
+          verticesStart: number;
+          verticesCount: number;
+          indexStart: number;
+          indexCount: number;
+        }[];
       }) => {
         const model = mesh.name.split("/").slice(3).join("/");
         const source = renderer.scene.meshes.find((m: { name: string }) => m.name === model) as
@@ -57,7 +63,8 @@ test("POC v4 usa os novos GLBs no renderer e mantém a cidade real funcional", a
               }[];
             }
           | undefined;
-        if (!source || mesh.material !== source.material || mesh.subMeshes.length !== source.subMeshes.length) return false;
+        if (!source || mesh.material !== source.material || mesh.subMeshes.length !== source.subMeshes.length)
+          return false;
         return mesh.subMeshes.every((sub, index) => {
           const original = source.subMeshes[index];
           return (
