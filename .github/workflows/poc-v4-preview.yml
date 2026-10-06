@@ -29,7 +29,8 @@ jobs:
       - run: npm ci
       - name: Validar POC v4
         run: |
-          npx biome check packages/render/src/pocV4.ts packages/render/src/renderer.ts packages/web/src/main.tsx tests/e2e/poc-v4.spec.ts
+          (cd packages/web/public/models/poc-v4 && sha256sum -c SHA256SUMS.txt)
+          npx biome check packages/render/src/pocV4.ts packages/render/src/renderer.ts packages/render/src/models.ts packages/web/src/main.tsx tests/e2e/poc-v4.spec.ts
           npm run check -- --only=types
       - name: Capturar evidência visual da POC v4
         run: npx playwright test tests/e2e/poc-v4.spec.ts --reporter=line
