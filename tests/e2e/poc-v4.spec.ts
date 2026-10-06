@@ -133,6 +133,32 @@ test("POC v4 perf particiona cidade grande e expõe métricas do gate", async ({
   await page.locator("#city").screenshot({ path: "test-results/poc-v4-large.png" });
 });
 
+
+test("POC v4 WebGPU mantém fallback WebGL seguro", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await page.goto("/?poc=v4&cinema=1&perf=1&engine=webgpu");
+  await page.waitForFunction(
+    () => {
+      const state = window.__city?.store.get();
+      return state?.ready || Boolean(state?.error);
+    },
+    null,
+    { timeout: 120_000 },
+  );
+
+  const state = await page.evaluate(() => ({
+    error: window.__city.store.get().error,
+    perf: window.__city.performance(),
+  }));
+
+  expect(state.error).toBeNull();
+  expect(state.perf.engineRequested).toBe("webgpu");
+  expect(["WebGPU", "WebGL"]).toContain(state.perf.engine);
+  expect(state.perf.engineFallback).toBe(state.perf.engine === "WebGL");
+  expect(errors).toEqual([]);
+});
+
 test("renderer padrão continua fora da POC v4", async ({ page }) => {
   const errors = await openGame(page, "poc-v4-default");
   const state = await page.evaluate(() => ({
