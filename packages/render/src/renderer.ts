@@ -256,6 +256,7 @@ export class CityRenderer {
         // Na v4 as fontes só alimentam clones por chunk. Mantê-las fora da seleção evita
         // um bounding global por modelo e deixa o frustum culling agir em cada chunk.
         m.isVisible = false;
+        m.alwaysSelectAsActiveMesh = false;
         continue;
       }
       if (m.name.startsWith("roads/road")) continue;
