@@ -198,11 +198,18 @@ test("POC v4 perf particiona cidade grande e expõe métricas do gate", async ({
     if (map) window.__city.renderer.setMap(map);
     window.__city.renderer.setBuildings(window.__city.buildings());
     const after = window.__city.performance().chunks.bufferUpdates;
+    const buildings = window.__city.buildings();
     return {
       perf: window.__city.performance(),
       stress: window.__city.stress,
       view: window.__city.view,
-      buildings: window.__city.buildings().length,
+      buildings: buildings.length,
+      buildingBounds: {
+        minX: Math.min(...buildings.map((b) => b.x)),
+        maxX: Math.max(...buildings.map((b) => b.x)),
+        minY: Math.min(...buildings.map((b) => b.y)),
+        maxY: Math.max(...buildings.map((b) => b.y)),
+      },
       map: { width: map?.width, height: map?.height },
       hud: document.getElementById("poc-v4-perf")?.textContent ?? "",
       repeatedStaticUploads: after - before,
@@ -213,6 +220,10 @@ test("POC v4 perf particiona cidade grande e expõe métricas do gate", async ({
   expect(state.view).toBe("medium");
   expect(state.map).toEqual({ width: 256, height: 256 });
   expect(state.buildings).toBeGreaterThanOrEqual(5000);
+  expect(state.buildingBounds.minX).toBeLessThan(16);
+  expect(state.buildingBounds.maxX).toBeGreaterThan(240);
+  expect(state.buildingBounds.minY).toBeLessThan(16);
+  expect(state.buildingBounds.maxY).toBeGreaterThan(240);
   expect(state.perf.graphics.profile).toBe("perf");
   expect(state.perf.graphics.shadowMapSize).toBe(2048);
   expect(state.perf.graphics.resolutionScale).toBeCloseTo(0.5, 2);
