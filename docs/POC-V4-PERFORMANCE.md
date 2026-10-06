@@ -18,13 +18,27 @@ A configuração hero original usa shadow map 4096, PCF high, MSAA 4x, FXAA, blo
 
 ## Mudança estrutural
 
-A v4 agora particiona thin instances por **chunk 16×16 tiles + modelo**. Roads, buildings, árvores e props
-estáticos mantêm snapshots por chunk e só recompõem/re-enviam buffers dos chunks alterados. Veículos e
-pessoas continuam dinâmicos, mas também são particionados espacialmente.
+A v4 particiona o estado de thin instances em **chunks 16×16 tiles no CPU**. Roads, buildings, árvores e
+props estáticos mantêm snapshots por chunk e só recompõem os chunks alterados. Veículos e pessoas continuam
+dinâmicos, mas também são classificados espacialmente.
 
-As malhas-fonte não usam mais `alwaysSelectAsActiveMesh`; cada batch espacial recalcula seu bounding info,
-permitindo que o frustum culling descarte conteúdo fora da câmera. O HUD também expõe quantos chunks,
-batches e instances estão visíveis e quantos uploads de buffer ocorreram.
+Um detalhe do Babylon muda a implementação GPU: clones de um Mesh compartilham a mesma `Geometry`, e os
+buffers de thin instances pertencem à `Geometry`. Portanto não é correto manter um buffer independente de
+thin instances em cada clone de chunk sem duplicar a geometria. Duplicar milhares de geometrias destruiria
+o objetivo de escala.
+
+A solução adotada mantém **uma Geometry/mesh por modelo** e compacta, para esse mesh, somente as matrizes
+dos chunks na janela visível (com margem de segurança). O buffer GPU só é recomposto quando a câmera cruza
+fronteiras de chunk ou quando um chunk visível muda. Assim:
+
+- geometria/material/submeshes dos GLBs permanecem exatamente os originais;
+- chunks fora da janela não entram no buffer GPU;
+- chunks estáticos inalterados não provocam upload;
+- o número de meshes não cresce com a cidade;
+- o HUD continua medindo chunks/batches/instances totais e visíveis, além dos uploads de buffer.
+
+As malhas-fonte v4 deixam de usar `alwaysSelectAsActiveMesh`; o bounding agregado passa a representar
+somente o subconjunto visível compactado.
 
 ## Perfil Web de performance
 
