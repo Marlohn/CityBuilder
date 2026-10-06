@@ -94,15 +94,25 @@ test("POC v4 perf particiona cidade grande e expõe métricas do gate", async ({
   await page.waitForFunction(() => window.__city.buildings().length >= 5000, null, { timeout: 120_000 });
   await page.waitForTimeout(1800);
 
-  const state = await page.evaluate(() => ({
-    perf: window.__city.performance(),
-    stress: window.__city.stress,
-    buildings: window.__city.buildings().length,
-    map: { width: window.__city.map()?.width, height: window.__city.map()?.height },
-    hud: document.getElementById("poc-v4-perf")?.textContent ?? "",
-  }));
+  const state = await page.evaluate(() => {
+    const before = window.__city.performance().chunks.bufferUpdates;
+    const map = window.__city.map();
+    if (map) window.__city.renderer.setMap(map);
+    window.__city.renderer.setBuildings(window.__city.buildings());
+    const after = window.__city.performance().chunks.bufferUpdates;
+    return {
+      perf: window.__city.performance(),
+      stress: window.__city.stress,
+      view: window.__city.view,
+      buildings: window.__city.buildings().length,
+      map: { width: map?.width, height: map?.height },
+      hud: document.getElementById("poc-v4-perf")?.textContent ?? "",
+      repeatedStaticUploads: after - before,
+    };
+  });
 
   expect(state.stress).toBe("large");
+  expect(state.view).toBe("medium");
   expect(state.map).toEqual({ width: 256, height: 256 });
   expect(state.buildings).toBeGreaterThanOrEqual(5000);
   expect(state.perf.graphics.profile).toBe("perf");
@@ -115,7 +125,8 @@ test("POC v4 perf particiona cidade grande e expõe métricas do gate", async ({
   expect(state.perf.chunks.visible).toBeLessThan(state.perf.chunks.active);
   expect(state.perf.chunks.instances).toBeGreaterThan(5000);
   expect(state.perf.chunks.visibleInstances).toBeLessThan(state.perf.chunks.instances);
-  expect(state.hud).toContain("v4 perf · large");
+  expect(state.repeatedStaticUploads).toBe(0);
+  expect(state.hud).toContain("v4 perf · large/medium");
   expect(errors).toEqual([]);
 
   await mkdir("test-results", { recursive: true });
@@ -133,6 +144,36 @@ test("POC v4 perf particiona cidade grande e expõe métricas do gate", async ({
   await page.locator("#city").screenshot({ path: "test-results/poc-v4-large.png" });
 });
 
+
+
+test("POC v4 integrada continua ligada ao Worker e à simulação real", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await page.goto("/?seed=poc-v4-scale-integration&poc=v4");
+  await page.waitForFunction(
+    () => {
+      const city = window.__city;
+      return city?.renderer.pocV4State().ready && Boolean(city.map()) && (city.store.get().ready || Boolean(city.store.get().error));
+    },
+    null,
+    { timeout: 120_000 },
+  );
+  await page.waitForTimeout(800);
+
+  const state = await page.evaluate(() => ({
+    error: window.__city.store.get().error,
+    map: { width: window.__city.map()?.width, height: window.__city.map()?.height },
+    poc: window.__city.renderer.pocV4State(),
+    uiChildren: document.getElementById("ui")?.childElementCount ?? 0,
+  }));
+
+  expect(state.error).toBeNull();
+  expect(state.map).toEqual({ width: 256, height: 256 });
+  expect(state.poc.enabled).toBe(true);
+  expect(state.poc.ready).toBe(true);
+  expect(state.uiChildren).toBeGreaterThan(0);
+  expect(errors).toEqual([]);
+});
 
 test("POC v4 WebGPU mantém fallback WebGL seguro", async ({ page }) => {
   const errors: string[] = [];
