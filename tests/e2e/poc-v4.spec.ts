@@ -68,6 +68,9 @@ test("POC v4 usa os novos GLBs no renderer e mantém a cidade real funcional", a
   ).toBe(true);
   expect(state.poc.chunks.active).toBeGreaterThan(0);
   expect(state.poc.chunks.visible).toBeGreaterThan(0);
+  expect(state.used.reduce((total: number, asset: { count: number }) => total + asset.count, 0)).toBe(
+    state.poc.chunks.visibleInstances,
+  );
   expect(Math.max(...state.roadSubMeshes)).toBeGreaterThan(1);
   expect(Math.max(...state.lotSubMeshes)).toBeGreaterThan(1);
   expect(state.chunkMeshes).toBe(0);
@@ -173,6 +176,11 @@ test("POC v4 perf particiona cidade grande e expõe métricas do gate", async ({
       map: { width: map?.width, height: map?.height },
       hud: document.getElementById("poc-v4-perf")?.textContent ?? "",
       repeatedStaticUploads: after - before,
+      gpuInstances: window.__city.renderer.scene.meshes
+        .filter(
+          (m: { name: string }) => m.name.startsWith("poc-v4/") || m.name === "proc/construction",
+        )
+        .reduce((total: number, m: { thinInstanceCount: number }) => total + m.thinInstanceCount, 0),
     };
   });
 
@@ -196,6 +204,7 @@ test("POC v4 perf particiona cidade grande e expõe métricas do gate", async ({
   expect(state.perf.chunks.visible).toBeLessThan(state.perf.chunks.active);
   expect(state.perf.chunks.instances).toBeGreaterThan(5000);
   expect(state.perf.chunks.visibleInstances).toBeLessThan(state.perf.chunks.instances);
+  expect(state.gpuInstances).toBe(state.perf.chunks.visibleInstances);
   expect(state.repeatedStaticUploads).toBe(0);
   expect(state.hud).toContain("v4 perf · large/medium");
   expect(errors).toEqual([]);
