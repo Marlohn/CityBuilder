@@ -11,6 +11,7 @@ import {
   type Scene,
   StandardMaterial,
   Vector3,
+  VertexBuffer,
 } from "@babylonjs/core";
 import "@babylonjs/loaders/glTF";
 
@@ -59,6 +60,18 @@ export class ModelLibrary {
     container.addAllToScene();
     const parts = container.meshes.filter((m): m is Mesh => m instanceof Mesh && m.getTotalVertices() > 0);
     for (const p of parts) p.computeWorldMatrix(true);
+
+    // Alguns GLBs autorais da POC v4 têm UV em apenas uma submalha. Babylon exige o
+    // mesmo conjunto de atributos para MergeMeshes; UV vazio preserva geometria/material
+    // e permite o batching sem alterar o arquivo de origem.
+    if (name.startsWith("poc-v4/") && parts.some((p) => p.isVerticesDataPresent(VertexBuffer.UVKind))) {
+      for (const p of parts) {
+        if (!p.isVerticesDataPresent(VertexBuffer.UVKind)) {
+          p.setVerticesData(VertexBuffer.UVKind, new Array(p.getTotalVertices() * 2).fill(0));
+        }
+      }
+    }
+
     const merged = Mesh.MergeMeshes(parts, true, true, undefined, false, true);
     for (const m of container.meshes) if (!m.isDisposed()) m.dispose();
     if (!merged) throw new Error(`não consegui juntar as malhas de ${name}`);
