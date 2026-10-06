@@ -77,7 +77,6 @@ test("POC v4 usa os novos GLBs no renderer e mantém a cidade real funcional", a
   expect(errors).toEqual([]);
 });
 
-
 test("POC v4 perf mantém o baseline pequeno comparável à hero original", async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
