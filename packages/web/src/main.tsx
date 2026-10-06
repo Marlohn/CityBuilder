@@ -345,8 +345,7 @@ function setupPocV4Stress(kind: "medium" | "large") {
   renderer.setBuildings(stressBuildings);
   renderer.setVehicles({ data: vehicles, count: vehicleTarget });
   renderer.lookAt(size / 2, size / 2);
-  const targetZoom =
-    pocV4View === "street" ? 10 : pocV4View === "overview" ? Math.min(120, size * 0.45) : 28;
+  const targetZoom = pocV4View === "street" ? 10 : pocV4View === "overview" ? Math.min(120, size * 0.45) : 28;
   renderer.zoomBy(targetZoom / renderer.cameraState().zoom);
   renderer.tiltBy((5 * Math.PI) / 180);
   store.set({ ready: true });
