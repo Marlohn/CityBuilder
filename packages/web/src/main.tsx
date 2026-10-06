@@ -267,7 +267,6 @@ function setupPocV4Cinema() {
 
 function setupPocV4Stress(kind: "medium" | "large") {
   const size = kind === "large" ? 256 : 128;
-  const buildingTarget = kind === "large" ? 6000 : 1500;
   const vehicleTarget = kind === "large" ? 1500 : 500;
   const roads = new Uint8Array(size * size);
   const zones = new Uint8Array(size * size);
@@ -288,7 +287,7 @@ function setupPocV4Stress(kind: "medium" | "large") {
     for (let x = 1; x < size - 1; x++) {
       const i = at(x, y);
       if (roads[i]) continue;
-      if (stressBuildings.length < buildingTarget && (x * 7 + y * 11) % 3 !== 0) {
+      if ((x * 7 + y * 11) % 8 === 0) {
         const commercial = (x * 13 + y * 5) % 7 === 0;
         stressBuildings.push({
           id: id++,
