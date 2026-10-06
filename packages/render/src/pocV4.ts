@@ -34,29 +34,18 @@ const ROAD_MODELS: Record<RoadPiece, string> = {
 };
 
 const BUILDING_MODELS: Record<string, readonly string[]> = {
-  casa: [
-    `${PREFIX}lote_casa_terracota`,
-    `${PREFIX}lote_casa_frontao_azul`,
-  ],
+  casa: [`${PREFIX}lote_casa_terracota`, `${PREFIX}lote_casa_frontao_azul`],
   predio_residencial: [`${PREFIX}lote_loja`],
   loja: [`${PREFIX}lote_loja`, `${PREFIX}lote_cafe`],
   escritorio: [`${PREFIX}lote_loja`],
   galpao: [`${PREFIX}lote_loja`],
 };
 
-const TREE_MODELS = [
-  `${PREFIX}arvore_a`,
-] as const;
+const TREE_MODELS = [`${PREFIX}arvore_a`] as const;
 
-const CAR_MODELS = [
-  `${PREFIX}carro_vermelho`,
-  `${PREFIX}carro_azul`,
-  `${PREFIX}carro_amarelo`,
-] as const;
+const CAR_MODELS = [`${PREFIX}carro_vermelho`, `${PREFIX}carro_azul`, `${PREFIX}carro_amarelo`] as const;
 
-const PEOPLE_MODELS = [
-  `${PREFIX}pessoa_a`,
-] as const;
+const PEOPLE_MODELS = [`${PREFIX}pessoa_a`] as const;
 
 function hash(i: number): number {
   let h = i | 0;
@@ -74,12 +63,7 @@ export class PocV4Environment {
   private readonly pipeline: DefaultRenderingPipeline;
   private readonly ssao: SSAO2RenderingPipeline | null;
 
-  constructor(
-    scene: Scene,
-    camera: Camera,
-    shadows: ShadowGenerator,
-    tileMeters: number,
-  ) {
+  constructor(scene: Scene, camera: Camera, shadows: ShadowGenerator, tileMeters: number) {
     scene.clearColor = Color4.FromHexString("#c8cad6ff");
     scene.ambientColor = new Color3(0.32, 0.34, 0.38);
 
@@ -159,9 +143,7 @@ export class PocV4RoadLayer {
         if (x > 0 && roads[i - 1]) mask |= 8;
 
         const { piece, quarterTurns } = roadPieceFor(mask);
-        this.batches
-          .get(ROAD_MODELS[piece])
-          .push(x + 0.5, 0, y + 0.5, quarterTurns * HALF_PI, s, s, s);
+        this.batches.get(ROAD_MODELS[piece]).push(x + 0.5, 0, y + 0.5, quarterTurns * HALF_PI, s, s, s);
 
         if (piece === "straight" && (x + y) % 2 === 0) {
           const alongX = (mask & 10) === 10;
@@ -177,9 +159,7 @@ export class PocV4RoadLayer {
           const alongX = (mask & 10) === 10;
           const ox = alongX ? 0.34 : -0.39;
           const oz = alongX ? -0.39 : 0.34;
-          this.batches
-            .get(`${PREFIX}floreira`)
-            .push(x + 0.5 + ox, sidewalkY, y + 0.5 + oz, 0, s, s, s);
+          this.batches.get(`${PREFIX}floreira`).push(x + 0.5 + ox, sidewalkY, y + 0.5 + oz, 0, s, s, s);
         }
       }
     }
