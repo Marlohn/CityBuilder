@@ -19,6 +19,7 @@ import {
   ShadowGenerator,
   StandardMaterial,
   Vector3,
+  WebGPUEngine,
 } from "@babylonjs/core";
 import type { BuildingView, MapView, VehiclesView } from "@city/contract";
 import { type PickBox, pickTile, rayGround, screenAxesOnGround, startTarget } from "./camera";
@@ -51,6 +52,8 @@ export interface RendererOptions {
   visualStyle?: "default" | "poc-v4";
   /** Ajustes medidos pela POC de performance. Ausente = aparência hero original. */
   pocV4Runtime?: PocV4RuntimeOptions;
+  /** Backend explícito para o A/B da POC. O jogo continua WebGL por padrão. */
+  enginePreference?: "webgl" | "webgpu" | "auto";
 }
 
 export interface TileEvent {
@@ -94,6 +97,8 @@ export class CityRenderer {
   private pocV4Environment: PocV4Environment | null = null;
   private pocV4Ready = false;
   private readonly pocV4Runtime: Required<PocV4RuntimeOptions>;
+  private readonly engineBackend: "WebGL" | "WebGPU";
+  private readonly engineFallback: boolean;
   private readonly frameTimes: number[] = [];
   private lastFrameAt = performance.now();
   /** Tecla apertada → momento (ms) até onde o movimento dela já foi aplicado. */
@@ -104,9 +109,30 @@ export class CityRenderer {
   onTileMove: ((e: TileEvent) => void) | null = null;
   onTileUp: ((e: TileEvent) => void) | null = null;
 
+  static async create(canvas: HTMLCanvasElement, opts: RendererOptions): Promise<CityRenderer> {
+    const preference = opts.enginePreference ?? "webgl";
+    if (preference !== "webgl") {
+      const supported = await WebGPUEngine.IsSupportedAsync;
+      if (supported) {
+        const webgpu = new WebGPUEngine(canvas, { antialias: true, adaptToDeviceRatio: true });
+        try {
+          await webgpu.initAsync();
+          return new CityRenderer(canvas, opts, webgpu, "WebGPU", false);
+        } catch {
+          webgpu.dispose();
+        }
+      }
+      return new CityRenderer(canvas, opts, undefined, "WebGL", true);
+    }
+    return new CityRenderer(canvas, opts);
+  }
+
   constructor(
     private canvas: HTMLCanvasElement,
     private opts: RendererOptions,
+    engine?: Engine,
+    backend: "WebGL" | "WebGPU" = "WebGL",
+    fallback = false,
   ) {
     this.pocV4 = opts.visualStyle === "poc-v4";
     this.pocV4Runtime = {
@@ -116,7 +142,9 @@ export class CityRenderer {
       shadowsEnabled: opts.pocV4Runtime?.shadowsEnabled ?? true,
       profile: opts.pocV4Runtime?.profile ?? "hero",
     };
-    this.engine = new Engine(canvas, true, { preserveDrawingBuffer: true, stencil: true }, true);
+    this.engine = engine ?? new Engine(canvas, true, { preserveDrawingBuffer: true, stencil: true }, true);
+    this.engineBackend = backend;
+    this.engineFallback = fallback;
     if (this.pocV4) this.engine.setHardwareScalingLevel(1 / this.pocV4Runtime.resolutionScale);
     this.scene = new Scene(this.engine);
     this.scene.clearColor = new Color4(0.62, 0.78, 0.92, 1);
@@ -389,7 +417,9 @@ export class CityRenderer {
     return {
       enabled: this.pocV4,
       ready: this.pocV4Ready,
-      engine: "WebGL",
+      engine: this.engineBackend,
+      engineRequested: this.opts.enginePreference ?? "webgl",
+      engineFallback: this.engineFallback,
       camera: this.camera.mode === Camera.PERSPECTIVE_CAMERA ? "perspective" : "orthographic",
       fovDegrees: (this.camera.fov * 180) / Math.PI,
       environment: this.pocV4Environment?.state() ?? null,
