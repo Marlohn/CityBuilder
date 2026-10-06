@@ -16,6 +16,8 @@ const pocV4Cinema = pocV4 && params.get("cinema") === "1";
 const pocV4Perf = pocV4Cinema && params.get("perf") === "1";
 const pocV4Stress =
   params.get("stress") === "large" ? "large" : params.get("stress") === "medium" ? "medium" : "small";
+const enginePreference =
+  params.get("engine") === "webgpu" ? "webgpu" : params.get("engine") === "auto" ? "auto" : "webgl";
 const requestedShadow = Number(params.get("shadows") ?? 2048);
 const shadowMapSize = [1024, 2048, 4096].includes(requestedShadow) ? requestedShadow : 2048;
 const requestedScale = Number(params.get("scale") ?? 0.85);
@@ -51,11 +53,12 @@ if (pocV4) {
   document.body.append(badge);
 }
 
-const renderer = new CityRenderer(canvas, {
+const renderer = await CityRenderer.create(canvas, {
   modelsBaseUrl: new URL("./models", location.href).href.replace(/\/$/, ""),
   buildingVisuals: data.buildings.map((b) => ({ id: b.id, models: b.models, floors: b.floors })),
   tileMeters: config.world.tileMeters,
   visualStyle: pocV4 ? "poc-v4" : "default",
+  enginePreference,
   pocV4Runtime: pocV4Perf
     ? {
         profile: "perf",
@@ -466,7 +469,7 @@ if (pocV4Perf) {
   const refreshHud = () => {
     const state = renderer.pocV4State();
     hud.textContent = [
-      `v4 perf · ${pocV4Stress} · ${state.engine}`,
+      `v4 perf · ${pocV4Stress} · ${state.engine}${state.engineFallback ? " (fallback)" : ""}`,
       `fps ${state.fps} · frame ${state.frameTimeMs} ms · p95 ${state.frameTimeP95Ms} · p99 ${state.frameTimeP99Ms}`,
       `internal ${state.resolution.width}x${state.resolution.height} · scale ${state.graphics.resolutionScale}`,
       `meshes ${state.meshes} · active ${state.activeMeshes} · draws ${state.drawCalls ?? "n/a"}`,
