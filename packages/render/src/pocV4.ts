@@ -86,6 +86,61 @@ function modelsFor(v: BuildingVisual): readonly string[] {
   return BUILDING_MODELS[v.id] ?? v.models;
 }
 
+function chunkKey(x: number, y: number): string {
+  return `${Math.floor(x / CHUNK_TILES)}:${Math.floor(y / CHUNK_TILES)}`;
+}
+
+function parseChunkKey(key: string): [number, number] {
+  const [x, y] = key.split(":");
+  return [Number(x), Number(y)];
+}
+
+function sameBytes(a: Uint8Array, b: Uint8Array): boolean {
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return false;
+  return true;
+}
+
+function changedChunkKeys<T>(
+  previous: ReadonlyMap<string, T>,
+  next: ReadonlyMap<string, T>,
+  equal: (a: T, b: T) => boolean,
+): Set<string> {
+  const changed = new Set<string>();
+  for (const [key, value] of next) {
+    const old = previous.get(key);
+    if (old === undefined || !equal(old, value)) changed.add(key);
+  }
+  for (const key of previous.keys()) if (!next.has(key)) changed.add(key);
+  return changed;
+}
+
+function byteChunkSnapshots(
+  width: number,
+  height: number,
+  valueAt: (x: number, y: number) => number,
+  border = 0,
+): Map<string, Uint8Array> {
+  const snapshots = new Map<string, Uint8Array>();
+  const chunksX = Math.ceil(width / CHUNK_TILES);
+  const chunksY = Math.ceil(height / CHUNK_TILES);
+  for (let cy = 0; cy < chunksY; cy++) {
+    for (let cx = 0; cx < chunksX; cx++) {
+      const x0 = Math.max(0, cx * CHUNK_TILES - border);
+      const y0 = Math.max(0, cy * CHUNK_TILES - border);
+      const x1 = Math.min(width, (cx + 1) * CHUNK_TILES + border);
+      const y1 = Math.min(height, (cy + 1) * CHUNK_TILES + border);
+      const data = new Uint8Array((x1 - x0) * (y1 - y0));
+      let p = 0;
+      for (let y = y0; y < y1; y++) {
+        for (let x = x0; x < x1; x++) data[p++] = valueAt(x, y);
+      }
+      snapshots.set(`${cx}:${cy}`, data);
+    }
+  }
+  return snapshots;
+}
+
 /** Receita de luz/pós-processamento fornecida junto dos GLBs, adaptada à escala em tiles. */
 export class PocV4Environment {
   private readonly pipeline: DefaultRenderingPipeline;
@@ -156,6 +211,7 @@ export class PocV4Environment {
 
 export class PocV4RoadLayer {
   private readonly batches: ChunkedBatchSet;
+  private chunkSnapshots = new Map<string, Uint8Array>();
 
   constructor(
     private lib: ModelLibrary,
@@ -170,48 +226,62 @@ export class PocV4RoadLayer {
   }
 
   update(map: MapView) {
-    this.batches.resetAll();
     const { width, height, roads } = map;
+    // A peça de borda depende dos vizinhos, então o snapshot inclui 1 tile ao redor do chunk.
+    const nextSnapshots = byteChunkSnapshots(width, height, (x, y) => roads[y * width + x] ?? 0, 1);
+    const dirty = changedChunkKeys(this.chunkSnapshots, nextSnapshots, sameBytes);
+    this.chunkSnapshots = nextSnapshots;
+    if (dirty.size === 0) return;
+
+    this.batches.resetChunks(dirty);
     const s = 1 / this.tileMeters;
     const sidewalkY = 0.18 / this.tileMeters;
 
-    for (let y = 0; y < height; y++) {
-      for (let x = 0; x < width; x++) {
-        const i = y * width + x;
-        if (!roads[i]) continue;
+    for (const key of dirty) {
+      const [cx, cy] = parseChunkKey(key);
+      const x0 = cx * CHUNK_TILES;
+      const y0 = cy * CHUNK_TILES;
+      const x1 = Math.min(width, x0 + CHUNK_TILES);
+      const y1 = Math.min(height, y0 + CHUNK_TILES);
 
-        let mask = 0;
-        if (y > 0 && roads[i - width]) mask |= 1;
-        if (x < width - 1 && roads[i + 1]) mask |= 2;
-        if (y < height - 1 && roads[i + width]) mask |= 4;
-        if (x > 0 && roads[i - 1]) mask |= 8;
+      for (let y = y0; y < y1; y++) {
+        for (let x = x0; x < x1; x++) {
+          const i = y * width + x;
+          if (!roads[i]) continue;
 
-        const { piece, quarterTurns } = roadPieceFor(mask);
-        this.batches
-          .get(ROAD_MODELS[piece], x + 0.5, y + 0.5)
-          .push(x + 0.5, 0, y + 0.5, quarterTurns * HALF_PI, s, s, s);
+          let mask = 0;
+          if (y > 0 && roads[i - width]) mask |= 1;
+          if (x < width - 1 && roads[i + 1]) mask |= 2;
+          if (y < height - 1 && roads[i + width]) mask |= 4;
+          if (x > 0 && roads[i - 1]) mask |= 8;
 
-        if (piece === "straight" && (x + y) % 2 === 0) {
-          const alongX = (mask & 10) === 10;
-          const side = (x + y) % 4 === 0 ? 1 : -1;
-          const ox = alongX ? 0 : side * 0.41;
-          const oz = alongX ? side * 0.41 : 0;
+          const { piece, quarterTurns } = roadPieceFor(mask);
           this.batches
-            .get(`${PREFIX}banco`, x + 0.5 + ox, y + 0.5 + oz)
-            .push(x + 0.5 + ox, sidewalkY, y + 0.5 + oz, alongX ? HALF_PI : 0, s, s, s);
-        }
+            .get(ROAD_MODELS[piece], x + 0.5, y + 0.5)
+            .push(x + 0.5, 0, y + 0.5, quarterTurns * HALF_PI, s, s, s);
 
-        if (piece === "straight" && (x * 3 + y * 5) % 17 === 0) {
-          const alongX = (mask & 10) === 10;
-          const ox = alongX ? 0.34 : -0.39;
-          const oz = alongX ? -0.39 : 0.34;
-          this.batches
-            .get(`${PREFIX}floreira`, x + 0.5 + ox, y + 0.5 + oz)
-            .push(x + 0.5 + ox, sidewalkY, y + 0.5 + oz, 0, s, s, s);
+          if (piece === "straight" && (x + y) % 2 === 0) {
+            const alongX = (mask & 10) === 10;
+            const side = (x + y) % 4 === 0 ? 1 : -1;
+            const ox = alongX ? 0 : side * 0.41;
+            const oz = alongX ? side * 0.41 : 0;
+            this.batches
+              .get(`${PREFIX}banco`, x + 0.5 + ox, y + 0.5 + oz)
+              .push(x + 0.5 + ox, sidewalkY, y + 0.5 + oz, alongX ? HALF_PI : 0, s, s, s);
+          }
+
+          if (piece === "straight" && (x * 3 + y * 5) % 17 === 0) {
+            const alongX = (mask & 10) === 10;
+            const ox = alongX ? 0.34 : -0.39;
+            const oz = alongX ? -0.39 : 0.34;
+            this.batches
+              .get(`${PREFIX}floreira`, x + 0.5 + ox, y + 0.5 + oz)
+              .push(x + 0.5 + ox, sidewalkY, y + 0.5 + oz, 0, s, s, s);
+          }
         }
       }
     }
-    this.batches.applyAll();
+    this.batches.applyChunks(dirty);
   }
 
   stats(activeMeshNames?: ReadonlySet<string>): BatchStats {
@@ -221,6 +291,7 @@ export class PocV4RoadLayer {
 
 export class PocV4BuildingLayer {
   private readonly batches: ChunkedBatchSet;
+  private chunkSignatures = new Map<string, string>();
   private visuals = new Map<string, BuildingVisual>();
 
   constructor(
@@ -253,44 +324,67 @@ export class PocV4BuildingLayer {
   }
 
   update(list: BuildingView[]) {
-    this.batches.resetAll();
-
+    const grouped = new Map<string, BuildingView[]>();
     for (const b of list) {
-      const vis = this.visuals.get(b.type);
-      if (!vis) continue;
-      const cx = b.x + b.w / 2;
-      const cz = b.y + b.h / 2;
-      const quarter = (((MODEL_FRONT - b.facing) % 4) + 4) % 4;
-      const rot = quarter * HALF_PI;
-
-      if (b.state === 0) {
-        const scale = Math.min(b.w, b.h);
-        this.batches
-          .get("proc/construction", cx, cz)
-          .push(cx, 0, cz, 0, scale, Math.max(0.6, vis.floors * 0.5) * scale, scale);
-        continue;
-      }
-
-      const choices = modelsFor(vis);
-      const model = choices[b.variant % choices.length]!;
-      const info = this.lib.get(model);
-      const footprint = model.startsWith(`${PREFIX}lote_`)
-        ? 0.92
-        : Math.min(b.w, b.h) * (model.startsWith("proc/") ? 1 : 0.92);
-      const s = footprint / Math.max(info.size.x, info.size.z);
-
-      if (model.startsWith(`${PREFIX}lote_`)) {
-        // O lote GLB já contém prédio, jardim, árvores e cotas corretas em metros.
-        this.batches.get(model, cx, cz).push(cx, 0, cz, rot, s, s, s);
-        continue;
-      }
-
-      const target = (vis.floors * FLOOR_METERS + 2) / this.tileMeters;
-      const natural = info.size.y * s;
-      const sy = model.startsWith("proc/") ? s : s * Math.min(1.6, Math.max(0.7, target / natural));
-      this.batches.get(model, cx, cz).push(cx, 0, cz, rot, s, sy, s);
+      if (!this.visuals.has(b.type)) continue;
+      const key = chunkKey(b.x + b.w / 2, b.y + b.h / 2);
+      const chunk = grouped.get(key);
+      if (chunk) chunk.push(b);
+      else grouped.set(key, [b]);
     }
-    this.batches.applyAll();
+
+    const nextSignatures = new Map<string, string>();
+    for (const [key, chunk] of grouped) {
+      nextSignatures.set(
+        key,
+        chunk
+          .map((b) => `${b.id}:${b.type}:${b.x}:${b.y}:${b.w}:${b.h}:${b.state}:${b.facing}:${b.variant}`)
+          .join("|"),
+      );
+    }
+    const dirty = changedChunkKeys(this.chunkSignatures, nextSignatures, (a, b) => a === b);
+    this.chunkSignatures = nextSignatures;
+    if (dirty.size === 0) return;
+
+    this.batches.resetChunks(dirty);
+    for (const [key, chunk] of grouped) {
+      if (!dirty.has(key)) continue;
+      for (const b of chunk) {
+        const vis = this.visuals.get(b.type);
+        if (!vis) continue;
+        const cx = b.x + b.w / 2;
+        const cz = b.y + b.h / 2;
+        const quarter = (((MODEL_FRONT - b.facing) % 4) + 4) % 4;
+        const rot = quarter * HALF_PI;
+
+        if (b.state === 0) {
+          const scale = Math.min(b.w, b.h);
+          this.batches
+            .get("proc/construction", cx, cz)
+            .push(cx, 0, cz, 0, scale, Math.max(0.6, vis.floors * 0.5) * scale, scale);
+          continue;
+        }
+
+        const choices = modelsFor(vis);
+        const model = choices[b.variant % choices.length]!;
+        const info = this.lib.get(model);
+        const footprint = model.startsWith(`${PREFIX}lote_`)
+          ? 0.92
+          : Math.min(b.w, b.h) * (model.startsWith("proc/") ? 1 : 0.92);
+        const s = footprint / Math.max(info.size.x, info.size.z);
+
+        if (model.startsWith(`${PREFIX}lote_`)) {
+          this.batches.get(model, cx, cz).push(cx, 0, cz, rot, s, s, s);
+          continue;
+        }
+
+        const target = (vis.floors * FLOOR_METERS + 2) / this.tileMeters;
+        const natural = info.size.y * s;
+        const sy = model.startsWith("proc/") ? s : s * Math.min(1.6, Math.max(0.7, target / natural));
+        this.batches.get(model, cx, cz).push(cx, 0, cz, rot, s, sy, s);
+      }
+    }
+    this.batches.applyChunks(dirty);
   }
 
   stats(activeMeshNames?: ReadonlySet<string>): BatchStats {
@@ -300,6 +394,7 @@ export class PocV4BuildingLayer {
 
 export class PocV4TreeLayer {
   private readonly batches: ChunkedBatchSet;
+  private chunkSnapshots = new Map<string, Uint8Array>();
 
   constructor(
     private lib: ModelLibrary,
@@ -314,26 +409,41 @@ export class PocV4TreeLayer {
   }
 
   update(map: MapView, occupied: Uint8Array) {
-    this.batches.resetAll();
-    const { width, trees } = map;
+    const { width, height, trees, roads } = map;
+    const nextSnapshots = byteChunkSnapshots(width, height, (x, y) => {
+      const i = y * width + x;
+      return (trees[i] ? 1 : 0) | (occupied[i] ? 2 : 0) | (roads[i] ? 4 : 0);
+    });
+    const dirty = changedChunkKeys(this.chunkSnapshots, nextSnapshots, sameBytes);
+    this.chunkSnapshots = nextSnapshots;
+    if (dirty.size === 0) return;
 
-    for (let i = 0; i < trees.length; i++) {
-      if (!trees[i] || occupied[i] || map.roads[i]) continue;
-      const x = i % width;
-      const y = (i - x) / width;
-      const count = hash(i) < 0.45 ? 1 : 2;
+    this.batches.resetChunks(dirty);
+    for (const key of dirty) {
+      const [cx, cy] = parseChunkKey(key);
+      const x0 = cx * CHUNK_TILES;
+      const y0 = cy * CHUNK_TILES;
+      const x1 = Math.min(width, x0 + CHUNK_TILES);
+      const y1 = Math.min(height, y0 + CHUNK_TILES);
 
-      for (let k = 0; k < count; k++) {
-        const h1 = hash(i * 7 + k * 13 + 1);
-        const h2 = hash(i * 11 + k * 17 + 3);
-        const model = TREE_MODELS[Math.floor(hash(i * 5 + k * 19) * TREE_MODELS.length)]!;
-        const s = (0.8 + h1 * 0.4) / this.tileMeters;
-        this.batches
-          .get(model, x + 0.18 + h1 * 0.64, y + 0.18 + h2 * 0.64)
-          .push(x + 0.18 + h1 * 0.64, 0, y + 0.18 + h2 * 0.64, h2 * Math.PI * 2, s, s, s);
+      for (let y = y0; y < y1; y++) {
+        for (let x = x0; x < x1; x++) {
+          const i = y * width + x;
+          if (!trees[i] || occupied[i] || roads[i]) continue;
+          const count = hash(i) < 0.45 ? 1 : 2;
+          for (let k = 0; k < count; k++) {
+            const h1 = hash(i * 7 + k * 13 + 1);
+            const h2 = hash(i * 11 + k * 17 + 3);
+            const model = TREE_MODELS[Math.floor(hash(i * 5 + k * 19) * TREE_MODELS.length)]!;
+            const s = (0.8 + h1 * 0.4) / this.tileMeters;
+            this.batches
+              .get(model, x + 0.18 + h1 * 0.64, y + 0.18 + h2 * 0.64)
+              .push(x + 0.18 + h1 * 0.64, 0, y + 0.18 + h2 * 0.64, h2 * Math.PI * 2, s, s, s);
+          }
+        }
       }
     }
-    this.batches.applyAll();
+    this.batches.applyChunks(dirty);
   }
 
   stats(activeMeshNames?: ReadonlySet<string>): BatchStats {
