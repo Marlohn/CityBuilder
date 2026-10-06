@@ -35,12 +35,14 @@ test("POC v4 usa os novos GLBs no renderer e mantém a cidade real funcional", a
   expect(state.uiChildren).toBe(0);
   expect(state.badge).toContain("POC v4");
 
-  const names = state.used.map((x) => x.name);
-  expect(names.some((name) => name.startsWith("poc-v4/rua_"))).toBe(true);
-  expect(names.some((name) => name.startsWith("poc-v4/lote_"))).toBe(true);
-  expect(names.some((name) => name.startsWith("poc-v4/arvore_"))).toBe(true);
+  const names: string[] = state.used.map((x: { name: string }) => x.name);
+  expect(names.some((name: string) => name.startsWith("poc-v4/rua_"))).toBe(true);
+  expect(names.some((name: string) => name.startsWith("poc-v4/lote_"))).toBe(true);
+  expect(names.some((name: string) => name.startsWith("poc-v4/arvore_"))).toBe(true);
   expect(
-    names.some((name) => name.startsWith("poc-v4/carro_") || name.startsWith("poc-v4/pessoa_")),
+    names.some(
+      (name: string) => name.startsWith("poc-v4/carro_") || name.startsWith("poc-v4/pessoa_"),
+    ),
   ).toBe(true);
 
   await mkdir("test-results", { recursive: true });
