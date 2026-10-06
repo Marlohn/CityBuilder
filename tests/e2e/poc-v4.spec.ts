@@ -120,6 +120,8 @@ test("POC v4 perf mantém o baseline pequeno comparável à hero original", asyn
   expect(state.perf.environment?.bloom).toBe(true);
   expect(state.perf.environment?.ssao).toBe(false);
   expect(state.perf.environment?.msaaSamples).toBe(1);
+  expect(state.perf.graphics.shadowMapSize).toBe(1024);
+  expect(state.perf.graphics.resolutionScale).toBeCloseTo(0.75, 2);
   expect(state.buildings).toBe(22);
   expect(errors).toEqual([]);
 
@@ -265,7 +267,7 @@ stressTest("POC v4 perf particiona cidade grande e expõe métricas do gate", as
   expect(state.buildingBounds.minY).toBeLessThan(16);
   expect(state.buildingBounds.maxY).toBeGreaterThan(240);
   expect(state.perf.graphics.profile).toBe("perf");
-  expect(state.perf.graphics.shadowMapSize).toBe(2048);
+  expect(state.perf.graphics.shadowMapSize).toBe(1024);
   expect(state.perf.graphics.resolutionScale).toBeCloseTo(0.5, 2);
   expect(state.perf.environment?.msaaSamples).toBe(1);
   expect(state.perf.environment?.ssao).toBe(false);
@@ -273,9 +275,11 @@ stressTest("POC v4 perf particiona cidade grande e expõe métricas do gate", as
   expect(state.perf.graphics.shadowsEnabled).toBe(false);
   expect(state.perf.chunks.active).toBeGreaterThan(20);
   expect(state.perf.chunks.visible).toBeGreaterThan(0);
-  expect(state.perf.chunks.visible).toBeLessThan(state.perf.chunks.active);
+  expect(state.perf.chunks.visible).toBeLessThan(state.perf.chunks.active * 0.5);
   expect(state.perf.chunks.instances).toBeGreaterThan(5000);
   expect(state.perf.chunks.visibleInstances).toBeLessThan(state.perf.chunks.instances);
+  expect(state.perf.chunks.visibleInstances).toBeLessThan(25_000);
+  expect(state.perf.triangles).toBeLessThan(60_000_000);
   expect(state.gpuInstances).toBe(state.perf.chunks.visibleInstances);
   expect(state.repeatedStaticUploads).toBe(0);
   expect(state.hud).toContain("v4 perf · large/medium");
