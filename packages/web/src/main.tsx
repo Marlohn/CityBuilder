@@ -137,7 +137,14 @@ function setupPocV4Cinema() {
     version: 1,
   };
 
-  const active = (id: number, type: string, x: number, y: number, facing: number, variant: number): BuildingView => ({
+  const active = (
+    id: number,
+    type: string,
+    x: number,
+    y: number,
+    facing: number,
+    variant: number,
+  ): BuildingView => ({
     id,
     type,
     x,
@@ -184,14 +191,38 @@ function setupPocV4Cinema() {
   ];
 
   const vehicles = new Float32Array([
-    7.2, 10.5, Math.PI / 2, 0,
-    13.2, 10.5, -Math.PI / 2, 1,
-    19.2, 10.5, Math.PI / 2, 2,
-    10.5, 13.2, 0, 0,
-    20.5, 18.2, Math.PI, 1,
-    9.65, 8.4, 0, 100,
-    15.35, 12.4, Math.PI, 100,
-    20.35, 16.8, Math.PI / 2, 100,
+    7.2,
+    10.5,
+    Math.PI / 2,
+    0,
+    13.2,
+    10.5,
+    -Math.PI / 2,
+    1,
+    19.2,
+    10.5,
+    Math.PI / 2,
+    2,
+    10.5,
+    13.2,
+    0,
+    0,
+    20.5,
+    18.2,
+    Math.PI,
+    1,
+    9.65,
+    8.4,
+    0,
+    100,
+    15.35,
+    12.4,
+    Math.PI,
+    100,
+    20.35,
+    16.8,
+    Math.PI / 2,
+    100,
   ]);
 
   lastMap = map;
