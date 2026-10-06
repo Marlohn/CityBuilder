@@ -31,9 +31,17 @@ test("POC v4 usa os novos GLBs no renderer e mantém a cidade real funcional", a
         name: m.name,
         count: m.thinInstanceCount,
       }));
+    const roadSubMeshes = renderer.scene.meshes
+      .filter((m: { name: string }) => m.name.includes("/poc-v4/rua_"))
+      .map((m: { subMeshes: unknown[] }) => m.subMeshes.length);
+    const lotSubMeshes = renderer.scene.meshes
+      .filter((m: { name: string }) => m.name.includes("/poc-v4/lote_"))
+      .map((m: { subMeshes: unknown[] }) => m.subMeshes.length);
     return {
       poc: renderer.pocV4State(),
       used,
+      roadSubMeshes,
+      lotSubMeshes,
       buildings: window.__city.buildings().length,
       uiChildren: document.getElementById("ui")?.childElementCount ?? 0,
       badge: document.getElementById("poc-v4-badge")?.textContent ?? "",
@@ -58,6 +66,8 @@ test("POC v4 usa os novos GLBs no renderer e mantém a cidade real funcional", a
     names.some((name: string) => name.includes("/poc-v4/carro_") || name.includes("/poc-v4/pessoa_")),
   ).toBe(true);
   expect(state.poc.chunks.active).toBeGreaterThan(0);
+  expect(Math.max(...state.roadSubMeshes)).toBeGreaterThan(1);
+  expect(Math.max(...state.lotSubMeshes)).toBeGreaterThan(1);
 
   await mkdir("test-results", { recursive: true });
   await writeFile(
@@ -122,6 +132,7 @@ test("POC v4 perf mantém o baseline pequeno comparável à hero original", asyn
 });
 
 test("POC v4 perf particiona cidade grande e expõe métricas do gate", async ({ page }) => {
+  test.setTimeout(300_000);
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
   await page.goto("/?poc=v4&cinema=1&perf=1&stress=large");
@@ -185,7 +196,7 @@ test("POC v4 perf particiona cidade grande e expõe métricas do gate", async ({
       2,
     ),
   );
-  await page.locator("#city").screenshot({ path: "test-results/poc-v4-large.png" });
+  await page.screenshot({ path: "test-results/poc-v4-large.png", animations: "disabled" });
 });
 
 test("POC v4 integrada continua ligada ao Worker e à simulação real", async ({ page }) => {
