@@ -1,7 +1,7 @@
 /**
  * Ajuda a montar buffers de matrizes para thin instances.
  */
-import { BoundingInfo, Matrix, type Mesh, Quaternion, SubMesh, Vector3 } from "@babylonjs/core";
+import { Matrix, type Mesh, Quaternion, Vector3 } from "@babylonjs/core";
 
 const tmpM = new Matrix();
 const tmpQ = new Quaternion();
@@ -18,6 +18,13 @@ export interface BatchStats {
   bufferUpdates: number;
 }
 
+export interface TileRect {
+  x0: number;
+  y0: number;
+  x1: number;
+  y1: number;
+}
+
 export class InstanceBatch {
   private data = new Float32Array(16 * 64);
   private appliedData = new Float32Array(0);
@@ -30,11 +37,7 @@ export class InstanceBatch {
   }
 
   push(x: number, y: number, z: number, rotY: number, sx: number, sy: number, sz: number) {
-    if ((this.count + 1) * 16 > this.data.length) {
-      const bigger = new Float32Array(this.data.length * 2);
-      bigger.set(this.data);
-      this.data = bigger;
-    }
+    this.ensure(this.count + 1);
     Quaternion.RotationYawPitchRollToRef(rotY, 0, 0, tmpQ);
     tmpS.set(sx, sy, sz);
     tmpT.set(x, y, z);
@@ -43,7 +46,16 @@ export class InstanceBatch {
     this.count++;
   }
 
-  /** Envia somente quando o conteúdo mudou; chunks estáticos não refazem o buffer a cada update. */
+  append(other: InstanceBatch) {
+    if (other.count === 0) return;
+    const start = this.count * 16;
+    const length = other.count * 16;
+    this.ensure(this.count + other.count);
+    this.data.set(other.data.subarray(0, length), start);
+    this.count += other.count;
+  }
+
+  /** Envia somente quando o conteúdo mudou; batches estáticos não refazem o buffer sem necessidade. */
   apply(mesh: Mesh, refreshBounds = true) {
     if (this.count === 0) {
       const changed = this.appliedCount !== 0;
@@ -65,6 +77,16 @@ export class InstanceBatch {
     this.appliedCount = this.count;
     this.bufferUpdates++;
     return true;
+  }
+
+  private ensure(count: number) {
+    const needed = count * 16;
+    if (needed <= this.data.length) return;
+    let length = this.data.length;
+    while (length < needed) length *= 2;
+    const bigger = new Float32Array(length);
+    bigger.set(this.data);
+    this.data = bigger;
   }
 
   private matchesApplied(length: number): boolean {
@@ -102,16 +124,22 @@ interface ChunkBatch {
   chunkX: number;
   chunkY: number;
   batch: InstanceBatch;
-  mesh: Mesh | null;
 }
 
 /**
- * Batching espacial: cada combinação chunk + modelo recebe uma malha-fonte própria.
- * Assim o bounding box das thin instances fica limitado ao chunk e o frustum culling
- * não mantém a cidade inteira ativa só porque um modelo aparece em muitos lugares.
+ * Armazena matrizes estaticamente por chunk, mas compacta somente os chunks visíveis
+ * em um único buffer GPU por modelo.
+ *
+ * Babylon mantém buffers de thin instances na Geometry; clones compartilham Geometry e,
+ * portanto, sobrescrevem os buffers uns dos outros. Esta estratégia preserva uma única
+ * Geometry/mesh por GLB e ainda faz o custo GPU acompanhar a janela espacial visível.
  */
 export class ChunkedBatchSet {
-  private batches = new Map<string, ChunkBatch>();
+  private readonly batches = new Map<string, ChunkBatch>();
+  private readonly renderBatches = new Map<string, InstanceBatch>();
+  private readonly configuredModels = new Set<string>();
+  private visibleChunkKeys = new Set<string>();
+  private dirtyModels = new Set<string>();
 
   constructor(
     private readonly chunkSize: number,
@@ -125,52 +153,92 @@ export class ChunkedBatchSet {
     const key = `${chunkX}:${chunkY}:${model}`;
     let entry = this.batches.get(key);
     if (!entry) {
-      entry = { model, chunkX, chunkY, batch: new InstanceBatch(), mesh: null };
+      entry = { model, chunkX, chunkY, batch: new InstanceBatch() };
       this.batches.set(key, entry);
     }
     return entry.batch;
   }
 
   resetAll() {
-    for (const entry of this.batches.values()) entry.batch.reset();
+    for (const entry of this.batches.values()) {
+      if (entry.batch.count > 0) this.dirtyModels.add(entry.model);
+      entry.batch.reset();
+    }
   }
 
   resetChunks(chunks: ReadonlySet<string>) {
     for (const entry of this.batches.values()) {
-      if (chunks.has(`${entry.chunkX}:${entry.chunkY}`)) entry.batch.reset();
+      if (!chunks.has(this.chunkKey(entry.chunkX, entry.chunkY))) continue;
+      if (entry.batch.count > 0) this.dirtyModels.add(entry.model);
+      entry.batch.reset();
     }
   }
 
+  /**
+   * Marca as mudanças concluídas. Se atingem chunks visíveis, atualiza apenas os modelos afetados.
+   */
   applyAll() {
-    this.applyWhere();
+    for (const entry of this.batches.values()) this.dirtyModels.add(entry.model);
+    this.flushDirtyVisible();
   }
 
   applyChunks(chunks: ReadonlySet<string>) {
-    this.applyWhere(chunks);
+    for (const entry of this.batches.values()) {
+      if (chunks.has(this.chunkKey(entry.chunkX, entry.chunkY))) this.dirtyModels.add(entry.model);
+    }
+    this.flushDirtyVisible();
   }
 
-  stats(activeMeshNames?: ReadonlySet<string>): BatchStats {
+  /**
+   * Atualiza a janela espacial. Só recompõe buffers quando a câmera atravessa fronteiras de chunk.
+   * Uma margem de 1 chunk evita popping nas bordas do frustum aproximado.
+   */
+  setVisibleRect(rect: TileRect) {
+    const minX = Math.floor(Math.min(rect.x0, rect.x1) / this.chunkSize) - 1;
+    const maxX = Math.floor(Math.max(rect.x0, rect.x1) / this.chunkSize) + 1;
+    const minY = Math.floor(Math.min(rect.y0, rect.y1) / this.chunkSize) - 1;
+    const maxY = Math.floor(Math.max(rect.y0, rect.y1) / this.chunkSize) + 1;
+    const next = new Set<string>();
+
+    for (const entry of this.batches.values()) {
+      if (entry.batch.count === 0) continue;
+      if (entry.chunkX < minX || entry.chunkX > maxX || entry.chunkY < minY || entry.chunkY > maxY) continue;
+      next.add(this.chunkKey(entry.chunkX, entry.chunkY));
+    }
+
+    if (this.sameSet(next, this.visibleChunkKeys)) {
+      this.flushDirtyVisible();
+      return;
+    }
+
+    this.visibleChunkKeys = next;
+    for (const entry of this.batches.values()) this.dirtyModels.add(entry.model);
+    this.flushDirtyVisible();
+  }
+
+  stats(): BatchStats {
     const chunks = new Set<string>();
     const visibleChunks = new Set<string>();
     let batches = 0;
     let instances = 0;
     let visibleBatches = 0;
     let visibleInstances = 0;
-    let bufferUpdates = 0;
 
     for (const entry of this.batches.values()) {
       if (entry.batch.count === 0) continue;
+      const chunk = this.chunkKey(entry.chunkX, entry.chunkY);
       batches++;
       instances += entry.batch.count;
-      bufferUpdates += entry.batch.bufferUpdates;
-      const chunk = `${entry.chunkX}:${entry.chunkY}`;
       chunks.add(chunk);
-      if (entry.mesh && activeMeshNames?.has(entry.mesh.name)) {
+      if (this.visibleChunkKeys.has(chunk)) {
         visibleBatches++;
         visibleInstances += entry.batch.count;
         visibleChunks.add(chunk);
       }
     }
+
+    let bufferUpdates = 0;
+    for (const batch of this.renderBatches.values()) bufferUpdates += batch.bufferUpdates;
 
     return {
       chunks: chunks.size,
@@ -183,65 +251,43 @@ export class ChunkedBatchSet {
     };
   }
 
-  private applyWhere(chunks?: ReadonlySet<string>) {
+  private flushDirtyVisible() {
+    if (this.dirtyModels.size === 0) return;
+    for (const model of this.dirtyModels) this.rebuildModel(model);
+    this.dirtyModels.clear();
+  }
+
+  private rebuildModel(model: string) {
+    let render = this.renderBatches.get(model);
+    if (!render) {
+      render = new InstanceBatch();
+      this.renderBatches.set(model, render);
+    }
+    render.reset();
+
     for (const entry of this.batches.values()) {
-      if (chunks && !chunks.has(`${entry.chunkX}:${entry.chunkY}`)) continue;
-      if (entry.batch.count === 0) {
-        if (entry.mesh) entry.batch.apply(entry.mesh);
-        continue;
-      }
-      if (!entry.mesh) entry.mesh = this.createMesh(entry);
-      const changed = entry.batch.apply(entry.mesh, false);
-      if (changed) this.setChunkBoundingInfo(entry.mesh, entry);
-    }
-  }
-
-  private setChunkBoundingInfo(mesh: Mesh, entry: ChunkBatch) {
-    // As matrizes das thin instances já estão em coordenadas do mundo e o mesh-pai fica
-    // na identidade. Um AABB explícito do chunk evita falsos negativos do bounding
-    // agregado e dispensa percorrer todas as instâncias para recalcular bounds.
-    const pad = 4;
-    const min = new Vector3(entry.chunkX * this.chunkSize - pad, -2, entry.chunkY * this.chunkSize - pad);
-    const max = new Vector3(
-      (entry.chunkX + 1) * this.chunkSize + pad,
-      8,
-      (entry.chunkY + 1) * this.chunkSize + pad,
-    );
-    mesh.setBoundingInfo(new BoundingInfo(min, max));
-    // Babylon também faz culling por submesh. Nos GLBs multi-material, manter os
-    // bounds locais originais faria calçadas/faixas/partes do lote sumirem apesar
-    // do chunk estar visível. Cada submesh herda o AABB espacial do próprio chunk.
-    for (const sub of mesh.subMeshes) sub.setBoundingInfo(new BoundingInfo(min, max));
-  }
-
-  private createMesh(entry: ChunkBatch): Mesh {
-    const source = this.sourceFor(entry.model);
-    const name = `poc-v4-chunk/${entry.chunkX}/${entry.chunkY}/${entry.model}`;
-    const mesh = source.clone(name, null, true);
-    if (!mesh) throw new Error(`não consegui criar batch espacial de ${entry.model}`);
-
-    // Os GLBs v4 usam MultiMaterial/submeshes. O clone do Babylon pode acabar com
-    // um submesh global, o que renderiza só o primeiro material (asfalto/base do lote).
-    // Reaproveitamos a geometria/material e espelhamos explicitamente os ranges do source.
-    mesh.material = source.material;
-    mesh.subMeshes = [];
-    for (const sub of source.subMeshes) {
-      new SubMesh(
-        sub.materialIndex,
-        sub.verticesStart,
-        sub.verticesCount,
-        sub.indexStart,
-        sub.indexCount,
-        mesh,
-      );
+      if (entry.model !== model || entry.batch.count === 0) continue;
+      if (!this.visibleChunkKeys.has(this.chunkKey(entry.chunkX, entry.chunkY))) continue;
+      render.append(entry.batch);
     }
 
-    mesh.isPickable = false;
-    mesh.alwaysSelectAsActiveMesh = false;
-    mesh.doNotSyncBoundingInfo = true;
-    mesh.thinInstanceCount = 0;
-    this.setChunkBoundingInfo(mesh, entry);
-    this.configureMesh?.(mesh, entry.model);
-    return mesh;
+    const mesh = this.sourceFor(model);
+    if (!this.configuredModels.has(model)) {
+      mesh.isPickable = false;
+      mesh.alwaysSelectAsActiveMesh = false;
+      this.configureMesh?.(mesh, model);
+      this.configuredModels.add(model);
+    }
+    render.apply(mesh, true);
+  }
+
+  private chunkKey(x: number, y: number): string {
+    return `${x}:${y}`;
+  }
+
+  private sameSet(a: ReadonlySet<string>, b: ReadonlySet<string>): boolean {
+    if (a.size !== b.size) return false;
+    for (const key of a) if (!b.has(key)) return false;
+    return true;
   }
 }
