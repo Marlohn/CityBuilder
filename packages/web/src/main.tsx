@@ -16,6 +16,8 @@ const pocV4Cinema = pocV4 && params.get("cinema") === "1";
 const pocV4Perf = pocV4Cinema && params.get("perf") === "1";
 const pocV4Stress =
   params.get("stress") === "large" ? "large" : params.get("stress") === "medium" ? "medium" : "small";
+const pocV4View =
+  params.get("view") === "street" ? "street" : params.get("view") === "overview" ? "overview" : "medium";
 const enginePreference =
   params.get("engine") === "webgpu" ? "webgpu" : params.get("engine") === "auto" ? "auto" : "webgl";
 const requestedShadow = Number(params.get("shadows") ?? 2048);
@@ -343,7 +345,8 @@ function setupPocV4Stress(kind: "medium" | "large") {
   renderer.setBuildings(stressBuildings);
   renderer.setVehicles({ data: vehicles, count: vehicleTarget });
   renderer.lookAt(size / 2, size / 2);
-  const targetZoom = kind === "large" ? 48 : 30;
+  const targetZoom =
+    pocV4View === "street" ? 10 : pocV4View === "overview" ? Math.min(120, size * 0.45) : kind === "large" ? 48 : 30;
   renderer.zoomBy(targetZoom / renderer.cameraState().zoom);
   renderer.tiltBy((5 * Math.PI) / 180);
   store.set({ ready: true });
@@ -469,7 +472,7 @@ if (pocV4Perf) {
   const refreshHud = () => {
     const state = renderer.pocV4State();
     hud.textContent = [
-      `v4 perf · ${pocV4Stress} · ${state.engine}${state.engineFallback ? " (fallback)" : ""}`,
+      `v4 perf · ${pocV4Stress}/${pocV4View} · ${state.engine}${state.engineFallback ? " (fallback)" : ""}`,
       `fps ${state.fps} · frame ${state.frameTimeMs} ms · p95 ${state.frameTimeP95Ms} · p99 ${state.frameTimeP99Ms}`,
       `internal ${state.resolution.width}x${state.resolution.height} · scale ${state.graphics.resolutionScale}`,
       `meshes ${state.meshes} · active ${state.activeMeshes} · draws ${state.drawCalls ?? "n/a"}`,
@@ -493,5 +496,6 @@ Object.assign(window, {
     map: () => lastMap,
     performance: () => renderer.pocV4State(),
     stress: pocV4Stress,
+    view: pocV4View,
   },
 });
