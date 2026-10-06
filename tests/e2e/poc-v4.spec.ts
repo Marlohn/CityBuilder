@@ -2,6 +2,8 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { expect, test } from "@playwright/test";
 import { openGame } from "./helpers";
 
+const stressTest = process.env.POC_V4_STRESS === "1" ? test : test.skip;
+
 test("POC v4 usa os novos GLBs no renderer e mantém a cidade real funcional", async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
@@ -209,7 +211,7 @@ test("renderer padrão continua fora da POC v4", async ({ page }) => {
   expect(errors).toEqual([]);
 });
 
-test("POC v4 perf particiona cidade grande e expõe métricas do gate", async ({ page }) => {
+stressTest("POC v4 perf particiona cidade grande e expõe métricas do gate", async ({ page }) => {
   test.setTimeout(300_000);
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
