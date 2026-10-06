@@ -12,7 +12,7 @@ concurrency:
 
 jobs:
   preview:
-    if: github.head_ref == 'poc/visual-v4-city-assets'
+    if: github.head_ref == 'poc/visual-v4-city-assets' || github.head_ref == 'perf/web-scale-gate'
     runs-on: ubuntu-latest
     container:
       image: mcr.microsoft.com/playwright:v1.63.0-noble
@@ -30,7 +30,7 @@ jobs:
       - name: Validar POC v4
         run: |
           (cd packages/web/public/models/poc-v4 && sha256sum -c SHA256SUMS.txt)
-          npx biome check packages/render/src/pocV4.ts packages/render/src/renderer.ts packages/render/src/models.ts packages/web/src/main.tsx tests/e2e/poc-v4.spec.ts
+          npx biome check packages/render/src/instances.ts packages/render/src/pocV4.ts packages/render/src/renderer.ts packages/render/src/models.ts packages/web/src/main.tsx tests/e2e/poc-v4.spec.ts
           npm run check -- --only=types
       - name: Capturar evidência visual da POC v4
         run: npx playwright test tests/e2e/poc-v4.spec.ts --reporter=line
