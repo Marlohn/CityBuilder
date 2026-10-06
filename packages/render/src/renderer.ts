@@ -253,8 +253,8 @@ export class CityRenderer {
     await this.lib.load(models);
     for (const m of this.lib.all()) {
       if (this.pocV4) {
-        // Na v4 as fontes só alimentam clones por chunk. Mantê-las fora da seleção evita
-        // um bounding global por modelo e deixa o frustum culling agir em cada chunk.
+        // Na v4 a própria fonte recebe somente as thin instances dos chunks visíveis.
+        // Começa oculta até a primeira compactação espacial.
         m.isVisible = false;
         m.alwaysSelectAsActiveMesh = false;
         continue;
@@ -270,6 +270,7 @@ export class CityRenderer {
     this.engine.runRenderLoop(() => {
       this.updateCameraFromKeys();
       onFrame();
+      if (this.pocV4) this.updatePocV4Visibility();
       this.scene.render();
       const now = performance.now();
       const dt = now - this.lastFrameAt;
@@ -404,17 +405,10 @@ export class CityRenderer {
   /** Evidência observável da POC v4 para Playwright e inspeção manual. */
   pocV4State() {
     const active = this.scene.getActiveMeshes();
-    const activeMeshNames = new Set<string>();
-    for (let i = 0; i < active.length; i++) {
-      const mesh = active.data[i];
-      if (mesh) activeMeshNames.add(mesh.name);
-    }
-
-    const road = this.roads instanceof PocV4RoadLayer ? this.roads.stats(activeMeshNames) : null;
-    const buildings =
-      this.buildingLayer instanceof PocV4BuildingLayer ? this.buildingLayer.stats(activeMeshNames) : null;
-    const trees = this.trees instanceof PocV4TreeLayer ? this.trees.stats(activeMeshNames) : null;
-    const vehicles = this.vehicles instanceof PocV4VehicleLayer ? this.vehicles.stats(activeMeshNames) : null;
+    const road = this.roads instanceof PocV4RoadLayer ? this.roads.stats() : null;
+    const buildings = this.buildingLayer instanceof PocV4BuildingLayer ? this.buildingLayer.stats() : null;
+    const trees = this.trees instanceof PocV4TreeLayer ? this.trees.stats() : null;
+    const vehicles = this.vehicles instanceof PocV4VehicleLayer ? this.vehicles.stats() : null;
     const layers = [road, buildings, trees, vehicles].filter((x) => x !== null);
     const sum = (
       key:
@@ -492,6 +486,14 @@ export class CityRenderer {
       height: this.buildingLayer.heightOf(b),
     }));
     return this.pickCache;
+  }
+
+  private updatePocV4Visibility() {
+    const rect = this.visibleTileRect();
+    if (this.roads instanceof PocV4RoadLayer) this.roads.setVisibleRect(rect);
+    if (this.buildingLayer instanceof PocV4BuildingLayer) this.buildingLayer.setVisibleRect(rect);
+    if (this.trees instanceof PocV4TreeLayer) this.trees.setVisibleRect(rect);
+    if (this.vehicles instanceof PocV4VehicleLayer) this.vehicles.setVisibleRect(rect);
   }
 
   /** Retângulo aproximado (em quadradinhos) que aparece na tela. */
