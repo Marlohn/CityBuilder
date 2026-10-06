@@ -200,7 +200,7 @@ export class ChunkedBatchSet {
     // As matrizes das thin instances já estão em coordenadas do mundo e o mesh-pai fica
     // na identidade. Um AABB explícito do chunk evita falsos negativos do bounding
     // agregado e dispensa percorrer todas as instâncias para recalcular bounds.
-    const pad = 1.5;
+    const pad = 4;
     const min = new Vector3(entry.chunkX * this.chunkSize - pad, -2, entry.chunkY * this.chunkSize - pad);
     const max = new Vector3(
       (entry.chunkX + 1) * this.chunkSize + pad,
