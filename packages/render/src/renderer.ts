@@ -438,7 +438,7 @@ export class CityRenderer {
         hardwareScaling: this.engine.getHardwareScalingLevel(),
       },
       fps: Math.round(this.engine.getFps()),
-      frameTimeMs: this.percentile(this.frameTimes, 0.5),
+      frameTimeMs: this.average(this.frameTimes),
       frameTimeP95Ms: this.percentile(this.frameTimes, 0.95),
       frameTimeP99Ms: this.percentile(this.frameTimes, 0.99),
       resolution: {
@@ -461,6 +461,11 @@ export class CityRenderer {
         layers: { road, buildings, trees, vehicles },
       },
     };
+  }
+
+  private average(values: number[]): number {
+    if (values.length === 0) return 0;
+    return Math.round((values.reduce((total, value) => total + value, 0) / values.length) * 10) / 10;
   }
 
   private percentile(values: number[], q: number): number {
