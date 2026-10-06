@@ -77,7 +77,6 @@ test("POC v4 usa os novos GLBs no renderer e mantém a cidade real funcional", a
   expect(errors).toEqual([]);
 });
 
-
 test("POC v4 perf particiona cidade grande e expõe métricas do gate", async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
